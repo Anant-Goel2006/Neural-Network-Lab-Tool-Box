@@ -12,15 +12,10 @@ from utils.nn_helpers import PLOTLY_BASE, plotly_layout, TEXT, C, P, G, A, R, GR
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import logging
 
+import importlib.util
 try:
-    import tensorflow as tf
-    tf.get_logger().setLevel(logging.ERROR)
-    from tensorflow.keras.models import Sequential, load_model
-    from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout
-    from tensorflow.keras.preprocessing.text import Tokenizer
-    from tensorflow.keras.preprocessing.sequence import pad_sequences
-    TF_AVAILABLE = True
-except ImportError:
+    TF_AVAILABLE = importlib.util.find_spec("tensorflow") is not None
+except Exception:
     TF_AVAILABLE = False
 
 MODEL_DIR = "Sentiment_Analysis_RNN"
@@ -95,6 +90,13 @@ def sentiment_analysis_page():
         st.error("TensorFlow is required for the LSTM module but is not installed.")
         return
 
+    import tensorflow as tf
+    tf.get_logger().setLevel(logging.ERROR)
+    from tensorflow.keras.models import Sequential, load_model
+    from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+
     with st.expander("📚 Theory & Mathematical Explanation", expanded=False):
         st.markdown("""
         **Long Short-Term Memory (LSTM) RNN:**
@@ -159,7 +161,7 @@ def sentiment_analysis_page():
                     m3.metric("Accuracy", f"{acc*100:.1f}%")
                     m4.metric("Vocab Size", len(tokenizer.word_index))
                     
-                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), use_container_width=True, key=f"ls_live_{ep}")
+                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), use_container_width=True, theme=None, key=f"ls_live_{ep}")
                     
             # Save Model
             with master_ph.container():
@@ -174,7 +176,7 @@ def sentiment_analysis_page():
                 m1.metric("Final Epochs", epochs)
                 m2.metric("Final Loss", f"{err:.4f}")
                 m3.metric("Final Accuracy", f"{acc*100:.1f}%")
-                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), use_container_width=True, key="ls_final_res")
+                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), use_container_width=True, theme=None, key="ls_final_res")
 
 
     # ──────────────────────────────────────────────────────
@@ -236,7 +238,7 @@ def sentiment_analysis_page():
                         height=300, margin=dict(t=50, b=20, l=20, r=20)
                     )
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, theme=None)
 
             except Exception as e:
                 st.error(f"Error during LSTM execution: {str(e)}")

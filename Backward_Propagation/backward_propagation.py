@@ -4,7 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header, render_log
+from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.nlp_engine import generate_bwd_insight
 from utils.nn_helpers import (ACTS, LOSSES, make_weights, forward_pass, backward_pass,
     draw_network, P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, plotly_layout)
 
@@ -117,8 +118,8 @@ def backward_propagation_page():
                 # Restore Gauges
                 gA, gB = st.columns(2)
                 from utils.styles import speedometer
-                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#ED1D24", height=200), use_container_width=True, key=f"bp_gL_{ep}")
-                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#005BEA", height=200), use_container_width=True, key=f"bp_gA_{ep}")
+                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#ED1D24", height=200), use_container_width=True, theme=None, key=f"bp_gL_{ep}")
+                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#005BEA", height=200), use_container_width=True, theme=None, key=f"bp_gA_{ep}")
                 
                 # Double graph: Network Architecture (Live Vals) + Trajectories
                 diag_vals = [Xv] + [As[i+1].flatten().tolist() for i in range(len(sizes)-2)] + [[y_pred]]
@@ -135,8 +136,8 @@ def backward_propagation_page():
                 fig2.update_yaxes(showgrid=True, gridcolor="#DDD", secondary_y=False)
                 
                 cA, cB = st.columns(2)
-                cA.plotly_chart(fig1, use_container_width=True, key=f"bp_net_live_{ep}")
-                cB.plotly_chart(fig2, use_container_width=True, key=f"bp_line_live_{ep}")
+                cA.plotly_chart(fig1, use_container_width=True, theme=None, key=f"bp_net_live_{ep}")
+                cB.plotly_chart(fig2, use_container_width=True, theme=None, key=f"bp_line_live_{ep}")
 
             if delay > 0: time.sleep(delay)
             if loss < 1e-5:
@@ -147,17 +148,18 @@ def backward_propagation_page():
         acc = max(0, 1 - (loss / final_max_display_loss))
 
         with master_dashboard.container():
-            st.success(f"Training finalized at Epoch {ep} with Accuracy {acc*100:.1f}%.")
+            insight = generate_bwd_insight(optimizer="Gradient Descent Kinetics", lr=lr, total_epochs=ep)
+            render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#8b5cf6")
             
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
-            <div style="background:#FFF; border:4px solid #121212; padding:25px; box-shadow:8px 8px 0px #ED1D24; text-align:center;">
-                <div style="font-family:'Impact', sans-serif; font-size:20px; color:#121212;">FINAL CONVERGENCE SCORE</div>
-                <div style="font-size:62px; font-family:'Bangers', cursive; color:#005BEA;">
+            <div style="background:#09090B; border:2px solid #27272A; padding:25px; box-shadow:5px 5px 0px #E11D48; text-align:center;">
+                <div style="font-family:'Oswald', sans-serif; font-size:20px; color:#A1A1AA;">FINAL CONVERGENCE SCORE</div>
+                <div style="font-size:62px; font-family:'Oswald', sans-serif; font-weight:700; color:#005BEA;">
                     {acc*100:.2f}%
                 </div>
-                <div style="font-weight:900; color:#121212; margin-top:5px;">STATUS: {'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</div>
+                <div style="font-weight:600; font-family:'Inter'; color:#FAFAFA; margin-top:5px; text-transform:uppercase;">STATUS: {'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</div>
             </div>
             """, unsafe_allow_html=True)
             mx1, mx2, mx3, mx4 = st.columns(4)
@@ -167,8 +169,8 @@ def backward_propagation_page():
             mx4.metric("Final Avg Gradient", f"{mean_grad:.6f}")
             
             cA, cB = st.columns(2)
-            cA.plotly_chart(fig1, use_container_width=True, key="bp_net_final")
-            cB.plotly_chart(fig2, use_container_width=True, key="bp_line_final")
+            cA.plotly_chart(fig1, use_container_width=True, theme=None, key="bp_net_final")
+            cB.plotly_chart(fig2, use_container_width=True, theme=None, key="bp_line_final")
 
         # ── RESTORED POST-TRAINING MAPS ──
         st.divider()

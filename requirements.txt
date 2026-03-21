@@ -11,3 +11,8 @@ ultralytics
 av
 scikit-learn
 matplotlib
+torch
+torchvision
+segmentation-models-pytorch
+albumentations
+scipy

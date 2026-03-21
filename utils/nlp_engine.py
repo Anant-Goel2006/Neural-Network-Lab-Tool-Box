@@ -1,63 +1,47 @@
-def generate_insight(module_name, metrics):
-    """
-    NLP Insight Generator
-    Takes module metrics and generates a human-readable heuristic insight.
-    Returns: (text, color, icon)
-    """
-    if module_name == "perceptron":
-        conv = metrics.get("converged", -1)
-        loss = metrics.get("loss", 0)
-        acc = metrics.get("accuracy", 0)
-        
-        if conv > 0:
-            return (f"The model successfully recognized the linear pattern and converged at epoch {conv}. "
-                    f"A clear decision boundary perfectly separates the data.", 
-                    "#10B981", "✨")
-        elif acc >= 75:
-            return (f"The model struggled to fully converge, finishing with a loss of {loss:.2f}. "
-                    f"It reached {acc:.1f}% accuracy, signifying that the dataset might not be completely linearly separable.", 
-                    "#F59E0B", "⚖️")
-        else:
-            return (f"The perceptron failed to find a linear boundary, ending with an accuracy of just {acc:.1f}%. "
-                    f"Consider using a Multi-Layer Perceptron (MLP) for this non-linear dataset.", 
-                    "#EF4444", "🛑")
+import random
 
-    elif module_name == "forward":
-        loss = metrics.get("loss", 0.0)
-        pred = metrics.get("pred", 0.0)
-        target = metrics.get("target", 0.0)
-        act = metrics.get("activation", "ReLU")
-        diff = abs(pred - target)
-        
-        if diff < 0.1:
-            return (f"Excellent forward pass. The signal propagated through the {act} activations "
-                    f"and output a prediction ({pred:.3f}) very close to your target ({target:.3f}).", 
-                    "#10B981", "🎯")
-        elif diff < 0.5:
-            return (f"The network generated an output of {pred:.3f}, giving a moderate loss of {loss:.3f}. "
-                    f"Tweaking the weights or changing the {act} activation function may improve accuracy.", 
-                    "#06B6D4", "🔍")
-        else:
-            return (f"High loss detected ({loss:.3f}). The signal transformation via {act} "
-                    f"is resulting in a prediction far from the target. Consider running backpropagation to adjust the weights.", 
-                    "#F59E0B", "⚠️")
+def generate_perceptron_insight(epochs, acc, loss, converged):
+    if converged:
+        templates = [
+            f"The neural unit reached stable convergence at epoch {epochs}. Feature space is now linearly separable with an accuracy ceiling of {acc:.2f}.",
+            f"Training halted. The decision boundary perfectly dissects the coordinate plane (Loss: {loss:.4f}). Optimization complete.",
+            f"Convergence verified. The perceptron achieved {acc*100:.0f}% accuracy in {epochs} iterations, successfully learning the logic gate."
+        ]
+    else:
+        templates = [
+            f"Training incomplete at epoch {epochs}. The network is struggling to map the inputs smoothly, plateauing at {acc:.2f} accuracy.",
+            f"The logical threshold is resisting convergence. High chaotic variance detected (Loss: {loss:.4f}).",
+            f"Input space remains entangled. The single-layer architecture cannot resolve this non-linear dependency (Acc: {acc:.2f})."
+        ]
+    return random.choice(templates)
 
-    elif module_name == "backward":
-        grad_max = metrics.get("grad_max", 0.0)
-        grad_min = metrics.get("grad_min", 1.0)
-        layers = metrics.get("layers", 1)
-        
-        if grad_max > 2.0:
-            return (f"Exploding gradients detected! A gradient of {grad_max:.2f} is heavily altering the weights. "
-                    f"Consider lowering the learning rate or switching to a stabilizing activation like ReLU or Tanh.", 
-                    "#EF4444", "💥")
-        elif grad_min < 0.01 and layers > 2:
-            return (f"Vanishing gradients. Deep layers are learning too slowly with a minimum gradient of {grad_min:.4f}. "
-                    f"The chain rule is shrinking the values; avoid Sigmoid in deep networks.", 
-                    "#F59E0B", "📉")
-        else:
-            return (f"Healthy gradient flow! The chain rule successfully distributed the error backwards "
-                    f"without exploding or vanishing, ensuring stable weight updates.", 
-                    "#10B981", "🌊")
-    
-    return ("Analyzing deep learning metrics...", "#C4B5FD", "🧠")
+def generate_fwd_insight(activation, loss_type, final_loss):
+    templates = [
+        f"Forward pass complete. Signals routed through '{activation}' gates yielded a continuous spatial gradient with {loss_type} error of {final_loss:.4f}.",
+        f"Matrix multiplication resolved. The {activation} function successfully introduced non-linearity, compressing error variance to {final_loss:.4f}.",
+        f"Signal propagation stabilized. The feed-forward network mapped the input tensors into a solvable latent space ({loss_type}: {final_loss:.4f})."
+    ]
+    return random.choice(templates)
+
+def generate_bwd_insight(optimizer, lr, total_epochs):
+    templates = [
+        f"Backpropagation traces successfully computed via Chain Rule. {optimizer} algorithm adjusting synaptic weights with learning rate {lr}.",
+        f"Gradient descent engaged for {total_epochs} iterations. The network is actively migrating down the high-dimensional cost surface.",
+        f"Cost function derivatives successfully transmitted backwards. Weight matrices are updating optimally using {optimizer} kinetics."
+    ]
+    return random.choice(templates)
+
+def generate_cv_insight(module, mode=""):
+    if module == "attendance":
+        return "Optical sweep protocol armed. System is actively searching for known biometric facial signatures to log into spatial memory."
+    elif module == "vehicle":
+        return "Traffic density grid active. Continuous temporal monitoring of physical vehicle entities within the road trajectory sector."
+    elif module == "face":
+        if mode == "emotion":
+            return "Subject engagement active. Capturing high-resolution coordinate micro-expressions to classify underlying human sentiment."
+        return "Facial landmark mesh initialized. Extracting precise geometric orientation across 468 focal points in real-time."
+    elif module == "sign":
+        return "Color-shape isolation matrix active. Neural filters are parsing environmental contours for road signage patterns."
+    elif module == "palm":
+        return "Kinematic skeletal tracking active. Analyzing hand pivot joints to determine gesture classifications and mechanical positioning."
+    return "Optical sensor processing at optimal latency. Spatial parsing active."

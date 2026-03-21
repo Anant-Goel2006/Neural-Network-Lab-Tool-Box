@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.nlp_engine import generate_fwd_insight
 from utils.nn_helpers import (ACTS, LOSSES, make_weights, forward_pass,
-    draw_network, P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, LAYER_COLS)
+    draw_network, P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, LAYER_COLS, plotly_layout)
 
 MAX_NODES = 6; MAX_LAYERS = 7
 
@@ -98,7 +99,7 @@ def forward_propagation_page():
     st.markdown(arch)
 
     if len(sizes) <= MAX_LAYERS:
-        st.plotly_chart(draw_network(sizes, labels), use_container_width=True)
+        st.plotly_chart(draw_network(sizes, labels), use_container_width=True, theme=None)
 
     st.divider()
     section_header("Inputs & Target", "Set input values and target output")
@@ -117,7 +118,7 @@ def forward_propagation_page():
         st.caption(f"f(z) = `{ACTS[act_all]['eq']}`")
         h_acts = [act_all] * n_hid
         with st.expander("📈 Activation curve"):
-            st.plotly_chart(_act_curve_fig(act_all), use_container_width=True)
+            st.plotly_chart(_act_curve_fig(act_all), use_container_width=True, theme=None)
     else:
         h_acts = []
         ac = st.columns(min(n_hid, 5))
@@ -217,11 +218,8 @@ def forward_propagation_page():
     st.divider()
     section_header("Results Dashboard", "Output, loss gauge, network diagram, and layer-by-layer activations")
 
-    render_nlp_insight("forward", {
-        "loss": loss, "pred": y_pred, 
-        "target": st.session_state.fp_y_true, 
-        "activation": st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear"
-    })
+    insight = generate_fwd_insight(st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear", st.session_state.fp_loss_fn, loss)
+    render_nlp_insight(insight, "Feed-Forward Analysis // NLP Neural Engine", "#0ea5e9")
 
     # Metrics + Gauges
     m1, m2, m3, m4 = st.columns(4)
@@ -233,8 +231,8 @@ def forward_propagation_page():
     # Gauges restored
     g1, g2 = st.columns(2)
     from utils.styles import speedometer
-    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#005BEA", height=250), use_container_width=True, key="fp_g1")
-    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#ED1D24", height=250), use_container_width=True, key="fp_g2")
+    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#005BEA", height=250), use_container_width=True, theme=None, key="fp_g1")
+    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#ED1D24", height=250), use_container_width=True, theme=None, key="fp_g2")
 
     # Gauges removed for cleaner layout as requested.
 
@@ -262,7 +260,7 @@ def forward_propagation_page():
 
     # Activation Heatmap
     heat = _activation_heatmap(As, s_lbl)
-    if heat: st.plotly_chart(heat, use_container_width=True)
+    if heat: st.plotly_chart(heat, use_container_width=True, theme=None)
 
     # Layer tabs
     tabs = st.tabs([f"L{i} — {l}" for i, l in enumerate(s_lbl[1:], 1)] + ["📊 Loss Analysis"])
@@ -294,4 +292,4 @@ def forward_propagation_page():
         fig_b.update_layout(barmode="group",
             title=dict(text="Prediction vs Target", font=dict(color=TEXT, family="Impact", size=16)),
             **plotly_layout())
-        c1.plotly_chart(fig_b, use_container_width=True)
+        c1.plotly_chart(fig_b, use_container_width=True, theme=None)

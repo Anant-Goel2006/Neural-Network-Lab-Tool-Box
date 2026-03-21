@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import time
 import datetime
-from utils.styles import section_header, gradient_header
+from utils.styles import section_header, render_nlp_insight
+from utils.nlp_engine import generate_cv_insight
 import cv2
 
 try:
@@ -13,7 +14,15 @@ try:
 except ImportError:
     WEBRTC_READY = False
 
-RTC_CONFIG = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+RTC_CONFIG = RTCConfiguration({
+    "iceServers": [
+        {"urls": ["stun:stun.l.google.com:19302"]},
+        {"urls": ["stun:stun1.l.google.com:19302"]},
+        {"urls": ["stun:stun2.l.google.com:19302"]},
+        {"urls": ["stun:stun3.l.google.com:19302"]},
+        {"urls": ["stun:stun4.l.google.com:19302"]}
+    ]
+})
 
 import tempfile
 import os
@@ -48,7 +57,8 @@ def process_video_realtime(video_file, callback_fn):
 # MODULE 1 — ATTENDANCE SYSTEM
 # ═════════════════════════════════════════════════════════════════════════════
 def _attendance_module():
-    section_header("Attendance System", "Auto-detect & log multiple faces · CSV export")
+    section_header("Face Log & Attendance", "Match Faces · Export CSV")
+    render_nlp_insight(generate_cv_insight("attendance"), "Optical NLP // Live Tracking", "#f59e0b")
     if "cv_attendance" not in st.session_state: st.session_state.cv_attendance=[]
 
     c1,c2=st.columns([1,1])
@@ -118,7 +128,8 @@ def _attendance_module():
 # MODULE 2 — FACE SCANNER
 # ═════════════════════════════════════════════════════════════════════════════
 def _face_scan_module():
-    section_header("Face Scanner", "Multi-face · Eyes · Smile")
+    section_header("Face Scanner", "Multi-Cascade · Eyes & Smiles")
+    render_nlp_insight(generate_cv_insight("face"), "Optical NLP // Live Tracking", "#38bdf8")
     
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_fs_src")
     
@@ -173,6 +184,7 @@ def _face_scan_module():
 # ═════════════════════════════════════════════════════════════════════════════
 def _vehicle_module():
     section_header("Vehicle Detection", "YOLOv8 Real-Time Counting")
+    render_nlp_insight(generate_cv_insight("vehicle"), "Optical NLP // Live Tracking", "#f59e0b")
     
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_vd_src")
     
@@ -245,6 +257,8 @@ def _vehicle_module():
 # ═════════════════════════════════════════════════════════════════════════════
 def _sign_module():
     section_header("Traffic Sign Detection", "CNN Classifier · 43 Classes")
+    render_nlp_insight(generate_cv_insight("sign"), "Optical NLP // Pattern Recognition", "#E11D48")
+    
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_sd_src")
     
     def _sd_cb(img):
@@ -292,58 +306,192 @@ def _sign_module():
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MODULE 5 — PALM READING (MediaPipe Hand Tracking)
+# PALM READING FEATURE EXTRACTION UTILS
+# ═════════════════════════════════════════════════════════════════════════════
+def extract_skeleton(mask):
+    mask_binary = (mask > 0).astype(np.uint8)
+    return cv2.ximgproc.thinning(mask_binary * 255) if hasattr(cv2, 'ximgproc') else mask_binary
+
+def get_line_length(mask):
+    if mask.max() == 0: return 0
+    binary_mask = (mask > 0).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours: return 0
+    longest_contour = max(contours, key=cv2.contourArea)
+    return cv2.arcLength(longest_contour, closed=False)
+
+def get_curvature(mask):
+    if mask.max() == 0: return 0
+    binary_mask = (mask > 0).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours: return 0
+    longest_contour = max(contours, key=cv2.contourArea)
+    arc_length = cv2.arcLength(longest_contour, closed=False)
+    contour_points = longest_contour.reshape(-1, 2)
+    if len(contour_points) < 2: return 0
+    straight_distance = np.linalg.norm(contour_points[0] - contour_points[-1])
+    if straight_distance < 1: return 1.0
+    return arc_length / straight_distance
+
+def get_line_angle(mask):
+    if mask.max() == 0: return 0
+    binary_mask = (mask > 0).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours: return 0
+    longest_contour = max(contours, key=cv2.contourArea)
+    [vx, vy, x, y] = cv2.fitLine(longest_contour, cv2.DIST_L2, 0, 0.01, 0.01)
+    angle = np.arctan2(vy, vx) * 180 / np.pi
+    return float(angle[0]) if isinstance(angle, np.ndarray) else float(angle)
+
+def count_intersections(mask1, mask2):
+    intersection = cv2.bitwise_and(mask1, mask2)
+    if intersection.max() == 0: return 0
+    num_labels, _ = cv2.connectedComponents(intersection)
+    return max(0, num_labels - 1)
+
+def extract_palm_features(segmentation_mask):
+    life_mask = (segmentation_mask == 1).astype(np.uint8) * 255
+    head_mask = (segmentation_mask == 2).astype(np.uint8) * 255
+    heart_mask = (segmentation_mask == 3).astype(np.uint8) * 255
+    features = {}
+    features['life_length'] = get_line_length(life_mask)
+    features['head_length'] = get_line_length(head_mask)
+    features['heart_length'] = get_line_length(heart_mask)
+    features['life_curvature'] = get_curvature(life_mask)
+    features['head_curvature'] = get_curvature(head_mask)
+    features['heart_curvature'] = get_curvature(heart_mask)
+    features['life_angle'] = get_line_angle(life_mask)
+    features['head_angle'] = get_line_angle(head_mask)
+    features['heart_angle'] = get_line_angle(heart_mask)
+    features['life_head_intersection'] = count_intersections(life_mask, head_mask)
+    features['life_heart_intersection'] = count_intersections(life_mask, heart_mask)
+    features['head_heart_intersection'] = count_intersections(head_mask, heart_mask)
+    return features
+
+def classify_palm(features):
+    classification = {}
+    lengths = {'Life': features.get('life_length', 0), 'Head': features.get('head_length', 0), 'Heart': features.get('heart_length', 0)}
+    total_length = sum(lengths.values())
+    if total_length == 0:
+        classification['dominant_line'] = 'Unknown'
+        classification['confidence'] = 0.0
+    else:
+        dominant_line = max(lengths, key=lengths.get)
+        classification['dominant_line'] = dominant_line
+        classification['confidence'] = round(lengths[dominant_line] / total_length, 3)
+    
+    avg_curvature = (features.get('life_curvature', 0) + features.get('head_curvature', 0) + features.get('heart_curvature', 0)) / 3
+    if avg_curvature > 1.3: classification['palm_type'] = 'Curved/Expressive'
+    elif avg_curvature > 1.1: classification['palm_type'] = 'Balanced'
+    else: classification['palm_type'] = 'Straight/Practical'
+    
+    head_angle = abs(features.get('head_angle', 0))
+    intersections = features.get('life_head_intersection', 0)
+    if head_angle > 10 and intersections > 0:
+        classification['career_shift_indicator'] = 'Yes'
+        classification['career_shift_confidence'] = 0.7
+    else:
+        classification['career_shift_indicator'] = 'No'
+        classification['career_shift_confidence'] = 0.6
+    return classification
+
+def create_palm_overlay(image, mask):
+    if mask.shape[:2] != image.shape[:2]:
+        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+    overlay = image.copy()
+    # Colors in BGR (Life: Red, Head: Green, Heart: Blue)
+    colors = {1: (0, 0, 255), 2: (0, 255, 0), 3: (255, 0, 0)}
+    for class_id, color in colors.items():
+        class_mask = (mask == class_id)
+        overlay[class_mask] = overlay[class_mask] * 0.5 + np.array(color) * 0.5
+    return overlay.astype(np.uint8)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MODULE 5 — PALM READING (CNN Segmentation)
 # ═════════════════════════════════════════════════════════════════════════════
 def _palm_module():
-    section_header("🖐️ Palm Reading", "Real-time hand skeleton tracking via MediaPipe")
+    section_header("Palm Reading Extraction", "Kinematic Analysis")
+    render_nlp_insight(generate_cv_insight("palm"), "Optical NLP // Gesture Parsing", "#a855f7")
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_palm_src")
     
     try:
-        import mediapipe as mp
-        from mediapipe.solutions import hands as mp_hands
-        from mediapipe.solutions import drawing_utils as mp_drawing
-        hands_eval = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
-    except Exception as e:
-        st.markdown("""
-            <div style="background:#FFF9E6; border:2px solid #FFCC00; padding:12px; border-radius:0px; margin-bottom:20px;">
-                <div style="font-weight:900; color:#856404; font-size:14px;">⚠️ MODULE UNAVAILABLE (ENVIRONMENT)</div>
-                <div style="font-size:12px; color:#856404; margin-top:4px;">
-                    Hand tracking requires MediaPipe, which is currently incompatible with Python 3.13 on your system.
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        with st.expander("🛠️ Why am I seeing this?"):
-            st.info("The MediaPipe package (0.10.x) lacks the mandatory 'solutions' module in the official Python 3.13 builds for Windows. To use this feature, consider using a Python 3.11 or 3.12 environment.")
+        import torch
+        import segmentation_models_pytorch as smp
+        import albumentations as A
+        from albumentations.pytorch import ToTensorV2
+    except ImportError:
+        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch, segmentation_models_pytorch, albumentations).")
         return
 
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if 'palm_model' not in st.session_state:
+        try:
+            with st.spinner("Loading Palm Segmentation Model..."):
+                model = smp.Unet(encoder_name="resnet18", encoder_weights=None, in_channels=3, classes=4)
+                model.load_state_dict(torch.load("palm_model.pth", map_location=DEVICE))
+                model.to(DEVICE)
+                model.eval()
+                st.session_state.palm_model = model
+        except Exception as e:
+            st.error(f"Failed to load Palm Model from 'palm_model.pth': {e}")
+            return
+            
+    model = st.session_state.palm_model
+    preprocessing = A.Compose([
+        A.Resize(256, 256),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ToTensorV2(),
+    ])
+
     def _palm_cb(img):
-        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = hands_eval.process(rgb_img)
-        if results.multi_hand_landmarks:
-            for hl in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(img, hl, mp_hands.HAND_CONNECTIONS)
-        return img
+        # img is BGR
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        preprocessed = preprocessing(image=img_rgb)
+        image_tensor = preprocessed['image'].unsqueeze(0).to(DEVICE)
+        
+        with torch.no_grad():
+            output = model(image_tensor)
+            pred_mask = output.argmax(dim=1).squeeze(0).cpu().numpy()
+            
+        mask = cv2.resize(pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
+        overlay_img = create_palm_overlay(img, mask)
+        return overlay_img, mask
 
     if src == "📷 Photo":
-        f = st.file_uploader("Upload Hand Photo", type=["jpg", "png"], key="palm_photo")
+        f = st.file_uploader("Upload Palm Photo", type=["jpg", "png"], key="palm_photo")
         if f:
             img_bytes = np.frombuffer(f.read(), np.uint8)
             img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-            processed = _palm_cb(img)
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
+            
+            with st.spinner("Analyzing Palm..."):
+                overlay, mask = _palm_cb(img)
+                features = extract_palm_features(mask)
+                classification = classify_palm(features)
+            
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                st.image(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Line Segmentation (Life: Red, Head: Green, Heart: Blue)")
+            with c2:
+                st.success("### Palm Analysis")
+                st.markdown(f"**Dominant Line:** {classification['dominant_line']} ({classification['confidence']:.1%})")
+                st.markdown(f"**Palm Type:** {classification['palm_type']}")
+                st.markdown(f"**Career Shift Indicator:** {classification['career_shift_indicator']}")
+                with st.expander("Extracted Features Details"):
+                    st.json({k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()})
+
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="palm_video")
-        if v: process_video_realtime(v, _palm_cb)
+        if v:
+            process_video_realtime(v, lambda frame: _palm_cb(frame)[0])
     else:
         def palm_callback(frame: av.VideoFrame) -> av.VideoFrame:
             img = frame.to_ndarray(format="bgr24")
-            rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            results = hands_eval.process(rgb_img)
-            if results.multi_hand_landmarks:
-                for hl in results.multi_hand_landmarks:
-                    mp_drawing.draw_landmarks(img, hl, mp_hands.HAND_CONNECTIONS)
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
-        st.markdown("**Live WebRTC Camera**")
+            overlay, _ = _palm_cb(img)
+            return av.VideoFrame.from_ndarray(overlay, format="bgr24")
+            
+        st.markdown("**Live WebRTC Camera (CNN Inference)**")
+        st.warning("Note: Real-time CNN inference on CPU may experience low framerates.")
         webrtc_streamer(key="palm_stream", video_frame_callback=palm_callback, rtc_configuration=RTC_CONFIG)
 
 
@@ -369,22 +517,21 @@ def opencv_detection_page():
     ]
     cols = st.columns(5)
     for i,(icon,title,desc,key,clr) in enumerate(MODULES):
-        active = st.session_state.get("cv_module","attendance")==key
+        active = st.session_state.get("cv_module", None) == key
         border = f"{clr}" if active else "#000"
         cols[i].markdown(f"""
-        <div style="background-color:#FFF; border:3px solid {border};
-            box-shadow: 4px 4px 0px {clr if active else '#1212'};
-            border-radius:0px; padding:12px 10px; text-align:center;
-            transition:all 0.2s; height: 110px; display: flex; flex-direction:column; justify-content:center;
-            cursor: pointer; margin-bottom: 10px;">
-            <div style="font-size:28px; margin-bottom:4px;">{icon}</div>
-            <div style="font-family:'Impact', sans-serif; font-size:16px; color:{'#121212'}; text-transform:uppercase;">{title}</div>
-            <div style="font-size:11px; font-weight:700; color:#64748B; margin-top:2px; text-transform:uppercase;">{desc}</div>
+        <div style="background:#09090B; border: 2px solid {'#E11D48' if active else '#27272A'};
+            padding:16px; text-align:center; box-shadow: 4px 4px 0px {'#E11D48' if active else '#000'};
+            transition:all 0.2s; height: 115px; display: flex; flex-direction:column; justify-content:center;
+            margin-bottom: 10px;">
+            <div style="font-size:32px; margin-bottom:4px; text-shadow: 2px 2px 0px #000;">{icon}</div>
+            <div style="font-family:'Oswald', sans-serif; font-size:18px; color:#FAFAFA; font-weight:500; text-transform: uppercase;">{title}</div>
+            <div style="font-size:12px; font-family:'Inter'; font-weight:600; color:#71717A; margin-top:4px; text-transform: uppercase;">{desc}</div>
         </div>""", unsafe_allow_html=True)
         if cols[i].button(f"Open {title}", key=f"cv_btn_{key}", use_container_width=True, type="primary" if active else "secondary"):
             st.session_state.cv_module=key; st.rerun()
 
-    mod = st.session_state.get("cv_module","attendance")
+    mod = st.session_state.get("cv_module", None)
     st.divider()
 
     if mod == "attendance": _attendance_module()
@@ -392,3 +539,13 @@ def opencv_detection_page():
     elif mod == "vehicle": _vehicle_module()
     elif mod == "sign": _sign_module()
     elif mod == "palm": _palm_module()
+    else:
+        st.markdown("""
+        <div style="background: url('https://www.transparenttextures.com/patterns/stardust.png'), #09090B; border: 2px solid #27272A; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 8px 8px 0px #000;">
+            <div style="font-size: 72px; margin-bottom: 20px; text-shadow: 3px 3px 0px #000;">🛡️</div>
+            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">Vision Analytics Suite</h2>
+            <p style="font-family: 'Inter', sans-serif; font-weight: 500; color: #A1A1AA; font-size: 16px; margin-top: 16px;">
+                SELECT AN ACTIVE COMPUTER VISION MODULE FROM THE TOP PANEL TO BEGIN
+            </p>
+        </div>
+        """, unsafe_allow_html=True)

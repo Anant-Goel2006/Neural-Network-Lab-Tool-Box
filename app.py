@@ -21,7 +21,7 @@ p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon
 p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="➡️")
 p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="⬅️")
 p_cv   = st.Page(opencv_detection_page,    title="4. OpenCV Detection",     icon="👁️")
-p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon="💬")
+p_sa   = st.Page(sentiment_analysis_page,  title="5. NLP Neural Network",   icon="🤖")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR BRANDING
@@ -29,21 +29,21 @@ p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon
 def sidebar_brand():
     st.sidebar.markdown("""
     <div style="padding:24px 16px 22px;text-align:center;
-        border-bottom:2px solid #121212;margin-bottom:12px; background:#FFF; border:3px solid #121212; box-shadow: 4px 4px 0px #005BEA;">
-        <div style="font-size:36px;margin-bottom:8px;">🧠</div>
-        <div style="font-family:'Bangers',sans-serif; font-size:24px;font-weight:900;letter-spacing:2px;
-            color:#121212;">NEURAL LAB</div>
-        <div style="font-size:10px;color:#64748B;letter-spacing:2px;
-            margin-top:6px;text-transform:uppercase;font-weight:900;">
+        margin-bottom:12px; background:#050505; border:1px solid #27272A; border-bottom: 3px solid #005BEA; border-radius: 8px; box-shadow: 0px 4px 12px rgba(0,0,0,0.8);">
+        <div style="font-size:42px;margin-bottom:8px; filter: drop-shadow(0px 0px 10px rgba(0, 91, 234, 0.4));">🤖</div>
+        <div style="font-family:'Oswald',sans-serif; font-size:22px;font-weight:700;letter-spacing:2px;
+            color:#FAFAFA;">CYBER-NEURAL LAB</div>
+        <div style="font-size:10px;color:#A1A1AA;letter-spacing:2px;
+            margin-top:4px;text-transform:uppercase;font-weight:600; font-family:'Inter', sans-serif;">
             Deep Learning Toolbox
         </div>
-        <div style="display:flex;justify-content:center;gap:5px;margin-top:14px;">
-            <span style="background:#ED1D24;border:1px solid #121212;
-                color:#FFFFFF;font-size:9px;padding:2px 8px;font-weight:800;
-                letter-spacing:1px;box-shadow:2px 2px 0px #121212;">v2.5</span>
-            <span style="background:#F2A900;border:1px solid #121212;
-                color:#121212;font-size:9px;padding:2px 8px;font-weight:800;
-                letter-spacing:1px;box-shadow:2px 2px 0px #121212;">5 MODULES</span>
+        <div style="display:flex;justify-content:center;gap:6px;margin-top:16px;">
+            <span style="background:#E11D48;border:1px solid #BE123C; border-radius: 4px;
+                color:#FFFFFF;font-size:9px;padding:3px 8px;font-weight:600; font-family:'Inter';
+                letter-spacing:1px;box-shadow: 0px 2px 4px rgba(225, 29, 72, 0.4);">v2.5</span>
+            <span style="background:#0F172A;border:1px solid #334155; border-radius: 4px;
+                color:#E2E8F0;font-size:9px;padding:3px 8px;font-weight:600; font-family:'Inter';
+                letter-spacing:1px;">5 MODULES</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -55,11 +55,12 @@ def home_page():
     inject_global_css()
 
     st.markdown("""
-    <div style="text-align:center; padding: 40px 0;">
-        <div style="font-size: 80px; margin-bottom: 20px;">🧠</div>
-        <h1 style="font-size: 56px; font-weight: 900; color: #121212; margin: 0; font-family:'Bangers',cursive;">Neural Network Lab</h1>
-        <p style="font-size: 20px; color: #64748B; max-width: 700px; margin: 20px auto 0; line-height: 1.6; font-weight: 700;">
-            THE ULTIMATE SUPER-POWERED TOOLKIT FOR DEEP LEARNING VISUALIZATION, LIVE OPENCV ANALYTICS, AND LSTM PROCESSING.
+    <div style="position: relative; overflow: hidden; text-align:center; padding: 60px 20px 40px; background: url('https://www.transparenttextures.com/patterns/cubes.png'), radial-gradient(circle at 50% 0%, #1E1B4B 0%, #09090B 70%); border: 2px solid #27272A; border-bottom: 4px solid #005BEA; border-radius: 12px; margin-bottom: 30px; box-shadow: inset 0px 0px 60px rgba(0, 91, 234, 0.15), 0px 8px 24px rgba(0,0,0,0.8);">
+        <div style="font-size: 80px; margin-bottom: 16px; filter: drop-shadow(0px 0px 15px rgba(56, 189, 248, 0.6));">🤖</div>
+        <h1 style="font-size: 64px; font-weight: 700; color: #FAFAFA; margin: 0; font-family:'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 4px; text-shadow: 4px 4px 0px #005BEA;">Cyber-Neural Lab</h1>
+        <div style="width: 80px; height: 4px; background: #E11D48; margin: 24px auto; border-radius: 2px; box-shadow: 0px 0px 10px #E11D48;"></div>
+        <p style="font-size: 16px; color: #38BDF8; font-family: 'Oswald', sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6; font-weight: 500; text-transform: uppercase; letter-spacing: 3px;">
+            Advanced Robotics • Deep Vision Matrix • NLP Neural Networks
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -82,11 +83,11 @@ def home_page():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Section Divider ─────────────────────────────────────────────────────
-    st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:20px 0 30px;">
-        <div style="flex:1;height:3px;background:#121212;"></div>
-        <span style="font-size:12px;color:#121212;letter-spacing:4px;
-            font-weight:900;text-transform:uppercase; font-family:'Impact';">Super Modules</span>
-        <div style="flex:1;height:3px;background:#121212;"></div>
+    st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:30px 0;">
+        <div style="flex:1;height:2px;background:#27272A;"></div>
+        <span style="font-size:16px;color:#A1A1AA;letter-spacing:4px;
+            font-weight:500;text-transform:uppercase; font-family:'Oswald', sans-serif;">Lab Modules</span>
+        <div style="flex:1;height:2px;background:#27272A;"></div>
     </div>""", unsafe_allow_html=True)
 
     # ── Module Cards ────────────────────────────────────────────────────────
@@ -107,30 +108,29 @@ def home_page():
          "4 sub-modules: <strong>Attendance</strong>, <strong>Face Scanner</strong>, <strong>Vehicle Detection</strong> with live counting analytics, and <strong>Sign Detection</strong>.",
          p_cv, ["YOLO Vehicles","Live Analytics","Face Scanner","CSV Export"], "#F59E0B"),
 
-        ("💬", "Sentiment Analysis", "NLP Engine",
-         "8-emotion analysis with <strong>mixed sentiment detection</strong>, word-level highlights, radar charts, batch mode, and text comparison.",
-         p_sa, ["8 Emotions","Word Highlights","Comparison","Batch Mode"], "#EC4899"),
+        ("🤖", "NLP Neural Network", "LSTM Language Processor",
+         "8-emotion natural language processing with <strong>mixed sentiment detection</strong>, word-level highlights, radar charts, and batch mode.",
+         p_sa, ["8 Emotions","LSTM Core","Mixed Sentiments","Batch Mode"], "#EC4899"),
     ]
 
     def _card(ic, title, sub, desc, tags, clr):
         tags_html = "".join([
-            f'<span style="background:#FFFFFF;border:2px solid #121212;color:#121212;'
-            f'font-size:9px;padding:3px 9px;font-weight:900;'
-            f'letter-spacing:1px; box-shadow: 2px 2px 0px #121212; margin-right:4px; text-transform:uppercase;">{t}</span>' for t in tags
+            f'<span style="background:#18181B; border: 1px solid #3F3F46; color:#D4D4D8;'
+            f'font-size:11px; padding:4px 8px; font-weight:600; font-family: Oswald;'
+            f'margin-right:6px; display:inline-block; margin-bottom:6px; text-transform: uppercase;">{t}</span>' for t in tags
         ])
-        return f"""<div style="background:#FFFFFF; border:3px solid #121212;
-            border-top:8px solid {clr}; border-radius:0px; padding:24px 22px; height:100%;
-            box-shadow: 6px 6px 0px #121212; transition:all 0.2s;">
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
-                <div style="font-size:36px;">{ic}</div>
+        return f"""<div style="background:#09090B; border: 2px solid #27272A;
+            padding:24px; height:100%; box-shadow: 5px 5px 0px {clr};
+            transition:all 0.2s;">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+                <div style="font-size:36px; text-shadow: 2px 2px 0px #000;">{ic}</div>
                 <div>
-                    <div style="font-size:20px; font-weight:900; color:#121212; font-family:'Bangers'; letter-spacing:1px;">{title.upper()}</div>
-                    <div style="font-size:11px; color:{clr}; letter-spacing:2px; text-transform:uppercase;
-                        margin-top:2px; font-weight:900;">{sub}</div>
+                    <div style="font-size:24px; font-weight:700; color:#FAFAFA; font-family:'Oswald', sans-serif; text-transform: uppercase;">{title}</div>
+                    <div style="font-size:14px; color:{clr}; font-weight:600; font-family:'Oswald'; letter-spacing: 1px; text-transform:uppercase; margin-top:2px;">{sub}</div>
                 </div>
             </div>
-            <div style="font-size:14px; color:#121212; line-height:1.6; font-weight:700; margin-bottom:16px;">{desc}</div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">{tags_html}</div>
+            <div style="font-size:15px; color:#A1A1AA; line-height:1.6; font-family:'Inter'; margin-bottom:20px;">{desc}</div>
+            <div style="display:flex; flex-wrap:wrap;">{tags_html}</div>
         </div>"""
 
     # Row 1
@@ -156,11 +156,11 @@ def home_page():
                 st.switch_page(page)
 
     # ── Tech Stack ──────────────────────────────────────────────────────────
-    st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:32px 0 20px;">
-        <div style="flex:1;height:2px;background:#E2E8F0;"></div>
-        <span style="font-size:10px;color:#64748B;letter-spacing:3px;
-            font-weight:900;text-transform:uppercase;">Tech Stack</span>
-        <div style="flex:1;height:2px;background:#E2E8F0;"></div>
+    st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:40px 0 20px;">
+        <div style="flex:1;height:2px;background:#27272A;"></div>
+        <span style="font-size:12px;color:#A1A1AA;letter-spacing:3px;
+            font-weight:500;text-transform:uppercase; font-family:'Oswald', sans-serif;">Core Tech Stack</span>
+        <div style="flex:1;height:2px;background:#27272A;"></div>
     </div>""", unsafe_allow_html=True)
 
     STACK = [("Streamlit","#FF4B4B"),("NumPy","#005BEA"),("Plotly","#ED1D24"),

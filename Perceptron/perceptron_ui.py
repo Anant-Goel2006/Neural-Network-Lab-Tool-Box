@@ -4,7 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header, render_log
+from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.nlp_engine import generate_perceptron_insight
 from utils.nn_helpers import P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, plotly_layout
 
 GATES = {
@@ -122,10 +123,10 @@ def perceptron_page():
                 mx4.metric("Weights", f"w1:{w[0]:.2f} w2:{w[1]:.2f} b:{b:.2f}")
                 
                 from utils.styles import speedometer
-                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), use_container_width=True, key=f"pct_gauge_{ep}")
+                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), use_container_width=True, theme=None, key=f"pct_gauge_{ep}")
                 
                 fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-                st.plotly_chart(fig, use_container_width=True, key=f"pct_live_{ep}")
+                st.plotly_chart(fig, use_container_width=True, theme=None, key=f"pct_live_{ep}")
             
             if delay > 0: time.sleep(delay)
             if err == 0:
@@ -153,13 +154,15 @@ def perceptron_page():
 
         with master_dashboard.container():
             st.success(f"Training finalized at Epoch {ep} with Accuracy {acc:.1f}%.")
+            insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
+            render_nlp_insight(insight, "System Insight // NLP Neural Parsing", "#E11D48")
             mx1, mx2, mx3, mx4 = st.columns(4)
             mx1.metric("Final Epoch", f"{ep}/{max_ep}")
             mx2.metric("Final Loss", f"{err:.1f}")
             mx3.metric("Final Accuracy", f"{acc:.1f}%")
             mx4.metric("Final Weights", f"w1:{w[0]:.2f} w2:{w[1]:.2f} b:{b:.2f}")
             fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-            st.plotly_chart(fig, use_container_width=True, key="pct_final_res")
+            st.plotly_chart(fig, use_container_width=True, theme=None, key="pct_final_res")
 
         # ── RESTORED POST-TRAINING ANALYTICS ──
         st.divider()
@@ -183,7 +186,7 @@ def perceptron_page():
             fig_w.add_trace(go.Scatter(y=df_w["w2"], name="w2"))
             fig_w.add_trace(go.Scatter(y=df_w["bias"], name="bias", line=dict(dash="dot")))
             fig_w.update_layout(title="Weights across Epochs", height=300, margin=dict(t=40,b=20,l=20,r=20))
-            st.plotly_chart(fig_w, use_container_width=True, key="pct_weights_traj")
+            st.plotly_chart(fig_w, use_container_width=True, theme=None, key="pct_weights_traj")
             
         with t3:
             z = X @ w + b
