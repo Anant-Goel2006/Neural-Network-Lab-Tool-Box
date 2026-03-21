@@ -19,24 +19,23 @@ def inject_global_css():
             overflow-x: hidden;
         }
 
-        /* ──── PROFESSIONAL COSMIC SCI-FI PANELS ──── */
+        /* ──── COMIC SPACE PANELS ──── */
         .premium-card {
-            background: rgba(10, 10, 20, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            border-top: 1px solid rgba(0, 240, 255, 0.3);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-            border-radius: 16px;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(8px);
+            border: 3px solid #1e1b4b;
+            box-shadow: 6px 6px 0px #8b5cf6;
+            border-radius: 8px;
             padding: 24px;
             margin-bottom: 20px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
         .premium-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 240, 255, 0.2);
-            border-color: rgba(0, 240, 255, 0.5);
+            transform: translate(-3px, -3px);
+            box-shadow: 9px 9px 0px #00f0ff;
+            border-color: #00f0ff;
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -107,13 +106,13 @@ def section_header(title, subtitle):
 
 def gradient_header(title, sub, icon=""):
     st.markdown(f"""
-        <div style="background: rgba(10, 10, 20, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding:40px 30px; 
-            box-shadow: 0 16px 40px rgba(0,0,0,0.6); margin-bottom: 30px; position: relative; word-wrap: break-word; overflow-wrap: break-word;">
+        <div style="background: rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border: 4px solid #1e1b4b; border-bottom: 6px solid #8b5cf6; border-radius: 12px; padding:40px 30px; 
+            box-shadow: 8px 8px 0px #00f0ff; margin-bottom: 30px; position: relative; word-wrap: break-word; overflow-wrap: break-word;">
             <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                <div style="font-size: 72px; filter: drop-shadow(0 0 20px rgba(0,240,255,0.4));">{icon}</div>
+                <div style="font-size: 72px; text-shadow: 5px 5px 0px #8b5cf6;">{icon}</div>
                 <div style="flex:1; min-width: 250px;">
-                    <h1 style="font-size: 48px; margin: 0; color: #FAFAFA; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;">{title}</h1>
-                    <p style="color:#00f0ff; font-size:16px; font-family:'Inter'; font-weight:400; margin-top:8px; letter-spacing:4px; text-transform: uppercase;">
+                    <h1 style="font-size: 48px; margin: 0; color: #FAFAFA; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; text-shadow: 3px 3px 0px #8b5cf6, -2px -2px 0px #00f0ff;">{title}</h1>
+                    <p style="color:#E4E4E7; font-size:16px; font-family:'Inter'; font-weight:700; margin-top:12px; letter-spacing:4px; text-transform: uppercase; background:#040014; display:inline-block; padding: 5px 12px; border: 2px solid #1e1b4b;">
                         {sub}
                     </p>
                 </div>
@@ -142,22 +141,22 @@ def render_log(placeholder, logs):
     log_html = "".join([f'<div style="color: #A1A1AA; font-family: monospace; font-size: 14px; margin-bottom: 4px; overflow-wrap: break-word;">'
                         f'<span style="color: #00f0ff;">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-10:]])
     placeholder.markdown(f"""
-        <div style="background: rgba(10,10,20,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(139,92,246,0.3); border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="font-family: 'Oswald'; font-size: 18px; color: #FAFAFA; margin-bottom: 12px; letter-spacing: 2px; border-bottom: 1px solid rgba(139,92,246,0.3); padding-bottom: 8px;">TARGET ACQUISITION LOG</div>
+        <div style="background: rgba(10,10,20,0.85); backdrop-filter: blur(8px); border: 3px solid #1e1b4b; border-radius: 8px; padding: 20px; box-shadow: 6px 6px 0px #8b5cf6; word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="font-family: 'Oswald'; font-size: 18px; color: #FAFAFA; margin-bottom: 12px; letter-spacing: 2px; border-bottom: 2px solid #1e1b4b; padding-bottom: 8px;">TARGET ACQUISITION LOG</div>
             {log_html if logs else '<div style="color: #52525B; font-family: monospace; font-size: 14px;">Awaiting feed...</div>'}
         </div>
     """, unsafe_allow_html=True)
 
 def render_nlp_insight(text, label, clr="#00f0ff"):
     st.markdown(f"""
-        <div style="background: rgba(10, 10, 20, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(139,92,246,0.3); border-radius: 12px; border-left: 4px solid {clr}; padding: 20px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); word-wrap: break-word; overflow-wrap: break-word;">
+        <div style="background: rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border: 3px solid #1e1b4b; border-left: 6px solid {clr}; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 6px 6px 0px {clr}; word-wrap: break-word; overflow-wrap: break-word;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <div style="font-size: 20px; filter: drop-shadow(0 0 5px {clr});">🤖</div>
-                <div style="font-family:'Oswald', sans-serif; font-size:16px; font-weight:600; color:{clr}; letter-spacing: 2px; text-transform: uppercase;">
+                <div style="font-size: 20px; text-shadow: 2px 2px 0px {clr};">🤖</div>
+                <div style="font-family:'Oswald', sans-serif; font-size:16px; font-weight:700; color:{clr}; letter-spacing: 2px; text-transform: uppercase;">
                     {label} // NLP OVERRIDE
                 </div>
             </div>
-            <div style="font-size:15px; color:#E4E4E7; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 300;">
+            <div style="font-size:15px; color:#E4E4E7; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 600;">
                 {text}
             </div>
         </div>
