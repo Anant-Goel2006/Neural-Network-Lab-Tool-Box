@@ -6,97 +6,97 @@ import streamlit.components.v1 as components
 def inject_global_css():
     st.markdown("""
         <style>
-        /* ──── DAYLIGHT COMIC PRINT: MAXIMUM LEGIBILITY & LAYOUT FIXES ──── */
+        /* ──── METALLIC BLACK & SPIDER-MAN SUIT THEME ──── */
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
 
         .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: transparent !important; 
-            color: #0f172a; /* Deep comic ink for body text visibility */
+            color: #E2E8F0;
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
         }
 
-        /* ──── COMIC PAPER CARDS ──── */
+        /* ──── METALLIC SPIDER-SUIT CARDS ──── */
         .premium-card {
-            background: #ffffff; /* Bright comic paper white */
-            border: 3px solid #000000; /* Thick black comic ink border */
-            border-bottom: 5px solid #000000; /* Grounding the comic panel */
-            border-radius: 2px; 
+            background: linear-gradient(145deg, #16181a, #08090a); /* Metallic brushed Kevlar */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid #1f2228; /* Gunmetal structure */
+            border-top: 3px solid #DC2626; /* Web-Slinger Red */
+            border-bottom: 3px solid #3B82F6; /* Suit Blue */
+            border-radius: 6px; 
             padding: 24px;
             margin-bottom: 24px;
-            box-shadow: 6px 6px 0px rgba(0, 0, 0, 1); /* Hard black offset shadow */
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 8px 8px 20px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(220, 38, 38, 0.05); 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             position: relative;
             z-index: 2;
-            word-wrap: break-word; /* Ensure text never overflows */
+            word-wrap: break-word; 
         }
         
         .premium-card:hover {
-            transform: translate(-3px, -3px);
-            box-shadow: 9px 9px 0px #3B82F6; /* Comic Blue shadow hover lift */
+            transform: translateY(-4px);
+            box-shadow: 12px 12px 25px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(220, 38, 38, 0.15);
+            border-color: #DC2626;
         }
 
         h1, h2, h3 {
             font-family: 'Bebas Neue', sans-serif !important;
-            color: #000000 !important; /* Pitch black headers for light theme */
-            letter-spacing: 2px !important;
+            color: #FFFFFF !important;
+            letter-spacing: 2.5px !important;
             text-transform: uppercase;
             word-wrap: break-word;
         }
 
-        /* ──── YELLOW ACTION BUTTONS ──── */
+        /* ──── SPIDER ACTION BUTTONS ──── */
         .stButton > button {
-            background: #FACC15 !important; /* Bright Action Yellow */
-            border: 3px solid #000000 !important;
-            border-radius: 2px !important;
-            color: #000000 !important; /* Black text for visibility */
+            background: linear-gradient(180deg, #DC2626 0%, #991B1B 100%) !important; /* Spider Red Metallic */
+            border: 2px solid #EF4444 !important;
+            border-radius: 4px !important;
+            color: #ffffff !important;
             font-family: 'Bebas Neue', sans-serif !important;
             font-size: 22px !important;
             text-transform: uppercase !important;
-            box-shadow: 4px 4px 0px #000000 !important;
-            padding: 10px 20px !important;
-            transition: all 0.15s ease-in-out !important;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4) !important;
+            padding: 10px 24px !important;
+            transition: all 0.2s ease-in-out !important;
             letter-spacing: 2px !important;
             white-space: normal !important; 
             height: auto !important;
         }
         .stButton > button:hover {
-            background: #DC2626 !important; /* Bold Red on Hover */
+            background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%) !important; /* Spider Blue Metallic */
+            border-color: #60A5FA !important;
             color: #ffffff !important;
-            transform: translate(-2px, -2px) !important;
-            box-shadow: 6px 6px 0px #000000 !important; 
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
         }
 
         /* ──── SIDEBAR ──── */
         [data-testid="stSidebar"] {
-            background-color: #F8FAFC !important; /* Clean gray paper sidebar */
-            border-right: 4px solid #000000;
+            background-color: rgba(8, 9, 10, 0.95) !important;
+            backdrop-filter: blur(15px) !important;
+            border-right: 2px solid #DC2626;
         }
-        
-        /* Sidebar Text color override for light background */
-        [data-testid="stSidebar"] * {
-            color: #0f172a !important; /* Force all text to be dark grey/black in sidebar */
-        }
-        
 
         /* ──── METRICS ──── */
         [data-testid="stMetricValue"] {
             font-family: 'Bebas Neue', sans-serif !important;
             font-size: 40px !important; 
-            color: #DC2626 !important; /* Bold Marvel Red */
+            color: #DC2626 !important; /* Spider Red */
             word-wrap: break-word;
-            text-shadow: 2px 2px 0px #000000; /* Single tight drop-shadow so it isn't completely blown out */
+            text-shadow: 2px 2px 0px #000000, 0 0 15px rgba(220, 38, 38, 0.5); 
         }
         </style>
     """, unsafe_allow_html=True)
     
-    # ── INJECT LIVE DAYLIGHT COMIC BACKGROUND ──
+    # ── INJECT SPIDER-WEB METALLIC LIVE CANVAS ──
     components.html("""
         <script>
             const parentDoc = window.parent.document;
-            if (!parentDoc.getElementById('light-comic-bg')) {
+            if (!parentDoc.getElementById('spider-metallic-bg')) {
                 const canvas = parentDoc.createElement('canvas');
-                canvas.id = 'light-comic-bg';
+                canvas.id = 'spider-metallic-bg';
                 canvas.style.position = 'fixed';
                 canvas.style.top = '0';
                 canvas.style.left = '0';
@@ -117,24 +117,24 @@ def inject_global_css():
                 });
 
                 const particles = [];
-                const particleCount = 110;
+                const particleCount = 120;
                 
-                // Bright Comic ink colors
-                const colors = ['#DC2626', '#3B82F6', '#FACC15', '#000000'];
+                // Metallic Spider Suit Palette
+                const colors = ['#DC2626', '#B91C1C', '#3B82F6', '#ffffff', '#64748b'];
                 
                 for(let i=0; i<particleCount; i++) {
                     particles.push({
                         x: Math.random() * width,
                         y: Math.random() * height,
-                        vx: (Math.random() - 0.5) * 1.5,
-                        vy: (Math.random() - 0.5) * 1.5,
-                        radius: Math.random() * 2.5 + 1.2,
+                        vx: (Math.random() - 0.5) * 2.5, // High agility spider movement
+                        vy: (Math.random() - 0.5) * 2.5,
+                        radius: Math.random() * 2.5 + 1,
                         color: colors[Math.floor(Math.random() * colors.length)]
                     });
                 }
                 
                 function animate() {
-                    ctx.fillStyle = '#F1F5F9'; // Light paper backdrop 
+                    ctx.fillStyle = '#050505'; // Metallic pitch black 
                     ctx.fillRect(0, 0, width, height);
                     
                     for(let i=0; i<particleCount; i++) {
@@ -148,6 +148,8 @@ def inject_global_css():
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                         ctx.fillStyle = p.color; 
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = p.color;
                         ctx.fill();
                         
                         for(let j=i+1; j<particleCount; j++) {
@@ -156,15 +158,16 @@ def inject_global_css():
                             let dy = p.y - p2.y;
                             let dist = Math.sqrt(dx*dx + dy*dy);
                             
-                            if(dist < 130) {
+                            if(dist < 140) {
                                 ctx.beginPath();
                                 ctx.moveTo(p.x, p.y);
                                 ctx.lineTo(p2.x, p2.y); 
                                 
-                                let alpha = (1 - (dist / 130)) * 0.5;
+                                let alpha = (1 - (dist / 140)) * 0.5;
                                 ctx.globalAlpha = alpha;
-                                ctx.strokeStyle = '#000000'; // Black comic ink connection lines
-                                ctx.lineWidth = 1;
+                                ctx.strokeStyle = '#e2e8f0'; // Web-Slinger Silver/White connections
+                                ctx.lineWidth = 1.2;
+                                ctx.shadowBlur = 0; // Performance
                                 ctx.stroke();
                                 ctx.globalAlpha = 1.0;
                             }
@@ -174,37 +177,35 @@ def inject_global_css():
                 }
                 animate();
                 
-                // Cleanup old dark backgrounds
-                const oldMarvel = parentDoc.getElementById('marvel-live-bg');
-                if(oldMarvel) oldMarvel.remove();
+                // Cleanup old light background
+                const oldLight = parentDoc.getElementById('light-comic-bg');
+                if(oldLight) oldLight.remove();
             }
         </script>
     """, height=0, width=0)
 
 def section_header(title, subtitle):
-    # Maximum contrast blocky text sections with clear word wrapping
     st.markdown(f"""
         <div style="margin-bottom:30px; position: relative; z-index: 10; transform: skewX(-2deg);">
-            <div style="display:inline-block; border-bottom: 4px solid #000000; padding-bottom: 5px; padding-right: 25px; box-shadow: 4px 4px 0px #FACC15; background: #ffffff; padding-left: 15px; border-left: 5px solid #000000; border-top: 3px solid #000; border-right: 3px solid #000; max-width: 100%;">
-                <h2 style="margin:0; font-size:32px; line-height: 1.1; color: #000000; text-shadow: 2px 2px 0px #e2e8f0; word-wrap: break-word;">{title}</h2>
+            <div style="display:inline-block; border-bottom: 2px solid #3B82F6; padding-bottom: 5px; padding-right: 20px; box-shadow: 0 5px 15px rgba(220,38,38,0.2); background: linear-gradient(90deg, #111111, transparent); padding-left: 15px; border-left: 5px solid #DC2626; max-width: 100%;">
+                <h2 style="margin:0; font-size:32px; line-height: 1.1; color: #FFFFFF; text-shadow: 2px 2px 0px #000; word-wrap: break-word;">{title}</h2>
             </div>
-            <p style="color:#1e293b; font-size:15px; font-weight:800; margin-top:12px; margin-left:15px; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing: 1.5px; word-wrap: break-word; text-shadow: 1px 1px 0px #ffffff;">{subtitle}</p>
+            <p style="color:#94a3b8; font-size:15px; font-weight:700; margin-top:12px; margin-left:15px; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing: 1.5px; word-wrap: break-word;">{subtitle}</p>
         </div>
     """, unsafe_allow_html=True)
 
 def gradient_header(title, sub, icon=""):
-    # Complete comic block header, entirely safe on Light mode
     st.markdown(f"""
-        <div style="background: #F8FAFC; border: 4px solid #000000; padding:30px; 
-            margin-bottom: 35px; box-shadow: 10px 10px 0px #3B82F6; position:relative; overflow: hidden; transform: skewX(-1deg);">
-            <div style="position: absolute; right: -10px; top: -10px; opacity: 0.1; font-size: 150px; font-family: 'Bebas Neue'; transform: rotate(15deg); color: #000000;">
+        <div style="background: linear-gradient(135deg, #151515 0%, #050505 100%); border: 2px solid #222222; border-left: 5px solid #DC2626; padding:30px; 
+            margin-bottom: 35px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); position:relative; overflow: hidden; transform: skewX(-1deg); border-radius: 6px;">
+            <div style="position: absolute; right: -10px; top: -10px; opacity: 0.05; font-size: 150px; font-family: 'Bebas Neue'; transform: rotate(15deg); color: #DC2626;">
                 {icon}
             </div>
             <div style="display: flex; align-items: center; gap: 20px; position: relative; z-index: 2; flex-wrap: wrap;">
-                <div style="font-size: 60px; filter: drop-shadow(4px 4px 0px #000000);">{icon}</div>
+                <div style="font-size: 60px; filter: drop-shadow(0 0 15px rgba(220,38,38,0.5));">{icon}</div>
                 <div style="flex:1; min-width: 200px;">
-                    <h1 style="font-size: 50px; margin: 0; line-height:1.1; color: #000000; text-shadow: 3px 3px 0px #FACC15, -1px -1px 0px #000000, 1px -1px 0px #000, -1px 1px 0px #000; word-wrap: break-word;">{title}</h1>
-                    <p style="color:#ffffff; font-size:18px; font-family:'Inter', sans-serif; font-weight: 800; letter-spacing:2px; margin-top:12px; text-transform: uppercase; text-shadow: none; background: #DC2626; display: inline-block; padding: 5px 12px; border: 3px solid #000000; box-shadow: 3px 3px 0px #000000; word-wrap: break-word;">
+                    <h1 style="font-size: 46px; margin: 0; line-height:1.1; color: #FFFFFF; text-shadow: 2px 2px 0px #000000, 0 0 10px rgba(255,255,255,0.2); word-wrap: break-word;">{title}</h1>
+                    <p style="color:#FFFFFF; font-size:18px; font-family:'Inter', sans-serif; font-weight: 800; letter-spacing:2px; margin-top:12px; text-transform: uppercase; text-shadow: none; background: #DC2626; display: inline-block; padding: 4px 12px; border-radius: 2px; box-shadow: 0 4px 10px rgba(220,38,38,0.4); word-wrap: break-word;">
                         {sub}
                     </p>
                 </div>
@@ -212,42 +213,41 @@ def gradient_header(title, sub, icon=""):
         </div>
     """, unsafe_allow_html=True)
 
-def speedometer(val, max_val, title, color="#3B82F6", height=200):
-    # Dark font properties to guarantee visibility over white paper wrapper
+def speedometer(val, max_val, title, color="#DC2626", height=200):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = val,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title.upper(), 'font': {'size': 20, 'color': '#000000', 'family': 'Bebas Neue'}},
+        title = {'text': title.upper(), 'font': {'size': 20, 'color': '#FFFFFF', 'family': 'Bebas Neue'}},
         gauge = {
-            'axis': {'range': [None, max_val], 'tickwidth': 3, 'tickcolor': "#000000"},
+            'axis': {'range': [None, max_val], 'tickwidth': 2, 'tickcolor': "#475569"},
             'bar': {'color': color, 'thickness': 0.8},
-            'bgcolor': "#e2e8f0",
-            'borderwidth': 3,
-            'bordercolor': "#000000",
-            'steps': [{'range': [0, max_val], 'color': 'rgba(0, 0, 0, 0.05)'}]
+            'bgcolor': "rgba(255,255,255,0.05)",
+            'borderwidth': 2,
+            'bordercolor': "#334155",
+            'steps': [{'range': [0, max_val], 'color': 'rgba(220, 38, 38, 0.1)'}]
         }
     ))
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#000000", 'family': "Bebas Neue"}, height=height, margin=dict(l=10,r=10,t=30,b=10))
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#FFFFFF", 'family': "Bebas Neue"}, height=height, margin=dict(l=10,r=10,t=30,b=10))
     return fig
 
 def render_log(placeholder, logs):
-    log_html = "".join([f'<div style="color: #000000; font-family: \'JetBrains Mono\', monospace; font-size: 15px; margin-bottom: 6px; border-bottom: 1px dashed #94a3b8; padding-bottom:4px; word-wrap: break-word; font-weight:600;">'
-                        f'<span style="color: #DC2626; font-weight: 900;">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
+    log_html = "".join([f'<div style="color: #cbd5e1; font-family: \'JetBrains Mono\', monospace; font-size: 14px; margin-bottom: 6px; border-bottom: 1px dashed #334155; padding-bottom:4px; word-wrap: break-word;">'
+                        f'<span style="color: #DC2626; font-weight: bold; text-shadow: 0 0 5px rgba(220,38,38,0.5);">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
     placeholder.markdown(f"""
-        <div style="background: #ffffff; border: 4px solid #000000; padding: 20px; box-shadow: 6px 6px 0px #000000; position: relative;">
-            <div style="font-family: 'Bebas Neue', cursive; font-size: 26px; color: #000000; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; display: inline-block; background: #FACC15; padding: 3px 12px; font-weight: 700; border: 3px solid #000000; box-shadow: 2px 2px 0px #000000;">SYSTEM LOG</div>
-            {log_html if logs else '<div style="color: #475569; font-family: \'JetBrains Mono\', monospace; font-weight:bold;">AWAITING SYSTEM BOOT...</div>'}
+        <div style="background: linear-gradient(145deg, #111111, #050505); border: 2px solid #1f2228; border-top: 3px solid #DC2626; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.9); position: relative; border-radius: 4px;">
+            <div style="font-family: 'Bebas Neue', cursive; font-size: 24px; color: #FFFFFF; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; display: inline-block; background: transparent; padding: 0px; font-weight: 700; text-shadow: 0 0 10px #DC2626;">SPIDER-SUIT UPLINK</div>
+            {log_html if logs else '<div style="color: #475569; font-family: \'JetBrains Mono\', monospace;">AWAITING SYSTEM BOOT...</div>'}
         </div>
     """, unsafe_allow_html=True)
 
-def render_nlp_insight(text, label, clr="#FACC15"):
+def render_nlp_insight(text, label, clr="#3B82F6"):
     st.markdown(f"""
-        <div style="background: #ffffff; border: 4px solid #000000; border-left: 12px solid {clr}; padding: 25px; margin-bottom: 25px; box-shadow: 8px 8px 0px #000000; position:relative; transform: skewX(1deg);">
-            <div style="font-family:'Bebas Neue', cursive; font-size:28px; color:#000000; letter-spacing: 2px; margin-bottom:12px; word-wrap: break-word;">
+        <div style="background: linear-gradient(145deg, #111111, #050505); border: 2px solid #1f2228; border-left: 6px solid {clr}; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.9); position:relative; border-radius: 4px;">
+            <div style="font-family:'Bebas Neue', cursive; font-size:28px; color:#FFFFFF; letter-spacing: 2px; margin-bottom:12px; text-shadow: 0 0 15px rgba(59,130,246,0.6); word-wrap: break-word;">
                 {label}
             </div>
-            <div style="font-size:15px; color:#0f172a; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 800; background: #F8FAFC; padding: 15px; border: 3px solid #000000; box-shadow: inset 2px 2px 0px rgba(0,0,0,0.1); word-wrap: break-word;">
+            <div style="font-size:15px; color:#e2e8f0; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 400; background: rgba(0,0,0,0.5); padding: 15px; border: 1px solid #334155; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); word-wrap: break-word; border-radius: 2px;">
                 {text}
             </div>
         </div>
