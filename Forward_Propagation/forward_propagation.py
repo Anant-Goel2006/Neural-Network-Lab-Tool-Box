@@ -224,21 +224,21 @@ def forward_propagation_page():
 
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #EF4444;">
-            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// COMP_OUTPUT_ŷ</div>
-            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{y_pred:.6f}</div>
+        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #EF4444; transform: skewX(-2deg);">
+            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// COMP_OUTPUT_ŷ</div>
+            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{y_pred:.6f}</div>
         </div>
-        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #3B82F6;">
-            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// TARGET_SIGNAL_y</div>
-            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{st.session_state.fp_y_true:.4f}</div>
+        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #3B82F6; transform: skewX(2deg);">
+            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// TARGET_SIGNAL_y</div>
+            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{st.session_state.fp_y_true:.4f}</div>
         </div>
-        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #FACC15;">
-            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// ERROR_FUNCTION</div>
-            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{loss:.6f}</div>
+        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #FACC15; transform: skewX(-2deg);">
+            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// ERROR_FUNCTION</div>
+            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{loss:.6f}</div>
         </div>
-        <div style="flex:1; min-width:200px; background:#1e1b4b; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #A855F7;">
-            <div style="color:#FACC15; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// SIGNAL_DELTA_Δ</div>
-            <div style="color:#FFFFFF; font-size:24px; font-weight:700; font-family:'Roboto Mono', monospace; margin-top:12px;">{y_pred - st.session_state.fp_y_true:+.4f}</div>
+        <div style="flex:1; min-width:200px; background:#1e1b4b; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #A855F7; transform: skewY(1deg);">
+            <div style="color:#FACC15; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// SIGNAL_DELTA_Δ</div>
+            <div style="color:#FFFFFF; font-size:28px; font-weight:700; font-family:'Roboto Mono', monospace; margin-top:18px; text-shadow: 2px 2px 0px #000;">{y_pred - st.session_state.fp_y_true:+.4f}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -257,13 +257,14 @@ def forward_propagation_page():
     diff = abs(y_pred - st.session_state.fp_y_true)
     status = "SUCCESS" if diff < 0.05 else "ADJUSTING"
     st.markdown(f"""
-    <div style="background:#020617; border:4px solid #000; border-top: 12px solid #3B82F6; padding:50px 40px; box-shadow:10px 10px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
-        <div style="font-family:'Luckiest Guy', cursive; font-size:18px; color:#94A3B8; letter-spacing:1px;">// DATA_STABILITY_SCAN</div>
-        <div style="font-size:72px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 20px 0; line-height:1; text-shadow: 3px 3px 0px #000;">
+    <div style="background:#0f172a; border:5px solid #000; border-top: 15px solid #3B82F6; padding:50px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; transform: rotate(-1deg);">
+        <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff1a 2px, transparent 0); background-size: 10px 10px; opacity: 0.5;"></div>
+        <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#FACC15; letter-spacing:2px; position:relative; z-index:2;">// DATA_STABILITY_SCAN</div>
+        <div style="font-size:80px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 25px 0; line-height:1; text-shadow: 4px 4px 0px #000; position:relative; z-index:2;">
             {100 - (diff*100):.1f}% MATCH
         </div>
-        <div style="font-weight:700; font-family:'Luckiest Guy', cursive; color:#FACC15; text-transform:uppercase; letter-spacing:1px; font-size:18px;">
-            MISSION_STATUS: <span style="color:#FFFFFF;">{status}</span>
+        <div style="font-weight:700; font-family:'Luckiest Guy', cursive; background:#000; display:inline-block; padding:8px 16px; border:2px solid #FFF; color:#FACC15; text-transform:uppercase; letter-spacing:2px; font-size:20px; position:relative; z-index:2;">
+            MISSION_STATUS: <span style="color:#EF4444;">{status}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)

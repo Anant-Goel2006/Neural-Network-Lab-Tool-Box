@@ -234,12 +234,13 @@ def sentiment_analysis_page():
                 
                 # Comic Tech HUD styling
                 st.markdown(f"""
-                <div style="background:#020617; border:4px solid #000; border-top: 12px solid {c_col}; padding:55px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 45px;">
-                    <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#94A3B8; letter-spacing: 1px;">// NEURAL_PATTERN_RECOGNITION</div>
-                    <div style="font-size:72px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 20px 0; line-height:1; text-shadow: 3px 3px 0px #000;">
+                <div style="background:#0f172a; border:5px solid #000; border-top: 15px solid {c_col}; padding:55px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 45px; transform: rotate(1deg);">
+                    <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff1a 2px, transparent 0); background-size: 10px 10px; opacity: 0.5;"></div>
+                    <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#FACC15; letter-spacing: 2px; position:relative; z-index:2;">// NEURAL_PATTERN_RECOGNITION</div>
+                    <div style="font-size:80px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 25px 0; line-height:1; text-shadow: 4px 4px 0px #000; position:relative; z-index:2;">
                         {c_icon} {conf*100:.1f}% Confidence
                     </div>
-                    <div style="font-weight:700; font-family:'Luckiest Guy', cursive; color:#3B82F6; text-transform:uppercase; letter-spacing: 1px; font-size:20px;">
+                    <div style="font-weight:700; font-family:'Luckiest Guy', cursive; background:#000; display:inline-block; padding:8px 16px; border:2px solid #FFF; color:{c_col}; text-transform:uppercase; letter-spacing: 2px; font-size:20px; position:relative; z-index:2;">
                         RECOGNITION_TYPE: <span style="color:#FFFFFF;">{c_name}</span>
                     </div>
                 </div>

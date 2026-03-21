@@ -28,11 +28,11 @@ p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon
 # ─────────────────────────────────────────────────────────────────────────────
 def sidebar_brand():
     st.sidebar.markdown("""
-    <div style="padding:25px; text-align:center; background:#020617; border:4px solid #000; box-shadow: 6px 6px 0px #EF4444; margin-bottom:30px;">
-        <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(3px 3px 0px #000);">🧠</div>
-        <div style="font-family:'Bangers', cursive; font-size:36px; color:#FFFFFF; letter-spacing:3px; text-shadow: 2px 2px 0px #000;">NEUROLAB</div>
-        <div style="font-family:'Luckiest Guy', cursive; font-size:14px; color:#FACC15; margin-top:5px; text-transform:uppercase; letter-spacing:1px;">
-            Cosmic Edition v5.0
+    <div style="padding:30px 20px; text-align:center; background: #3b82f6; background-image: radial-gradient(#ffffff22 2px, transparent 0); background-size:8px 8px; border:5px solid #000; box-shadow: 8px 8px 0px #000; margin-bottom:30px; transform: rotate(-2deg);">
+        <div style="font-size:70px; margin-bottom:10px; filter: drop-shadow(4px 4px 0px #000); transform: scale(1.1);">🧠</div>
+        <div style="font-family:'Bangers', cursive; font-size:42px; color:#FFFFFF; letter-spacing:3px; text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; line-height:1;">NEUROLAB</div>
+        <div style="background: #000; color:#FACC15; padding: 5px 10px; display:inline-block; font-family:'Luckiest Guy', cursive; font-size:16px; margin-top:12px; text-transform:uppercase; letter-spacing:2px; border: 2px solid #FFF;">
+            ULTIMATE EDITION
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -44,15 +44,15 @@ def home_page():
     inject_global_css()
 
     st.markdown("""
-    <div style="text-align:center; padding: 100px 40px; background: #1e1b4b; border: 6px solid #000; box-shadow: 15px 15px 0px #EF4444; margin-bottom: 60px; position: relative; overflow: hidden;">
-        <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff11 1px, transparent 0); background-size: 8px 8px; opacity: 0.5;"></div>
-        <div style="font-size: 120px; margin-bottom: 20px; filter: drop-shadow(5px 5px 0px #000);">🧠</div>
-        <h1 style="font-size: 100px; color: #FFFFFF; margin: 0; line-height: 0.9;">NEUROLAB</h1>
-        <div style="font-family: 'Luckiest Guy', cursive; font-size: 32px; color: #FACC15; margin-top: 20px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 2px 2px 0px #000;">
-            THE COSMIC NEURAL FRONTIER
+    <div style="text-align:center; padding: 120px 40px; background: linear-gradient(135deg, #1e1b4b 0%, #be123c 100%); border: 8px solid #000; box-shadow: 20px 20px 0px #FACC15; margin-bottom: 70px; position: relative; overflow: hidden; transform: skewY(-1deg);">
+        <div style="position: absolute; top:-50%; left:-50%; width:200%; height:200%; background: radial-gradient(circle, #ffffff22 2px, transparent 3px); background-size: 15px 15px; transform: rotate(15deg); opacity: 0.8; pointer-events:none;"></div>
+        <div style="font-size: 140px; margin-bottom: 25px; filter: drop-shadow(8px 8px 0px #000); position:relative; z-index:2; animation: float 3s ease-in-out infinite;">🧠</div>
+        <h1 style="font-size: 130px; color: #FFFFFF; margin: 0; line-height: 0.85; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000; position:relative; z-index:2;">NEUROLAB</h1>
+        <div style="font-family: 'Luckiest Guy', cursive; font-size: 38px; color: #10B981; margin-top: 25px; text-transform: uppercase; letter-spacing: 4px; text-shadow: 3px 3px 0px #000; position:relative; z-index:2; background:#000; padding:10px 20px; display:inline-block; border: 4px solid #FFF; transform: rotate(2deg);">
+            THE ULTIMATE NEURAL FRONTIER
         </div>
-        <div style="width: 200px; height: 8px; background: #FFFFFF; margin: 30px auto; border: 3px solid #000;"></div>
     </div>
+    <style>@keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-20px);} 100% {transform: translateY(0px);} }</style>
     """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
@@ -109,13 +109,14 @@ def home_page():
             f'font-size:12px; padding:5px 12px; font-weight:700; font-family: \'Luckiest Guy\', cursive; border: 1px solid {clr};'
             f'margin-right:8px; display:inline-block; margin-bottom:8px;">{t}</span>' for t in tags
         ])
-        return f"""<div class="premium-card" style="min-height: 420px; display: flex; flex-direction: column;">
-            <div style="display:flex;align-items:center;gap:20px;margin-bottom:25px; border-bottom: 4px solid #000; padding-bottom:15px;">
-                <div style="font-size:50px; filter: drop-shadow(3px 3px 0px #000);">{ic}</div>
-                <div style="flex:1;">
-                    <div style="font-size:28px; font-family:'Bangers', cursive; color:#FFFFFF; line-height:1.1;">{title}</div>
-                    <div style="font-size:14px; font-family:'Luckiest Guy', cursive; color:{clr}; text-transform:uppercase; margin-top:4px;">{sub}</div>
+        return f"""<div class="premium-card" style="min-height: 440px; display: flex; flex-direction: column;">
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:25px; border-bottom: 5px solid #000; padding-bottom:15px; position:relative;">
+                <div style="font-size:55px; filter: drop-shadow(4px 4px 0px #000); transform: rotate(-5deg); z-index:2;">{ic}</div>
+                <div style="flex:1; z-index:2;">
+                    <div style="font-size:32px; font-family:'Bangers', cursive; color:#FFFFFF; line-height:1.1; text-shadow: 2px 2px 0px #000;">{title}</div>
+                    <div style="font-size:16px; font-family:'Luckiest Guy', cursive; background:#000; padding:4px 8px; display:inline-block; color:{clr}; text-transform:uppercase; margin-top:8px; letter-spacing:1px; border:2px solid {clr}; transform: skewX(-5deg);">{sub}</div>
                 </div>
+                <div style="position:absolute; top:0; right:0; width:40px; height:40px; background: {clr}; opacity:0.2; border-radius:50%; filter:blur(10px);"></div>
             </div>
             <div style="font-size:17px; color:#F1F5F9; line-height:1.4; font-family:'Inter', sans-serif; margin-bottom:30px; font-weight:500; flex-grow:1;">{desc}</div>
             <div style="display:flex; flex-wrap:wrap; margin-bottom:10px;">{tags_html}</div>
@@ -160,10 +161,12 @@ def home_page():
                   f'letter-spacing:1px; margin:4px; text-transform:uppercase; border-radius:4px;">{n}</span>' for n,c in STACK]) +
         '</div>', unsafe_allow_html=True)
 
-    st.markdown("""<div style="text-align:center;margin-top:40px;padding-bottom:20px;">
-        <span style="font-size:13px; color:#64748B; font-weight:600; font-family:'Inter'; text-transform:uppercase; letter-spacing:0.05em;">
-            NeuroLab Professional Suite © 2026 · Stable Release v4.2.0
-        </span>
+    st.markdown("""<div style="text-align:center;margin-top:50px;padding-bottom:30px;">
+        <div style="background:#000; display:inline-block; padding: 10px 20px; border: 4px solid #FACC15; box-shadow: 6px 6px 0px #EF4444; transform: skewX(-5deg);">
+            <span style="font-size:14px; color:#FFF; font-weight:700; font-family:'Luckiest Guy'; text-transform:uppercase; letter-spacing:0.1em;">
+                NeuroLab Ultimate Suite © 2026 · Stable Release v5.0
+            </span>
+        </div>
     </div>""", unsafe_allow_html=True)
 
 
