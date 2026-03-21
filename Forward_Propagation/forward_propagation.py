@@ -223,21 +223,21 @@ def forward_propagation_page():
 
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-            <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Output ŷ</div>
+        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+            <div style="color:#a78bfa; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Output ŷ</div>
             <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{y_pred:.6f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-            <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Target y</div>
+        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+            <div style="color:#a78bfa; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Target y</div>
             <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{st.session_state.fp_y_true:.4f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-            <div style="color:#E11D48; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">{st.session_state.fp_loss_fn}</div>
-            <div style="color:#E11D48; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow:0 0 10px rgba(225,29,72,0.4);">{loss:.6f}</div>
+        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+            <div style="color:#00f0ff; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">{st.session_state.fp_loss_fn}</div>
+            <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald'; filter:drop-shadow(0 0 5px rgba(0,240,255,0.4));">{loss:.6f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-            <div style="color:#00f0ff; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Error</div>
-            <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow:0 0 10px rgba(0,240,255,0.4);">{y_pred - st.session_state.fp_y_true:+.4f}</div>
+        <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+            <div style="color:#00f0ff; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Error</div>
+            <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; filter:drop-shadow(0 0 10px rgba(0,240,255,0.6));">{y_pred - st.session_state.fp_y_true:+.4f}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -256,12 +256,13 @@ def forward_propagation_page():
     diff = abs(y_pred - st.session_state.fp_y_true)
     status = "SUCCESS" if diff < 0.05 else "ADJUSTING"
     st.markdown(f"""
-    <div style="background:rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border:3px solid #1e1b4b; padding:30px; box-shadow:5px 5px 0px {'#00f0ff' if status=='SUCCESS' else '#E11D48'}; text-align:center; word-wrap:break-word;">
-        <div style="font-family:'Oswald', sans-serif; font-size:24px; color:#a78bfa; letter-spacing:2px; font-weight:700; text-transform:uppercase;">NETWORK ACCURACY PROTOCOL</div>
-        <div style="font-size:72px; font-family:'Oswald', sans-serif; font-weight:700; color:{'#00f0ff' if status=='SUCCESS' else '#E11D48'}; text-shadow: 3px 3px 0px #000;">
+    <div style="background:rgba(10, 10, 20, 0.7); backdrop-filter: blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:16px; padding:30px; box-shadow:0 16px 40px rgba(0,0,0,0.5); text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
+        <div style="position: absolute; right: -10%; top: -50%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(0,240,255,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
+        <div style="font-family:'Oswald', sans-serif; font-size:20px; color:#a78bfa; letter-spacing:2px; font-weight:700; text-transform:uppercase;">NETWORK ACCURACY PROTOCOL</div>
+        <div style="font-size:72px; font-family:'Oswald', sans-serif; font-weight:700; color:{'#00f0ff' if status=='SUCCESS' else '#FAFAFA'}; filter:drop-shadow(0 0 15px rgba(0,240,255,0.4));">
             {100 - (diff*100):.1f}% MATCH
         </div>
-        <div style="font-weight:700; font-family:'Inter'; color:#FAFAFA; margin-top:5px; text-transform:uppercase; letter-spacing:1px;">STATUS: {status}</div>
+        <div style="font-weight:400; font-family:'Inter'; color:#E4E4E7; margin-top:8px; text-transform:uppercase; letter-spacing:2px;">STATUS: <span style="color:{'#00f0ff' if status=='SUCCESS' else '#a78bfa'}; font-weight:700;">{status}</span></div>
     </div>
     """, unsafe_allow_html=True)
 

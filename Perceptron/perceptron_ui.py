@@ -159,21 +159,21 @@ def perceptron_page():
             
             st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Epoch</div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Final Epoch</div>
                     <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{ep}/{max_ep}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Loss</div>
-                    <div style="color:#E11D48; font-size:24px; font-weight:700; font-family:'Oswald';">{err:.1f}</div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Final Loss</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; filter:drop-shadow(0 0 5px rgba(0,240,255,0.4));">{err:.1f}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#00f0ff; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Accuracy</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow:0 0 10px rgba(0,240,255,0.4);">{acc:.1f}%</div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+                    <div style="color:#00f0ff; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Accuracy</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; filter:drop-shadow(0 0 10px rgba(0,240,255,0.6));">{acc:.1f}%</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Weights & Bias</div>
-                    <div style="color:#FAFAFA; font-size:16px; font-weight:600; font-family:'Inter'; margin-top:5px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.7); backdrop-filter:blur(12px); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:400; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Weights & Bias</div>
+                    <div style="color:#FAFAFA; font-size:15px; font-weight:600; font-family:'Inter'; margin-top:5px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)

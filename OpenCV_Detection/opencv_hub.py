@@ -541,10 +541,11 @@ def opencv_detection_page():
     elif mod == "palm": _palm_module()
     else:
         st.markdown("""
-        <div style="background: rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border: 3px solid #1e1b4b; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 8px 8px 0px #8b5cf6; word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="font-size: 72px; margin-bottom: 20px; text-shadow: 4px 4px 0px #8b5cf6;">🦸</div>
-            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-shadow: 3px 3px 0px #00f0ff;">NEUROLAB Analytics Suite</h2>
-            <p style="font-family: 'Inter', sans-serif; font-weight: 600; color: #00f0ff; font-size: 16px; margin-top: 16px; letter-spacing: 2px;">
+        <div style="background: rgba(10, 10, 20, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(139,92,246,0.3); border-radius: 20px; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.6); word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="font-size: 72px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.4));">🛰️</div>
+            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">NEUROLAB Analytics Suite</h2>
+            <div style="width: 80px; height: 3px; background: linear-gradient(90deg, transparent, #00f0ff, transparent); margin: 20px auto;"></div>
+            <p style="font-family: 'Inter', sans-serif; font-weight: 400; color: #00f0ff; font-size: 16px; letter-spacing: 2px;">
                 AWAITING OPTICAL UPLINK OVERRIDE
             </p>
         </div>
