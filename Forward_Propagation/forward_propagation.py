@@ -21,13 +21,13 @@ def _act_curve_fig(act_name):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines",
         name=f"f(x) — {ACTS[act_name]['eq']}",
-        line=dict(color="#8B5CF6", width=3)))
+        line=dict(color="#EF4444", width=3)))
     fig.add_trace(go.Scatter(x=xs, y=np.clip(deriv, -5, 5), mode="lines",
-        name="f'(x)", line=dict(color="#06B6D4", width=2, dash="dot")))
+        name="f'(x)", line=dict(color="#3B82F6", width=2, dash="dot")))
     fig.add_hline(y=0, line=dict(color=MUTED, width=0.5))
     fig.add_vline(x=0, line=dict(color=MUTED, width=0.5))
     fig.update_layout(
-        title=dict(text=f"{act_name} Activation", font=dict(color=TEXT, family="Impact", size=16)),
+        title=dict(text=f"{act_name} Activation", font=dict(color=TEXT, family="Bangers", size=24)),
         legend=dict(bgcolor="rgba(0,0,0,0)", x=0.01, y=0.99),
         **plotly_layout(
             xaxis=dict(gridcolor=GRID, color=MUTED, range=[-6,6]),
@@ -50,7 +50,7 @@ def _activation_heatmap(As, labels):
         text=[[f"{v:.3f}" if not np.isnan(v) else "" for v in row] for row in rows],
         texttemplate="%{text}", textfont=dict(size=10)))
     fig.update_layout(
-        title=dict(text="Activation Heatmap", font=dict(color=TEXT, family="Impact", size=16)),
+        title=dict(text="Activation Heatmap", font=dict(color=TEXT, family="Inter", size=16)),
         **plotly_layout(
             xaxis=dict(color=MUTED), 
             yaxis=dict(color=MUTED), 
@@ -219,25 +219,26 @@ def forward_propagation_page():
     section_header("Results Dashboard", "Output, loss gauge, network diagram, and layer-by-layer activations")
 
     insight = generate_fwd_insight(st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear", st.session_state.fp_loss_fn, loss)
-    render_nlp_insight(insight, "Feed-Forward Analysis // NLP Neural Engine", "#0ea5e9")
+    gradient_header("Signal Transmission", "Calculating Network Output", "📡")
+    render_nlp_insight(insight, "Synaptic Flow // Differential Analysis", "#FACC15")
 
     st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-            <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Output ŷ</div>
-            <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{y_pred:.6f}</div>
+    <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #EF4444;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// COMP_OUTPUT_ŷ</div>
+            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{y_pred:.6f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-            <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Target y</div>
-            <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{st.session_state.fp_y_true:.4f}</div>
+        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #3B82F6;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// TARGET_SIGNAL_y</div>
+            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{st.session_state.fp_y_true:.4f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-            <div style="color:#00f0ff; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">{st.session_state.fp_loss_fn}</div>
-            <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{loss:.6f}</div>
+        <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #FACC15;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// ERROR_FUNCTION</div>
+            <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{loss:.6f}</div>
         </div>
-        <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-            <div style="color:#00f0ff; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Error</div>
-            <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{y_pred - st.session_state.fp_y_true:+.4f}</div>
+        <div style="flex:1; min-width:200px; background:#1e1b4b; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #A855F7;">
+            <div style="color:#FACC15; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// SIGNAL_DELTA_Δ</div>
+            <div style="color:#FFFFFF; font-size:24px; font-weight:700; font-family:'Roboto Mono', monospace; margin-top:12px;">{y_pred - st.session_state.fp_y_true:+.4f}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -245,8 +246,8 @@ def forward_propagation_page():
     # Gauges restored
     g1, g2 = st.columns(2)
     from utils.styles import speedometer
-    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#005BEA", height=250), use_container_width=True, theme=None, key="fp_g1")
-    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#ED1D24", height=250), use_container_width=True, theme=None, key="fp_g2")
+    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#3B82F6", height=250), use_container_width=True, theme=None, key="fp_g1")
+    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#EF4444", height=250), use_container_width=True, theme=None, key="fp_g2")
 
     # Gauges removed for cleaner layout as requested.
 
@@ -256,12 +257,14 @@ def forward_propagation_page():
     diff = abs(y_pred - st.session_state.fp_y_true)
     status = "SUCCESS" if diff < 0.05 else "ADJUSTING"
     st.markdown(f"""
-    <div style="background:rgba(20, 20, 30, 0.6); border:1px solid rgba(255,255,255,0.05); border-left:4px solid {'#00f0ff' if status=='SUCCESS' else '#A1A1AA'}; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
-        <div style="font-family:'Inter', sans-serif; font-size:16px; color:#A1A1AA; letter-spacing:1px; font-weight:500;">NETWORK ACCURACY PROTOCOL</div>
-        <div style="font-size:64px; font-family:'Inter', sans-serif; font-weight:600; color:{'#00f0ff' if status=='SUCCESS' else '#FAFAFA'}; margin: 10px 0;">
+    <div style="background:#020617; border:4px solid #000; border-top: 12px solid #3B82F6; padding:50px 40px; box-shadow:10px 10px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
+        <div style="font-family:'Luckiest Guy', cursive; font-size:18px; color:#94A3B8; letter-spacing:1px;">// DATA_STABILITY_SCAN</div>
+        <div style="font-size:72px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 20px 0; line-height:1; text-shadow: 3px 3px 0px #000;">
             {100 - (diff*100):.1f}% MATCH
         </div>
-        <div style="font-weight:400; font-family:'Inter'; color:#A1A1AA; text-transform:uppercase; letter-spacing:1px; font-size:14px;">STATUS: <span style="color:{'#00f0ff' if status=='SUCCESS' else '#FAFAFA'}; font-weight:600;">{status}</span></div>
+        <div style="font-weight:700; font-family:'Luckiest Guy', cursive; color:#FACC15; text-transform:uppercase; letter-spacing:1px; font-size:18px;">
+            MISSION_STATUS: <span style="color:#FFFFFF;">{status}</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -282,7 +285,7 @@ def forward_propagation_page():
         with tab:
             Z = Zs[li]; Act = As[li+1]; is_o = li == len(Zs)-1
             act_name = o_act if is_o else st.session_state.fp_h_acts[li]
-            st.markdown(f"""<div style="font-family:'JetBrains Mono',monospace;font-size:11px;
+            st.markdown(f"""<div style="font-family:'Inter',sans-serif;font-size:11px;
                 color:{MUTED};margin-bottom:12px;">Z = W·A_prev + b  →  A = {act_name}(Z)</div>""",
                 unsafe_allow_html=True)
             if is_o:
@@ -304,6 +307,6 @@ def forward_propagation_page():
                 textposition="auto"),
         ])
         fig_b.update_layout(barmode="group",
-            title=dict(text="Prediction vs Target", font=dict(color=TEXT, family="Impact", size=16)),
+            title=dict(text="Prediction vs Target", font=dict(color=TEXT, family="Inter", size=16)),
             **plotly_layout())
         c1.plotly_chart(fig_b, use_container_width=True, theme=None)

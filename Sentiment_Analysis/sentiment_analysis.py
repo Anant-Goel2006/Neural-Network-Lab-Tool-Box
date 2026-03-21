@@ -64,17 +64,17 @@ def _live_lstm_fig(losses, accs, ep, max_ep):
     ep_x = list(range(1, len(losses)+1))
     
     fig.add_trace(go.Scatter(x=ep_x, y=losses, mode="lines", name="Cross-Entropy Loss",
-        line=dict(color="#ED1D24", width=3, shape="spline")), secondary_y=False)
+        line=dict(color="#EF4444", width=3, shape="spline")), secondary_y=False)
     fig.add_trace(go.Scatter(x=ep_x, y=accs, mode="lines", name="Accuracy",
-        line=dict(color="#005BEA", width=3, dash="dot")), secondary_y=True)
+        line=dict(color="#3B82F6", width=3, dash="dot")), secondary_y=True)
         
     fig.update_layout(
-        title=dict(text=f"LSTM Training Curve — Epoch {ep}/{max_ep}"),
-        **plotly_layout(height=350, margin=dict(t=40, b=20, l=40, r=40),
+        title=dict(text=f"LSTM Training Curve — Epoch {ep}/{max_ep}", font=dict(family="Bangers", size=24)),
+        **plotly_layout(height=350, margin=dict(t=50, b=20, l=40, r=40),
                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     )
-    fig.update_yaxes(title_text="Loss", secondary_y=False, gridcolor=GRID, tickfont=dict(color=P))
-    fig.update_yaxes(title_text="Accuracy", secondary_y=True, showgrid=False, tickfont=dict(color=C))
+    fig.update_yaxes(title_text="Loss", secondary_y=False, gridcolor=GRID, tickfont=dict(color="#EF4444"))
+    fig.update_yaxes(title_text="Accuracy", secondary_y=True, showgrid=False, tickfont=dict(color="#3B82F6"))
     fig.update_xaxes(title_text="Epoch", gridcolor=GRID)
     return fig
 
@@ -229,17 +229,19 @@ def sentiment_analysis_page():
                 
                 conf = preds[class_idx]
                 
-                classes = {0: ("Negative", "#EF4444", "😡"), 1: ("Positive", "#10B981", "😊"), 2: ("Mixed", "#F59E0B", "🤔")}
+                classes = {0: ("Negative", "#EF4444", "😡"), 1: ("Positive", "#22C55E", "😊"), 2: ("Mixed", "#FACC15", "🤔")}
                 c_name, c_col, c_icon = classes[class_idx]
                 
-                # Simple Space HUD styling
+                # Comic Tech HUD styling
                 st.markdown(f"""
-                <div style="background:rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {c_col}; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 24px;">
-                    <div style="font-family:'Inter', sans-serif; font-size:18px; color:#A1A1AA; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">INFERENCE: {c_name}</div>
-                    <div style="font-size:72px; font-family:'Inter', sans-serif; font-weight:700; color:{c_col}; margin: 8px 0;">
-                        {c_icon} {conf*100:.1f}%
+                <div style="background:#020617; border:4px solid #000; border-top: 12px solid {c_col}; padding:55px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 45px;">
+                    <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#94A3B8; letter-spacing: 1px;">// NEURAL_PATTERN_RECOGNITION</div>
+                    <div style="font-size:72px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 20px 0; line-height:1; text-shadow: 3px 3px 0px #000;">
+                        {c_icon} {conf*100:.1f}% Confidence
                     </div>
-                    <div style="font-weight:400; font-family:'Inter'; color:#A1A1AA; text-transform:uppercase; letter-spacing: 1px; font-size:14px;">STATUS: <span style="color:{c_col}; font-weight:700;">CLASSIFIED</span></div>
+                    <div style="font-weight:700; font-family:'Luckiest Guy', cursive; color:#3B82F6; text-transform:uppercase; letter-spacing: 1px; font-size:20px;">
+                        RECOGNITION_TYPE: <span style="color:#FFFFFF;">{c_name}</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -247,12 +249,12 @@ def sentiment_analysis_page():
                 fig = go.Figure(go.Bar(
                     x=["Negative", "Positive", "Mixed"],
                     y=preds,
-                    marker=dict(color=["#DC2626", "#16A34A", "#F59E0B"], line=dict(color="#121212", width=2)),
+                    marker=dict(color=["#EF4444", "#22C55E", "#3B82F6"], line=dict(color="#000000", width=3)),
                     text=[f"{p*100:.1f}%" for p in preds], textposition="outside",
-                    textfont=dict(color="#121212", family="Impact", size=14)
+                    textfont=dict(color="#FFFFFF", family="Luckiest Guy", size=16)
                 ))
                 fig.update_layout(
-                    title=dict(text="LSTM Softmax Output Probabilities"),
+                    title=dict(text="LSTM Softmax Output Probabilities", font=dict(family="Bangers", size=24)),
                     **plotly_layout(
                         yaxis=dict(range=[0, min(1.2, max(preds)*1.4)]),
                         height=300, margin=dict(t=50, b=20, l=20, r=20)

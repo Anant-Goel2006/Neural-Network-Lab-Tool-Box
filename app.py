@@ -28,17 +28,11 @@ p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon
 # ─────────────────────────────────────────────────────────────────────────────
 def sidebar_brand():
     st.sidebar.markdown("""
-    <div style="padding:20px; text-align:center;
-        margin-bottom:12px; background:rgba(20, 20, 30, 0.6); border:1px solid rgba(255,255,255,0.05); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); word-wrap: break-word;">
-        <div style="font-size:40px;margin-bottom:8px;">🧠</div>
-        <div style="font-family:'Inter',sans-serif; font-size:20px;font-weight:600;letter-spacing:1px; color:#FAFAFA;">NEUROLAB</div>
-        <div style="font-size:12px;color:#A1A1AA;letter-spacing:1px;
-            margin-top:4px;font-weight:400; font-family:'Inter', sans-serif;">
-            Cosmic Analytics
-        </div>
-        <div style="display:flex;justify-content:center;gap:8px;margin-top:16px; flex-wrap:wrap;">
-            <span style="background:rgba(255,255,255,0.1);color:#fff;font-size:10px;padding:3px 8px;border-radius:12px;">v2.1.0</span>
-            <span style="background:rgba(0,240,255,0.1);color:#00f0ff;font-size:10px;padding:3px 8px;border-radius:12px;">ACTIVE</span>
+    <div style="padding:25px; text-align:center; background:#020617; border:4px solid #000; box-shadow: 6px 6px 0px #EF4444; margin-bottom:30px;">
+        <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(3px 3px 0px #000);">🧠</div>
+        <div style="font-family:'Bangers', cursive; font-size:36px; color:#FFFFFF; letter-spacing:3px; text-shadow: 2px 2px 0px #000;">NEUROLAB</div>
+        <div style="font-family:'Luckiest Guy', cursive; font-size:14px; color:#FACC15; margin-top:5px; text-transform:uppercase; letter-spacing:1px;">
+            Cosmic Edition v5.0
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -50,13 +44,14 @@ def home_page():
     inject_global_css()
 
     st.markdown("""
-    <div style="text-align:center; padding: 60px 20px; background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; margin-bottom: 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.3); word-wrap: break-word; overflow-wrap: break-word;">
-        <div style="font-size: 64px; margin-bottom: 16px;">🧠</div>
-        <h1 style="font-size: 48px; font-weight: 600; color: #FAFAFA; margin: 0; font-family:'Inter', sans-serif; letter-spacing: 2px;">NEUROLAB</h1>
-        <div style="width: 60px; height: 3px; background: #00f0ff; margin: 24px auto; border-radius: 2px;"></div>
-        <p style="font-size: 16px; color: #A1A1AA; font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; font-weight: 400;">
-            An immersive platform for exploring neural networks, machine learning, and real-time computer vision.
-        </p>
+    <div style="text-align:center; padding: 100px 40px; background: #1e1b4b; border: 6px solid #000; box-shadow: 15px 15px 0px #EF4444; margin-bottom: 60px; position: relative; overflow: hidden;">
+        <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff11 1px, transparent 0); background-size: 8px 8px; opacity: 0.5;"></div>
+        <div style="font-size: 120px; margin-bottom: 20px; filter: drop-shadow(5px 5px 0px #000);">🧠</div>
+        <h1 style="font-size: 100px; color: #FFFFFF; margin: 0; line-height: 0.9;">NEUROLAB</h1>
+        <div style="font-family: 'Luckiest Guy', cursive; font-size: 32px; color: #FACC15; margin-top: 20px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 2px 2px 0px #000;">
+            THE COSMIC NEURAL FRONTIER
+        </div>
+        <div style="width: 200px; height: 8px; background: #FFFFFF; margin: 30px auto; border: 3px solid #000;"></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -81,7 +76,7 @@ def home_page():
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:30px 0;">
         <div style="flex:1;height:2px;background:#27272A;"></div>
         <span style="font-size:16px;color:#A1A1AA;letter-spacing:4px;
-            font-weight:500;text-transform:uppercase; font-family:'Oswald', sans-serif;">Lab Modules</span>
+            font-weight:500;text-transform:uppercase; font-family:'Luckiest Guy', cursive;">Lab Modules</span>
         <div style="flex:1;height:2px;background:#27272A;"></div>
     </div>""", unsafe_allow_html=True)
 
@@ -110,24 +105,20 @@ def home_page():
 
     def _card(ic, title, sub, desc, tags, clr):
         tags_html = "".join([
-            f'<span style="background:rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color:{clr};'
-            f'font-size:11px; padding:4px 10px; font-weight:500; font-family: Inter; border-radius:12px;'
-            f'margin-right:6px; display:inline-block; margin-bottom:6px;">{t}</span>' for t in tags
+            f'<span style="background:#000; color:{clr};'
+            f'font-size:12px; padding:5px 12px; font-weight:700; font-family: \'Luckiest Guy\', cursive; border: 1px solid {clr};'
+            f'margin-right:8px; display:inline-block; margin-bottom:8px;">{t}</span>' for t in tags
         ])
-        return f"""<div style="background:rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
-            padding:24px; min-height: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            transition:all 0.3s ease; word-wrap: break-word; overflow-wrap: break-word; display: flex; flex-direction: column;"
-            onmouseover="this.style.boxShadow='0 12px 40px rgba(0,240,255,0.1)'; this.style.borderColor='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)';"
-            onmouseout="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.3)'; this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='translateY(0)';">
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px; flex-wrap:wrap;">
-                <div style="font-size:40px;">{ic}</div>
-                <div style="flex:1; min-width:150px;">
-                    <div style="font-size:22px; font-weight:600; color:#FAFAFA; font-family:'Inter', sans-serif; line-height:1.2;">{title}</div>
-                    <div style="font-size:14px; color:{clr}; font-weight:500; margin-top:4px; font-family:'Inter';">{sub}</div>
+        return f"""<div class="premium-card" style="min-height: 420px; display: flex; flex-direction: column;">
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:25px; border-bottom: 4px solid #000; padding-bottom:15px;">
+                <div style="font-size:50px; filter: drop-shadow(3px 3px 0px #000);">{ic}</div>
+                <div style="flex:1;">
+                    <div style="font-size:28px; font-family:'Bangers', cursive; color:#FFFFFF; line-height:1.1;">{title}</div>
+                    <div style="font-size:14px; font-family:'Luckiest Guy', cursive; color:{clr}; text-transform:uppercase; margin-top:4px;">{sub}</div>
                 </div>
             </div>
-            <div style="font-size:15px; color:#A1A1AA; line-height:1.6; font-family:'Inter'; margin-bottom:20px; font-weight:400; flex-grow:1;">{desc}</div>
-            <div style="display:flex; flex-wrap:wrap;">{tags_html}</div>
+            <div style="font-size:17px; color:#F1F5F9; line-height:1.4; font-family:'Inter', sans-serif; margin-bottom:30px; font-weight:500; flex-grow:1;">{desc}</div>
+            <div style="display:flex; flex-wrap:wrap; margin-bottom:10px;">{tags_html}</div>
         </div>"""
 
     # Row 1
@@ -156,7 +147,7 @@ def home_page():
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:40px 0 20px;">
         <div style="flex:1;height:2px;background:#27272A;"></div>
         <span style="font-size:12px;color:#A1A1AA;letter-spacing:3px;
-            font-weight:500;text-transform:uppercase; font-family:'Oswald', sans-serif;">Core Tech Stack</span>
+            font-weight:500;text-transform:uppercase; font-family:'Luckiest Guy', cursive;">Core Tech Stack</span>
         <div style="flex:1;height:2px;background:#27272A;"></div>
     </div>""", unsafe_allow_html=True)
 
@@ -164,14 +155,14 @@ def home_page():
              ("Pandas","#121212"),("OpenCV","#005BEA"),("TensorFlow","#FF6F00"),
              ("MediaPipe","#ED1D24"),("WebRTC","#005BEA")]
     st.markdown('<div style="text-align:center;line-height:2.8;">' +
-        " ".join([f'<span style="background:{c}12;border:2px solid {c};color:{c};'
-                  f'font-size:11px;padding:4px 14px;font-weight:900;'
-                  f'letter-spacing:1px;margin:2px;text-transform:uppercase;box-shadow:2px 2px 0px #121212;">{n}</span>' for n,c in STACK]) +
+        " ".join([f'<span style="background:#1E293B; border:1px solid #334155; color:#94A3B8;'
+                  f'font-size:12px; padding:6px 14px; font-weight:600;'
+                  f'letter-spacing:1px; margin:4px; text-transform:uppercase; border-radius:4px;">{n}</span>' for n,c in STACK]) +
         '</div>', unsafe_allow_html=True)
 
-    st.markdown("""<div style="text-align:center;margin-top:24px;padding-bottom:12px;">
-        <span style="font-size:12px;color:#64748B;font-weight:900;text-transform:uppercase;letter-spacing:1px;">
-            Neural Network Lab · Powered by DC Justice Suite · v2.5 Deployment Ready
+    st.markdown("""<div style="text-align:center;margin-top:40px;padding-bottom:20px;">
+        <span style="font-size:13px; color:#64748B; font-weight:600; font-family:'Inter'; text-transform:uppercase; letter-spacing:0.05em;">
+            NeuroLab Professional Suite © 2026 · Stable Release v4.2.0
         </span>
     </div>""", unsafe_allow_html=True)
 

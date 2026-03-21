@@ -15,8 +15,13 @@ except ImportError:
     WEBRTC_READY = False
 
 RTC_CONFIG = RTCConfiguration({
-    # Removed external STUN servers to avoid connection hangs under restrictive firewalls
-    "iceServers": []
+    "iceServers": [
+        {"urls": ["stun:stun.l.google.com:19302"]},
+        {"urls": ["stun:stun1.l.google.com:19302"]},
+        {"urls": ["stun:stun2.l.google.com:19302"]},
+        {"urls": ["stun:stun3.l.google.com:19302"]},
+        {"urls": ["stun:stun4.l.google.com:19302"]}
+    ]
 })
 
 import tempfile
@@ -90,15 +95,23 @@ def _attendance_module():
         else:
             st.markdown("**Live WebRTC Camera**")
             def face_log_callback(frame: av.VideoFrame) -> av.VideoFrame:
-                img = frame.to_ndarray(format="bgr24")
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(40,40))
-                
-                for idx, (x,y,w,h) in enumerate(faces):
-                    cv2.rectangle(img, (x,y), (x+w, y+h), (0, 91, 234), 3) # Superman Blue
-                    person = reg_name if reg_name else f"Person {idx+1}"
-                    cv2.putText(img, person, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 91, 234), 2)
-                return av.VideoFrame.from_ndarray(img, format="bgr24")
+                try:
+                    # Frame skipping
+                    if 'att_frame_count' not in st.session_state: st.session_state.att_frame_count = 0
+                    st.session_state.att_frame_count += 1
+                    if st.session_state.att_frame_count % 2 != 0: return frame
+                    
+                    img = frame.to_ndarray(format="bgr24")
+                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    faces = cascade.detectMultiScale(gray, 1.1, 5, minSize=(40,40))
+                    
+                    for idx, (x,y,w,h) in enumerate(faces):
+                        cv2.rectangle(img, (x,y), (x+w, y+h), (239, 68, 68), 3) # Flash Red
+                        person = reg_name if reg_name else f"TARGET {idx+1}"
+                        cv2.putText(img, person.upper(), (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (239, 68, 68), 2)
+                    return av.VideoFrame.from_ndarray(img, format="bgr24")
+                except Exception:
+                    return frame
 
             webrtc_streamer(key="att_stream", video_frame_callback=face_log_callback, rtc_configuration=RTC_CONFIG, media_stream_constraints={"video": True, "audio": False})
 
@@ -157,18 +170,26 @@ def _face_scan_module():
         if v: process_video_realtime(v, _fs_cb)
     else:
         def face_scan_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            img = frame.to_ndarray(format="bgr24")
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            faces = face_cas.detectMultiScale(gray, 1.1, 5, minSize=(40,40))
-            for (x,y,w,h) in faces:
-                cv2.rectangle(img,(x,y),(x+w,y+h),(242, 169, 0),3) # Flash Yellow
-                roi_gray = gray[y:y+h, x:x+w]
-                roi_color = img[y:y+h, x:x+w]
-                eyes = eye_cas.detectMultiScale(roi_gray, 1.1, 5)
-                for (ex,ey,ew,eh) in eyes: cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,177,64),2)
-                smiles = smile_cas.detectMultiScale(roi_gray, 1.8, 20)
-                for (sx,sy,sw,sh) in smiles: cv2.rectangle(roi_color,(sx,sy),(sx+sw,sy+sh),(237, 29, 36),2)
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
+            try:
+                # Frame skipping
+                if 'fs_frame_count' not in st.session_state: st.session_state.fs_frame_count = 0
+                st.session_state.fs_frame_count += 1
+                if st.session_state.fs_frame_count % 2 != 0: return frame
+
+                img = frame.to_ndarray(format="bgr24")
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                faces = face_cas.detectMultiScale(gray, 1.1, 5, minSize=(40,40))
+                for (x,y,w,h) in faces:
+                    cv2.rectangle(img,(x,y),(x+w,y+h),(59, 130, 246),3) # Action Blue
+                    roi_gray = gray[y:y+h, x:x+w]
+                    roi_color = img[y:y+h, x:x+w]
+                    eyes = eye_cas.detectMultiScale(roi_gray, 1.1, 5)
+                    for (ex,ey,ew,eh) in eyes: cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(22, 197, 94),2) # Hulk Green
+                    smiles = smile_cas.detectMultiScale(roi_gray, 1.8, 20)
+                    for (sx,sy,sw,sh) in smiles: cv2.rectangle(roi_color,(sx,sy),(sx+sw,sy+sh),(250, 204, 21),2) # Yellow
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
+            except Exception:
+                return frame
 
         st.markdown("**Live WebRTC Camera**")
         webrtc_streamer(key="face_scan_stream", video_frame_callback=face_scan_callback, rtc_configuration=RTC_CONFIG)
@@ -230,18 +251,25 @@ def _vehicle_module():
             return
 
         def vehicle_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            img = frame.to_ndarray(format="bgr24")
-            results = model(img, verbose=False)[0]
-            # Draw boxes for vehicles/people
-            for box in results.boxes:
-                cls = int(box.cls[0])
-                name = results.names[cls]
-                if name in ['car', 'truck', 'bus', 'motorcycle', 'person']:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    conf = float(box.conf[0])
-                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 177, 64), 3)
-                    cv2.putText(img, f"{name.upper()} {conf:.1f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 177, 64), 2)
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
+            try:
+                # Frame skipping (YOLO is heavy)
+                if 'vd_frame_count' not in st.session_state: st.session_state.vd_frame_count = 0
+                st.session_state.vd_frame_count += 1
+                if st.session_state.vd_frame_count % 3 != 0: return frame
+
+                img = frame.to_ndarray(format="bgr24")
+                results = model(img, verbose=False)[0]
+                for box in results.boxes:
+                    cls = int(box.cls[0])
+                    name = results.names[cls]
+                    if name in ['car', 'truck', 'bus', 'motorcycle', 'person']:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        conf = float(box.conf[0])
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (239, 68, 68), 3) # Red
+                        cv2.putText(img, f"{name.upper()} {conf:.1f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (239, 68, 68), 2)
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
+            except Exception:
+                return frame
 
         st.markdown("**Live WebRTC Camera (YOLOv8)**")
         webrtc_streamer(key="vehicle_stream", video_frame_callback=vehicle_callback, rtc_configuration=RTC_CONFIG)
@@ -282,19 +310,27 @@ def _sign_module():
         if v: process_video_realtime(v, _sd_cb)
     else:
         def sign_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            img = frame.to_ndarray(format="bgr24")
-            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            m1 = cv2.inRange(hsv, np.array([0,100,100]), np.array([10,255,255]))
-            m2 = cv2.inRange(hsv, np.array([160,100,100]), np.array([179,255,255]))
-            red_mask = cv2.bitwise_or(m1, m2)
-            cnts, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            for c in cnts:
-                if cv2.contourArea(c) > 1000:
-                    rect = cv2.minAreaRect(c)
-                    box = np.intp(cv2.boxPoints(rect))
-                    cv2.drawContours(img, [box], 0, (237, 29, 36), 3) 
-                    cv2.putText(img, "Red Sign", (box[0][0], box[0][1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (237, 29, 36), 2)
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
+            try:
+                # Frame skipping
+                if 'sd_frame_count' not in st.session_state: st.session_state.sd_frame_count = 0
+                st.session_state.sd_frame_count += 1
+                if st.session_state.sd_frame_count % 2 != 0: return frame
+
+                img = frame.to_ndarray(format="bgr24")
+                hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                m1 = cv2.inRange(hsv, np.array([0,100,100]), np.array([10,255,255]))
+                m2 = cv2.inRange(hsv, np.array( [160,100,100]), np.array([179,255,255]))
+                red_mask = cv2.bitwise_or(m1, m2)
+                cnts, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                for c in cnts:
+                    if cv2.contourArea(c) > 1000:
+                        rect = cv2.minAreaRect(c)
+                        box = np.intp(cv2.boxPoints(rect))
+                        cv2.drawContours(img, [box], 0, (239, 68, 68), 10) 
+                        cv2.putText(img, "SIGN DETECTED", (box[0][0], box[0][1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (250, 204, 21), 2)
+                return av.VideoFrame.from_ndarray(img, format="bgr24")
+            except Exception:
+                return frame
 
         st.markdown("**Live WebRTC Camera**")
         webrtc_streamer(key="sign_stream", video_frame_callback=sign_callback, rtc_configuration=RTC_CONFIG)
@@ -481,9 +517,21 @@ def _palm_module():
             process_video_realtime(v, lambda frame: _palm_cb(frame)[0])
     else:
         def palm_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            img = frame.to_ndarray(format="bgr24")
-            overlay, _ = _palm_cb(img)
-            return av.VideoFrame.from_ndarray(overlay, format="bgr24")
+            try:
+                # Frame skipping to prevent lag on slow CPUs
+                if 'palm_frame_count' not in st.session_state: st.session_state.palm_frame_count = 0
+                st.session_state.palm_frame_count += 1
+                if st.session_state.palm_frame_count % 3 != 0: return frame # Process every 3rd frame
+                
+                img = frame.to_ndarray(format="bgr24")
+                # Downsample for faster inference
+                small_img = cv2.resize(img, (320, 240)) 
+                overlay, _ = _palm_cb(small_img)
+                # Resize back
+                final_overlay = cv2.resize(overlay, (img.shape[1], img.shape[0]))
+                return av.VideoFrame.from_ndarray(final_overlay, format="bgr24")
+            except Exception as e:
+                return frame
             
         st.markdown("**Live WebRTC Camera (CNN Inference)**")
         st.warning("Note: Real-time CNN inference on CPU may experience low framerates.")
@@ -496,34 +544,33 @@ def _palm_module():
 def opencv_detection_page():
     from utils.styles import inject_global_css
     inject_global_css()
-    gradient_header("OpenCV Detection Lab",
-        "Face Recognition · YOLO Vehicles · Traffic Signs · Attendance · Palm Reading", "👁️")
+    gradient_header("Optical Analytics Hub",
+        "Face Identity · Live Motion · Structural Analysis", "👁️")
 
     if not WEBRTC_READY:
         st.error("`streamlit-webrtc` is missing. Features requiring live camera will not function.")
 
     # ── Module Selector ─────────────────────────────────────────────────────
     MODULES = [
-        ("📋","Attendance","Face log · CSV","attendance","#005BEA"),
-        ("🔍","Face Scanner","Eyes · Smile","face_scan","#F2A900"),
-        ("🚗","Vehicles","Traffic · Live Analytics","vehicle","#00B140"),
-        ("🛑","Sign Detection","Shapes · Colors","sign","#ED1D24"),
-        ("🖐️","Palm Reading","Hands · Gestures","palm","#404040"),
+        ("📋","Attendance","Face log · CSV","attendance","#3B82F6"),
+        ("🔍","Face Scanner","Eyes · Smile","face_scan","#3B82F6"),
+        ("🚗","Vehicles","Traffic · Live Analytics","vehicle","#3B82F6"),
+        ("🛑","Sign Detection","Shapes · Colors","sign","#3B82F6"),
+        ("🖐️","Palm Reading","Hands · Gestures","palm","#3B82F6"),
     ]
     cols = st.columns(5)
     for i,(icon,title,desc,key,clr) in enumerate(MODULES):
         active = st.session_state.get("cv_module", None) == key
-        border = f"{clr}" if active else "#000"
         cols[i].markdown(f"""
-        <div style="background:#09090B; border: 2px solid {'#E11D48' if active else '#27272A'};
-            padding:16px; text-align:center; box-shadow: 4px 4px 0px {'#E11D48' if active else '#000'};
-            transition:all 0.2s; height: 115px; display: flex; flex-direction:column; justify-content:center;
-            margin-bottom: 10px;">
-            <div style="font-size:32px; margin-bottom:4px; text-shadow: 2px 2px 0px #000;">{icon}</div>
-            <div style="font-family:'Oswald', sans-serif; font-size:18px; color:#FAFAFA; font-weight:500; text-transform: uppercase;">{title}</div>
-            <div style="font-size:12px; font-family:'Inter'; font-weight:600; color:#71717A; margin-top:4px; text-transform: uppercase;">{desc}</div>
+        <div style="background:#020617; border: 4px solid {'#FACC15' if active else '#000'};
+            padding:16px; text-align:center; box-shadow: {'6px 6px 0px #EF4444' if active else '4px 4px 0px #000'};
+            transition:all 0.1s; height: 140px; display: flex; flex-direction:column; justify-content:center;
+            margin-bottom: 12px; position:relative; transform: { 'scale(1.05)' if active else 'none' };">
+            <div style="font-size:36px; margin-bottom:6px; filter: drop-shadow(2px 2px 0px #000);">{icon}</div>
+            <div style="font-family:'Bangers', cursive; font-size:18px; color:#FFFFFF; text-transform: uppercase; letter-spacing: 1px;">{title}</div>
+            <div style="font-size:11px; font-family:'Luckiest Guy', cursive; color:#FACC15; margin-top:4px;">{desc}</div>
         </div>""", unsafe_allow_html=True)
-        if cols[i].button(f"Open {title}", key=f"cv_btn_{key}", use_container_width=True, type="primary" if active else "secondary"):
+        if cols[i].button(f"GO {title}", key=f"cv_btn_{key}", use_container_width=True):
             st.session_state.cv_module=key; st.rerun()
 
     mod = st.session_state.get("cv_module", None)
@@ -536,12 +583,13 @@ def opencv_detection_page():
     elif mod == "palm": _palm_module()
     else:
         st.markdown("""
-        <div style="background: rgba(10, 10, 20, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(139,92,246,0.3); border-radius: 20px; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.6); word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="font-size: 72px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.4));">🛰️</div>
-            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">NEUROLAB Analytics Suite</h2>
-            <div style="width: 80px; height: 3px; background: linear-gradient(90deg, transparent, #00f0ff, transparent); margin: 20px auto;"></div>
-            <p style="font-family: 'Inter', sans-serif; font-weight: 400; color: #00f0ff; font-size: 16px; letter-spacing: 2px;">
-                AWAITING OPTICAL UPLINK OVERRIDE
+        <div style="background: #1e1b4b; border: 6px solid #000; padding: 100px 40px; text-align: center; margin-top: 30px; box-shadow: 15px 15px 0px #EF4444; position:relative; overflow:hidden;">
+            <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff0a 1px, transparent 0); background-size: 8px 8px;"></div>
+            <div style="font-size: 100px; margin-bottom: 25px; filter: drop-shadow(5px 5px 0px #000);">🔬</div>
+            <h2 style="font-family: 'Bangers', cursive; font-size:48px; color: #FFFFFF; margin: 0; text-shadow: 3px 3px 0px #000;">DASHBOARD_STBY // LINKING...</h2>
+            <div style="width: 100px; height: 6px; background: #FACC15; margin: 30px auto; border: 3px solid #000;"></div>
+            <p style="font-family: 'Luckiest Guy', cursive; color: #FACC15; font-size: 20px; letter-spacing: 2px; text-transform: uppercase;">
+                // AWAITING OPTIC COMMAND UPLINK
             </p>
         </div>
         """, unsafe_allow_html=True)

@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.styles import section_header, render_log, render_nlp_insight, gradient_header
 from utils.nlp_engine import generate_perceptron_insight
 from utils.nn_helpers import P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, plotly_layout
 
@@ -144,36 +144,38 @@ def perceptron_page():
             y_pred_m = 1 if z >= 0 else 0
             
             st.markdown(f"""
-            <div class="premium-card" style="text-align:center; border-bottom: 4px solid {P};">
-                <div style="font-family:'Oswald', sans-serif; font-size:18px; color:{MUTED};">PREDICTION</div>
-                <div style="font-size:56px; color:{G if y_pred_m==1 else R}; font-family:'Oswald', sans-serif; font-weight:700; text-shadow: 2px 2px 0px #000;">
-                    {'TRUE (1)' if y_pred_m==1 else 'FALSE (0)'}
+            <div class="premium-card" style="text-align:center; border-bottom: 8px solid #EF4444;">
+                <div style="font-family:'Luckiest Guy', cursive; font-size:22px; color:#FACC15; letter-spacing:1px;">>>> PREDICTION_LOG <<<</div>
+                <div style="font-size:64px; color:{G if y_pred_m==1 else R}; font-family:'Bangers', cursive; text-shadow: 3px 3px 0px #000;">
+                    {'POSITIVE (1)' if y_pred_m==1 else 'NEGATIVE (0)'}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
         with master_dashboard.container():
             st.success(f"Training finalized at Epoch {ep} with Accuracy {acc:.1f}%.")
+            gradient_header("Perceptron Processor", "Basic Linear Classification", "📉")
+            reg_name = st.sidebar.text_input("Analysis Target Name", "Perceptron_Alpha", key="p_name")
             insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
-            render_nlp_insight(insight, "System Insight // NLP Neural Parsing", "#00f0ff")
+            render_nlp_insight(insight, "Synaptic Mission Intel // Analyzing Patterns", "#FACC15")
             
             st.markdown(f"""
-            <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Epoch</div>
-                    <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{ep}/{max_ep}</div>
+            <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #EF4444;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// MISSION_EPOCH</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{ep}/{max_ep}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Loss</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{err:.1f}</div>
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #3B82F6;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// SIGNAL_LOSS</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{err:.2f}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#00f0ff; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Accuracy</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{acc:.1f}%</div>
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #22C55E;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// ACCURACY_RATING</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{acc:.1f}%</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Weights & Bias</div>
-                    <div style="color:#FAFAFA; font-size:15px; font-weight:400; font-family:'Inter'; margin-top:5px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
+                <div style="flex:1; min-width:200px; background:#1e1b4b; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #FACC15;">
+                    <div style="color:#FACC15; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// SYNAPTIC_PULSE</div>
+                    <div style="color:#FFFFFF; font-size:16px; font-weight:600; font-family:'Roboto Mono', monospace; margin-top:12px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)

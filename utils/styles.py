@@ -5,114 +5,122 @@ import plotly.graph_objects as go
 def inject_global_css():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;500;700&family=Inter:wght@400;600&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Luckiest+Guy&family=Anton&family=Inter:wght@400;700&family=Roboto+Mono&display=swap');
+
+        /* ──── NEUROLAB: COSMIC GRAPHIC NOVEL ──── */
         .stApp {
-            background-color: #040014;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.12) 0%, transparent 40%),
-                url('https://www.transparenttextures.com/patterns/stardust.png');
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%);
             background-attachment: fixed;
-            color: #E4E4E7;
+            color: #F8FAFC;
             font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
         }
 
-        /* ──── SIMPLE SPACE PANELS ──── */
+        /* ──── COSMIC STARFIELD OVERLAY ──── */
+        .stApp::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 160px 120px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ──── HALFTONE PATTERN ──── */
+        .stApp::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(#ffffff0a 1px, transparent 0);
+            background-size: 4px 4px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ──── GRAPHIC NOVEL CARDS ──── */
         .premium-card {
-            background: rgba(20, 20, 30, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
+            background: #0f172a;
+            border: 4px solid #000000;
+            border-radius: 0px; /* Sharp comic look */
             padding: 24px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            margin-bottom: 24px;
+            box-shadow: 8px 8px 0px #000000;
+            transition: transform 0.1s ease;
+            position: relative;
+            z-index: 2;
         }
+        
         .premium-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0, 240, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.15);
+            transform: translate(-2px, -2px);
+            box-shadow: 10px 10px 0px #3B82F6;
         }
 
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Oswald', sans-serif !important;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #FAFAFA;
-        }
-
-        /* ──── SLEEK GLOW BUTTONS ──── */
-        .stButton > button {
-            background: rgba(10, 10, 20, 0.8) !important;
-            border: 1px solid rgba(139, 92, 246, 0.5) !important;
-            border-radius: 8px !important;
-            color: #FAFAFA !important;
-            font-weight: 600 !important;
-            font-size: 16px !important;
-            font-family: 'Oswald', sans-serif !important;
-            text-transform: uppercase !important;
+        h1, h2, h3 {
+            font-family: 'Bangers', cursive !important;
+            color: #FFFFFF !important;
+            text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
             letter-spacing: 2px !important;
-            transition: all 0.2s ease !important;
+            text-transform: uppercase;
+        }
+
+        /* ──── COMIC ACTION BUTTONS ──── */
+        .stButton > button {
+            background: #EF4444 !important; /* Action Red */
+            border: 3px solid #000 !important;
+            border-radius: 0px !important;
+            color: #fff !important;
+            font-family: 'Luckiest Guy', cursive !important;
+            font-size: 20px !important;
+            text-transform: uppercase !important;
+            box-shadow: 4px 4px 0px #000 !important;
             padding: 10px 24px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+            transition: all 0.1s ease !important;
         }
         .stButton > button:hover {
-            border-color: #00f0ff !important;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4) !important;
-            transform: translateY(-2px) !important;
-            color: #00f0ff !important;
-        }
-        .stButton > button:active {
-            transform: translateY(1px) !important;
-            box-shadow: 0 0 5px rgba(0, 240, 255, 0.4) !important;
+            background: #FACC15 !important; /* Superhero Yellow */
+            color: #000 !important;
+            transform: translate(-1px, -1px);
+            box-shadow: 6px 6px 0px #000 !important;
         }
 
-        /* ──── HEADER MENU BAR ──── */
-        header[data-testid="stHeader"] {
-            background-color: transparent !important;
-            background-image: linear-gradient(to bottom, rgba(4,0,20,0.8), transparent) !important;
-            box-shadow: none !important;
-        }
-        header[data-testid="stHeader"] * {
-            color: #E4E4E7 !important;
-        }
-
-        /* ──── SIDEBAR ──── */
         [data-testid="stSidebar"] {
-            background-color: rgba(4, 0, 20, 0.8) !important;
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(139, 92, 246, 0.2);
+            background-color: #020617 !important;
+            border-right: 4px solid #000;
         }
-        
-        hr {
-            border-top: 1px dashed rgba(139, 92, 246, 0.3) !important;
-            margin: 30px 0 !important;
+
+        /* Customize Metric */
+        [data-testid="stMetricValue"] {
+            font-family: 'Anton', sans-serif !important;
+            font-size: 38px !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
 def section_header(title, subtitle):
     st.markdown(f"""
-        <div style="margin-bottom:30px; position:relative; word-wrap: break-word; text-align: center;">
-            <h2 style="margin:0; color:#FAFAFA; font-size:36px; font-weight:700; letter-spacing: 2px; text-transform:uppercase; filter: drop-shadow(0 0 10px rgba(139,92,246,0.3));">{title}</h2>
-            <p style="color:#00f0ff; font-size:16px; font-weight:400; letter-spacing:4px; margin-top:8px; font-family:'Inter'; text-transform:uppercase;">{subtitle}</p>
-            <div style="width: 60px; height: 3px; background: linear-gradient(90deg, transparent, #8b5cf6, #00f0ff, transparent); margin: 15px auto 0;"></div>
+        <div style="margin-bottom:40px; text-align: left; transform: skewX(-2deg);">
+            <h2 style="margin:0; font-size:42px; border-bottom: 6px solid #FACC15; display:inline-block; padding-right:20px;">{title}</h2>
+            <p style="color:#94A3B8; font-size:18px; font-weight:700; margin-top:8px; font-family:'Luckiest Guy'; text-transform:uppercase;">{subtitle}</p>
         </div>
     """, unsafe_allow_html=True)
 
 def gradient_header(title, sub, icon=""):
     st.markdown(f"""
-        <div style="background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding:40px 30px; 
-            box-shadow: 0 12px 40px rgba(0,0,0,0.3); margin-bottom: 30px; position: relative; word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                <div style="font-size: 64px;">{icon}</div>
-                <div style="flex:1; min-width: 250px;">
-                    <h1 style="font-size: 36px; margin: 0; color: #FAFAFA; font-weight: 600; font-family:'Inter', sans-serif; letter-spacing: 1px;">{title}</h1>
-                    <p style="color:#A1A1AA; font-size:16px; font-family:'Inter'; font-weight:400; margin-top:8px;">
+        <div style="background: #1e1b4b; border: 5px solid #000; padding:40px; 
+            margin-bottom: 50px; box-shadow: 12px 12px 0px #EF4444; position:relative;">
+            <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                <div style="font-size: 80px; filter: drop-shadow(4px 4px 0px #000);">{icon}</div>
+                <div style="flex:1;">
+                    <h1 style="font-size: 64px; margin: 0; line-height:1;">{title}</h1>
+                    <p style="color:#FACC15; font-size:20px; font-family:'Luckiest Guy', cursive; letter-spacing:1px; margin-top:10px;">
                         {sub}
                     </p>
                 </div>
@@ -120,43 +128,41 @@ def gradient_header(title, sub, icon=""):
         </div>
     """, unsafe_allow_html=True)
 
-def speedometer(val, max_val, title, color="#00f0ff", height=220):
+def speedometer(val, max_val, title, color="#EF4444", height=220):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = val,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title.upper(), 'font': {'size': 18, 'color': '#FAFAFA', 'family': 'Oswald'}},
+        title = {'text': title.upper(), 'font': {'size': 24, 'color': '#FFFFFF', 'family': 'Bangers'}},
         gauge = {
-            'axis': {'range': [None, max_val], 'tickwidth': 2, 'tickcolor': "rgba(139,92,246,0.5)"},
+            'axis': {'range': [None, max_val], 'tickwidth': 3, 'tickcolor': "#000"},
             'bar': {'color': color, 'thickness': 0.8},
-            'bgcolor': "rgba(0,0,0,0.3)",
-            'borderwidth': 0,
-            'steps': [{'range': [0, max_val], 'color': 'rgba(10,10,20,0.8)'}]
+            'bgcolor': "rgba(0,0,0,0.5)",
+            'borderwidth': 4,
+            'bordercolor': "#000",
+            'steps': [{'range': [0, max_val], 'color': 'rgba(250,204,21,0.2)'}]
         }
     ))
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#FAFAFA", 'family': "Oswald"}, height=height, margin=dict(l=20,r=20,t=40,b=20))
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#FFFFFF", 'family': "Bangers"}, height=height, margin=dict(l=20,r=20,t=40,b=20))
     return fig
 
 def render_log(placeholder, logs):
-    log_html = "".join([f'<div style="color: #A1A1AA; font-family: monospace; font-size: 14px; margin-bottom: 4px; overflow-wrap: break-word;">'
-                        f'<span style="color: #00f0ff;">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-10:]])
+    log_html = "".join([f'<div style="color: #F8FAFC; font-family: \'Roboto Mono\', monospace; font-size: 14px; margin-bottom: 6px; border-bottom: 1px dashed #334155; padding-bottom:4px;">'
+                        f'<span style="color: #FACC15; font-weight:bold;">[{time.strftime("%H:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
     placeholder.markdown(f"""
-        <div style="background: rgba(20,20,30,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="font-family: 'Inter'; font-size: 16px; font-weight: 600; color: #FAFAFA; margin-bottom: 12px; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">TARGET ACQUISITION LOG</div>
-            {log_html if logs else '<div style="color: #52525B; font-family: monospace; font-size: 14px;">Awaiting feed...</div>'}
+        <div style="background: #020617; border: 4px solid #000; padding: 25px; box-shadow: 6px 6px 0px #000;">
+            <div style="font-family: 'Bangers', cursive; font-size: 24px; color: #EF4444; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px;">// Mission Log</div>
+            {log_html if logs else '<div style="color: #475569; font-family: Roboto Mono, monospace;">Standby for signal...</div>'}
         </div>
     """, unsafe_allow_html=True)
 
-def render_nlp_insight(text, label, clr="#00f0ff"):
+def render_nlp_insight(text, label, clr="#3B82F6"):
     st.markdown(f"""
-        <div style="background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {clr}; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); word-wrap: break-word; overflow-wrap: break-word;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <div style="font-size: 20px;">🤖</div>
-                <div style="font-family:'Inter', sans-serif; font-size:16px; font-weight:600; color:{clr}; letter-spacing: 1px;">
-                    {label} // NLP OVERRIDE
-                </div>
+        <div style="background: #0f172a; border: 4px solid #000; border-right: 12px solid {clr}; padding: 30px; margin-bottom: 40px; box-shadow: 10px 10px 0px rgba(0,0,0,0.5);">
+            <div style="font-family:'Bangers', cursive; font-size:28px; color:{clr}; letter-spacing: 2px; margin-bottom:12px;">
+                {label}
             </div>
-            <div style="font-size:15px; color:#A1A1AA; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 400;">
+            <div style="font-size:18px; color:#F8FAFC; font-family:'Inter', sans-serif; line-height: 1.5; font-weight: 500;">
                 {text}
             </div>
         </div>

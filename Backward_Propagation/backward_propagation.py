@@ -118,8 +118,8 @@ def backward_propagation_page():
                 # Restore Gauges
                 gA, gB = st.columns(2)
                 from utils.styles import speedometer
-                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#ED1D24", height=200), use_container_width=True, theme=None, key=f"bp_gL_{ep}")
-                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#005BEA", height=200), use_container_width=True, theme=None, key=f"bp_gA_{ep}")
+                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#EF4444", height=200), use_container_width=True, theme=None, key=f"bp_gL_{ep}")
+                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#3B82F6", height=200), use_container_width=True, theme=None, key=f"bp_gA_{ep}")
                 
                 # Double graph: Network Architecture (Live Vals) + Trajectories
                 diag_vals = [Xv] + [As[i+1].flatten().tolist() for i in range(len(sizes)-2)] + [[y_pred]]
@@ -128,10 +128,11 @@ def backward_propagation_page():
                 
                 fig2 = make_subplots(specs=[[{"secondary_y": True}]])
                 fig2.add_trace(go.Scatter(x=list(range(1, ep+1)), y=losses, mode="lines", name="Loss", line=dict(color="#EF4444", width=3)), secondary_y=False)
-                fig2.add_trace(go.Scatter(x=list(range(1, ep+1)), y=grad_mags, mode="lines", name="Avg Gradient", line=dict(color="#06B6D4", width=2, dash="dash")), secondary_y=True)
+                fig2.add_trace(go.Scatter(x=list(range(1, ep+1)), y=grad_mags, mode="lines", name="Avg Gradient", line=dict(color="#FACC15", width=2, dash="dash")), secondary_y=True)
                 fig2.add_hline(y=0, line=dict(color="#333", width=1))
                 fig2.update_layout(title_text=f"Loss & Gradient Flow (Epoch {ep})", 
-                                   **plotly_layout(height=350, margin=dict(l=40,r=40,t=40,b=40)))
+                                   **plotly_layout(height=350, margin=dict(l=40,r=40,t=40,b=40),
+                                                   title=dict(font=dict(family="Bangers", size=24))))
                 fig2.update_xaxes(showgrid=True, gridcolor="#DDD", zerolinecolor="#555")
                 fig2.update_yaxes(showgrid=True, gridcolor="#DDD", secondary_y=False)
                 
@@ -149,36 +150,34 @@ def backward_propagation_page():
 
         with master_dashboard.container():
             insight = generate_bwd_insight(optimizer="Gradient Descent Kinetics", lr=lr, total_epochs=ep)
-            render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#8b5cf6")
+            render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#FACC15")
             
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
-            <div style="background:rgba(20, 20, 30, 0.6); border:1px solid rgba(255,255,255,0.05); border-left:4px solid {'#00f0ff' if acc > 0.95 else '#A1A1AA'}; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
-                <div style="font-family:'Inter', sans-serif; font-size:16px; color:#A1A1AA; letter-spacing: 1px; font-weight:500;">FINAL CONVERGENCE SCORE</div>
-                <div style="font-size:64px; font-family:'Inter', sans-serif; font-weight:600; color:{'#00f0ff' if acc > 0.95 else '#FAFAFA'}; margin: 10px 0;">
+            <div style="background:#020617; border:4px solid #000; border-top: 12px solid #3B82F6; padding:50px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
+                <div style="font-family:'Luckiest Guy', cursive; font-size:18px; color:#94A3B8; letter-spacing: 1px;">// NETWORK_CONVERGENCE_PROBE</div>
+                <div style="font-size:72px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 20px 0; line-height:1; text-shadow: 3px 3px 0px #000;">
                     {acc*100:.2f}%
                 </div>
-                <div style="font-weight:400; font-family:'Inter'; color:#A1A1AA; text-transform:uppercase; letter-spacing: 1px; font-size:14px;">STATUS: <span style="color:{'#00f0ff' if acc > 0.95 else '#FAFAFA'}; font-weight:600;">{'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</span></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; gap:16px; margin: 20px 0; flex-wrap:wrap;">
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Epoch</div>
-                    <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{ep}/{max_ep}</div>
-                </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Loss</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{loss:.6f}</div>
-                </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final ŷ</div>
-                    <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{y_pred:.6f}</div>
-                </div>
-                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
-                    <div style="color:#00f0ff; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Avg Gradient</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{mean_grad:.6f}</div>
+                <div style="font-weight:700; font-family:'Luckiest Guy', cursive; color:#FACC15; text-transform:uppercase; letter-spacing: 0.1em; font-size:18px;">
+                    STABILITY_RATING: <span style="color:#FFFFFF;">{'STABILIZED' if acc > 0.95 else 'ADAPTIVE'}</span>
                 </div>
             </div>
+            <div style="display:flex; justify-content:space-between; gap:20px; margin: 40px 0; flex-wrap:wrap;">
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #EF4444;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// TRAINING_EPOCH</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{ep}/{max_ep}</div>
+                </div>
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #3B82F6;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// RESIDUAL_ERROR</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{loss:.5f}</div>
+                </div>
+                <div style="flex:1; min-width:180px; background:#020617; border:4px solid #000; padding:25px; text-align:center; box-shadow: 6px 6px 0px #22C55E;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:1px;">// MODEL_PRED_ŷ</div>
+                    <div style="color:#FFFFFF; font-size:42px; font-weight:700; font-family:'Bangers', cursive; margin-top:8px;">{y_pred:.5f}</div>
+                </div>
+                </div>
             """, unsafe_allow_html=True)
             
             cA, cB = st.columns(2)

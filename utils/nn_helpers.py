@@ -1,25 +1,25 @@
 import numpy as np
 import plotly.graph_objects as go
 
-# ──── JUSTICE SUITE COLOR PALETTE ────
-BG = "#FFFFFF"; SURF = "#F4F4F4"; CARD = "#FFFFFF"
-P = "#ED1D24" # Superman Red
-C = "#005BEA" # Batman Blue
-G = "#16A34A" # Green
-A = "#F59E0B" # Yellow
-R = "#DC2626" # Red
-TEXT = "#121212" # Black
-MUTED = "#64748B" # Gray
-GRID = "#E2E8F0" # Light Grid
-LAYER_COLS = [C, P, "#005BEA", A, G, R, C]
+# ──── SUPERHERO COMIC COLOR PALETTE ────
+BG = "#020617"; SURF = "#0F172A"; CARD = "#020617"
+P = "#EF4444" # Flash Red
+C = "#3B82F6" # Superman Blue
+G = "#22C55E" # Hulk Green
+A = "#FACC15" # Wolverine Yellow
+R = "#DC2626" # Danger Red
+TEXT = "#FFFFFF" # White
+MUTED = "#94A3B8" # Slate
+GRID = "#334155" # Dark Grid
+LAYER_COLS = ["#EF4444", "#3B82F6", "#FACC15", "#22C55E", "#A855F7", "#F97316", "#3B82F6"]
 
 # ──── PLOTLY BASE CONFIG ────
 # Separated to avoid 'multiple values for keyword' errors in update_layout
 PLOTLY_BASE = dict(
     paper_bgcolor="rgba(0,0,0,0)", 
-    plot_bgcolor="#FFFFFF",
-    font=dict(color=TEXT, family="'Impact', sans-serif"),
-    margin=dict(t=40, b=40, l=50, r=20)
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(color=TEXT, family="'Bangers', cursive"),
+    margin=dict(t=50, b=40, l=50, r=20)
 )
 
 PLOTLY_AXIS = dict(
@@ -144,9 +144,9 @@ def draw_network(sizes, labels, vals=None, highlight=None):
             marker_col = hex2rgba(col, 1.0 if is_hl else 0.8)
             fig.add_trace(go.Scatter(x=[nx],y=[ny_],mode="markers+text",
                 marker=dict(size=ns,color=marker_col,
-                    line=dict(color="#121212",width=2 if is_hl else 1)),
+                    line=dict(color="#F8FAFC",width=2 if is_hl else 1)),
                 text=[f"{lbl}{val_s}"],textposition="middle center",
-                textfont=dict(size=fs,color="#FFF" if not ellip else TEXT,family="Impact"),
+                textfont=dict(size=fs,color="#FFF" if not ellip else TEXT,family="Inter"),
                 showlegend=False,hoverinfo="none"))
     for x,lbl in zip(lx,labels):
         fig.add_annotation(x=x,y=-0.06,text=f"<b>{lbl}</b>",showarrow=False,
@@ -166,6 +166,6 @@ def loss_chart(losses, title="Training Loss", col=None):
         line=dict(color=col,width=2.5),
         fill="tozeroy",fillcolor=f"{col}18",name="Loss"))
     fig.update_layout(
-        title=dict(text=title,font=dict(color=TEXT,size=14)),
+        title=dict(text=title,font=dict(color=TEXT,size=14,family="Inter")),
         **plotly_layout())
     return fig
