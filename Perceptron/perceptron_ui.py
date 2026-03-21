@@ -144,9 +144,9 @@ def perceptron_page():
             y_pred_m = 1 if z >= 0 else 0
             
             st.markdown(f"""
-            <div class="glass-card" style="text-align:center; border-left: 5px solid {P};">
-                <div style="font-family:'Orbitron', sans-serif; font-size:16px; color:{MUTED};">PREDICTION</div>
-                <div style="font-size:48px; color:{G if y_pred_m==1 else R}; font-family:'Orbitron', sans-serif; font-weight:900;">
+            <div class="premium-card" style="text-align:center; border-bottom: 4px solid {P};">
+                <div style="font-family:'Oswald', sans-serif; font-size:18px; color:{MUTED};">PREDICTION</div>
+                <div style="font-size:56px; color:{G if y_pred_m==1 else R}; font-family:'Oswald', sans-serif; font-weight:700; text-shadow: 2px 2px 0px #000;">
                     {'TRUE (1)' if y_pred_m==1 else 'FALSE (0)'}
                 </div>
             </div>
@@ -155,12 +155,28 @@ def perceptron_page():
         with master_dashboard.container():
             st.success(f"Training finalized at Epoch {ep} with Accuracy {acc:.1f}%.")
             insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
-            render_nlp_insight(insight, "System Insight // NLP Neural Parsing", "#E11D48")
-            mx1, mx2, mx3, mx4 = st.columns(4)
-            mx1.metric("Final Epoch", f"{ep}/{max_ep}")
-            mx2.metric("Final Loss", f"{err:.1f}")
-            mx3.metric("Final Accuracy", f"{acc:.1f}%")
-            mx4.metric("Final Weights", f"w1:{w[0]:.2f} w2:{w[1]:.2f} b:{b:.2f}")
+            render_nlp_insight(insight, "System Insight // NLP Neural Parsing", "#00f0ff")
+            
+            st.markdown(f"""
+            <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom: 20px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Epoch</div>
+                    <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{ep}/{max_ep}</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Loss</div>
+                    <div style="color:#E11D48; font-size:24px; font-weight:700; font-family:'Oswald';">{err:.1f}</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#00f0ff; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Accuracy</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow:0 0 10px rgba(0,240,255,0.4);">{acc:.1f}%</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Weights & Bias</div>
+                    <div style="color:#FAFAFA; font-size:16px; font-weight:600; font-family:'Inter'; margin-top:5px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
             st.plotly_chart(fig, use_container_width=True, theme=None, key="pct_final_res")
 

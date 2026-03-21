@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 import datetime
-from utils.styles import section_header, render_nlp_insight
+from utils.styles import section_header, render_nlp_insight, gradient_header
 from utils.nlp_engine import generate_cv_insight
 import cv2
 
@@ -541,11 +541,11 @@ def opencv_detection_page():
     elif mod == "palm": _palm_module()
     else:
         st.markdown("""
-        <div style="background: url('https://www.transparenttextures.com/patterns/stardust.png'), #09090B; border: 2px solid #27272A; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 8px 8px 0px #000;">
-            <div style="font-size: 72px; margin-bottom: 20px; text-shadow: 3px 3px 0px #000;">🛡️</div>
-            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">Vision Analytics Suite</h2>
-            <p style="font-family: 'Inter', sans-serif; font-weight: 500; color: #A1A1AA; font-size: 16px; margin-top: 16px;">
-                SELECT AN ACTIVE COMPUTER VISION MODULE FROM THE TOP PANEL TO BEGIN
+        <div style="background: rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border: 3px solid #1e1b4b; padding: 60px 30px; text-align: center; margin-top: 20px; box-shadow: 8px 8px 0px #8b5cf6; word-wrap: break-word; overflow-wrap: break-word;">
+            <div style="font-size: 72px; margin-bottom: 20px; text-shadow: 4px 4px 0px #8b5cf6;">🦸</div>
+            <h2 style="font-family: 'Oswald', sans-serif; font-size: 42px; color: #FAFAFA; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; text-shadow: 3px 3px 0px #00f0ff;">NEUROLAB Analytics Suite</h2>
+            <p style="font-family: 'Inter', sans-serif; font-weight: 600; color: #00f0ff; font-size: 16px; margin-top: 16px; letter-spacing: 2px;">
+                AWAITING OPTICAL UPLINK OVERRIDE
             </p>
         </div>
         """, unsafe_allow_html=True)

@@ -154,19 +154,32 @@ def backward_propagation_page():
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
-            <div style="background:#09090B; border:2px solid #27272A; padding:25px; box-shadow:5px 5px 0px #E11D48; text-align:center;">
-                <div style="font-family:'Oswald', sans-serif; font-size:20px; color:#A1A1AA;">FINAL CONVERGENCE SCORE</div>
-                <div style="font-size:62px; font-family:'Oswald', sans-serif; font-weight:700; color:#005BEA;">
+            <div style="background:rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border:3px solid #1e1b4b; padding:30px; box-shadow:5px 5px 0px {'#00f0ff' if acc > 0.95 else '#E11D48'}; text-align:center; word-wrap:break-word;">
+                <div style="font-family:'Oswald', sans-serif; font-size:24px; color:#a78bfa; letter-spacing: 2px; font-weight:700;">FINAL CONVERGENCE SCORE</div>
+                <div style="font-size:72px; font-family:'Oswald', sans-serif; font-weight:700; color:{'#00f0ff' if acc > 0.95 else '#E11D48'}; text-shadow: 3px 3px 0px #000;">
                     {acc*100:.2f}%
                 </div>
-                <div style="font-weight:600; font-family:'Inter'; color:#FAFAFA; margin-top:5px; text-transform:uppercase;">STATUS: {'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</div>
+                <div style="font-weight:700; font-family:'Inter'; color:#FAFAFA; margin-top:5px; text-transform:uppercase; letter-spacing: 1px;">STATUS: {'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:16px; margin: 20px 0; flex-wrap:wrap;">
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Epoch</div>
+                    <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{ep}/{max_ep}</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final Loss</div>
+                    <div style="color:#E11D48; font-size:24px; font-weight:700; font-family:'Oswald';">{loss:.6f}</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Final ŷ</div>
+                    <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{y_pred:.6f}</div>
+                </div>
+                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.8); border:3px solid #1e1b4b; padding:16px; text-align:center; box-shadow: 4px 4px 0px #8b5cf6; word-wrap:break-word;">
+                    <div style="color:#00f0ff; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase;">Avg Gradient</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow:0 0 10px rgba(0,240,255,0.4);">{mean_grad:.6f}</div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            mx1, mx2, mx3, mx4 = st.columns(4)
-            mx1.metric("Final Epoch", f"{ep}/{max_ep}")
-            mx2.metric("Final Loss", f"{loss:.6f}")
-            mx3.metric("Final Prediction ŷ", f"{y_pred:.6f}")
-            mx4.metric("Final Avg Gradient", f"{mean_grad:.6f}")
             
             cA, cB = st.columns(2)
             cA.plotly_chart(fig1, use_container_width=True, theme=None, key="bp_net_final")
