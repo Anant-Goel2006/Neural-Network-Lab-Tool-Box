@@ -1,8 +1,8 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="Neural Network Lab",
-    page_icon="🧠",
+    page_title="NEUROLAB",
+    page_icon="🌌",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -17,10 +17,10 @@ from utils.styles                                     import inject_global_css
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGES
 # ─────────────────────────────────────────────────────────────────────────────
-p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon="🟢")
-p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="➡️")
-p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="⬅️")
-p_cv   = st.Page(opencv_detection_page,    title="4. OpenCV Detection",     icon="👁️")
+p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon="🪐")
+p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="☄️")
+p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="🛸")
+p_cv   = st.Page(opencv_detection_page,    title="4. OpenCV Detection",     icon="📡")
 p_sa   = st.Page(sentiment_analysis_page,  title="5. NLP Neural Network",   icon="🤖")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -57,8 +57,8 @@ def home_page():
         <div style="font-size: 80px; margin-bottom: 16px; filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.4));">🌌</div>
         <h1 style="font-size: 64px; font-weight: 700; color: #FAFAFA; margin: 0; font-family:'Oswald', sans-serif; letter-spacing: 4px; text-transform: uppercase; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));">NEUROLAB</h1>
         <div style="width: 100px; height: 3px; background: linear-gradient(90deg, transparent, #00f0ff, transparent); margin: 24px auto;"></div>
-        <p style="font-size: 16px; color: #a78bfa; font-family: 'Inter', sans-serif; max-width: 800px; margin: 16px auto 0; line-height: 1.6; font-weight: 400; letter-spacing: 3px; text-transform: uppercase;">
-            Interstellar Analytics Matrix
+        <p style="font-size: 16px; color: #a78bfa; font-family: 'Inter', sans-serif; max-width: 800px; margin: 16px auto 0; line-height: 1.6; font-weight: 400; letter-spacing: 2px; text-transform: uppercase;">
+            An immersive platform for exploring neural networks, machine learning, and real-time computer vision.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -90,19 +90,19 @@ def home_page():
 
     # ── Module Cards ────────────────────────────────────────────────────────
     CARDS = [
-        ("🟢", "The Perceptron", "Binary Classifier",
+        ("🪐", "The Perceptron", "Binary Classifier",
          "Train a single neuron with <strong>live convergence animation</strong>. Watch the decision boundary shift epoch-by-epoch with real-time speedometer gauges.",
          p_pct, ["Live Training","6 Gates","Confusion Matrix","Weight Trajectory"], "#10B981"),
 
-        ("➡️", "Forward Propagation", "Signal Flow Engine",
+        ("☄️", "Forward Propagation", "Signal Flow Engine",
          "Trace inputs through every layer. Build custom architectures with <strong>6 activations</strong>, 4 loss functions, and view live activation heatmaps.",
          p_fwd, ["6 Activations","Layer Heatmap","Custom Arch","Weight Editor"], "#06B6D4"),
 
-        ("⬅️", "Backward Propagation", "Gradient Engine",
+        ("🛸", "Backward Propagation", "Gradient Engine",
          "Watch gradients flow backwards via chain rule. Visualize <strong>vanishing & exploding gradients</strong> with live bar charts and heatmaps.",
          p_bwd, ["Chain Rule Viz","Gradient Heatmap","Weight Diff","Live Gauges"], "#8B5CF6"),
 
-        ("👁️", "OpenCV Detection", "Vision Lab",
+        ("📡", "OpenCV Detection", "Vision Lab",
          "4 sub-modules: <strong>Attendance</strong>, <strong>Face Scanner</strong>, <strong>Vehicle Detection</strong> with live counting analytics, and <strong>Sign Detection</strong>.",
          p_cv, ["YOLO Vehicles","Live Analytics","Face Scanner","CSV Export"], "#F59E0B"),
 
@@ -182,7 +182,7 @@ def home_page():
 # ─────────────────────────────────────────────────────────────────────────────
 # NAVIGATION
 # ─────────────────────────────────────────────────────────────────────────────
-p_home = st.Page(home_page, title="Dashboard", icon="🏠", default=True)
+p_home = st.Page(home_page, title="Dashboard", icon="🌌", default=True)
 
 pages = {
     "Home":           [p_home],
