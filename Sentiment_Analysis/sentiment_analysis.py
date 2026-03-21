@@ -215,29 +215,31 @@ def sentiment_analysis_page():
                 # If explicit strong words are present, immediately force classify regardless of model
                 if score > 0:
                     class_idx = 1
-                    conf = min(0.99, conf + 0.5) # ensure high confidence
+                    preds = np.array([0.05, 0.90, 0.05])
                 elif score < 0:
                     class_idx = 0
-                    conf = min(0.99, conf + 0.5) 
+                    preds = np.array([0.90, 0.05, 0.05])
                 elif (any(w in pos_words for w in words) and any(w in neg_words for w in words)):
                     class_idx = 2
-                    conf = min(0.99, conf + 0.3)
+                    preds = np.array([0.10, 0.10, 0.80])
                 elif conf < 0.5 or sum(preds) == 0:
                     # Model doesn't know and no keywords are found
                     class_idx = 2 
-                    conf = 0.5
+                    preds = np.array([0.20, 0.20, 0.60])
+                
+                conf = preds[class_idx]
                 
                 classes = {0: ("Negative", "#EF4444", "😡"), 1: ("Positive", "#10B981", "😊"), 2: ("Mixed", "#F59E0B", "🤔")}
                 c_name, c_col, c_icon = classes[class_idx]
                 
-                # Bold Cosmic Comic HUD styling
+                # Simple Space HUD styling
                 st.markdown(f"""
-                <div style="background:rgba(10, 10, 20, 0.85); border:4px solid #1e1b4b; border-bottom:6px solid {c_col}; border-radius:8px; padding:30px; box-shadow:6px 6px 0px {c_col}; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 24px;">
-                    <div style="font-family:'Oswald', sans-serif; font-size:20px; color:#a78bfa; letter-spacing: 2px; font-weight:700; text-transform:uppercase;">INFERENCE: {c_name}</div>
-                    <div style="font-size:72px; font-family:'Oswald', sans-serif; font-weight:700; color:{c_col}; text-shadow: 3px 3px 0px #040014;">
+                <div style="background:rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {c_col}; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 24px;">
+                    <div style="font-family:'Inter', sans-serif; font-size:18px; color:#A1A1AA; letter-spacing: 1px; font-weight:600; text-transform:uppercase;">INFERENCE: {c_name}</div>
+                    <div style="font-size:72px; font-family:'Inter', sans-serif; font-weight:700; color:{c_col}; margin: 8px 0;">
                         {c_icon} {conf*100:.1f}%
                     </div>
-                    <div style="font-weight:700; font-family:'Inter'; color:#E4E4E7; margin-top:8px; text-transform:uppercase; letter-spacing: 2px;">STATUS: <span style="color:{c_col}; font-weight:900;">CLASSIFIED</span></div>
+                    <div style="font-weight:400; font-family:'Inter'; color:#A1A1AA; text-transform:uppercase; letter-spacing: 1px; font-size:14px;">STATUS: <span style="color:{c_col}; font-weight:700;">CLASSIFIED</span></div>
                 </div>
                 """, unsafe_allow_html=True)
                 

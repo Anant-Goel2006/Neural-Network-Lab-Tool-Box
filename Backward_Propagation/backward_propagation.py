@@ -154,29 +154,29 @@ def backward_propagation_page():
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
-            <div style="background:rgba(10, 10, 20, 0.85); border:4px solid #1e1b4b; border-bottom:8px solid #8b5cf6; border-radius:8px; padding:30px; box-shadow:8px 8px 0px {'#00f0ff' if acc > 0.95 else '#a78bfa'}; text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
-                <div style="font-family:'Oswald', sans-serif; font-size:20px; color:#a78bfa; letter-spacing: 2px; font-weight:700; text-transform:uppercase;">FINAL CONVERGENCE SCORE</div>
-                <div style="font-size:72px; font-family:'Oswald', sans-serif; font-weight:700; color:{'#00f0ff' if acc > 0.95 else '#FAFAFA'}; text-shadow: 4px 4px 0px #000;">
+            <div style="background:rgba(20, 20, 30, 0.6); border:1px solid rgba(255,255,255,0.05); border-left:4px solid {'#00f0ff' if acc > 0.95 else '#A1A1AA'}; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.3); text-align:center; word-wrap:break-word; position:relative; overflow:hidden;">
+                <div style="font-family:'Inter', sans-serif; font-size:16px; color:#A1A1AA; letter-spacing: 1px; font-weight:500;">FINAL CONVERGENCE SCORE</div>
+                <div style="font-size:64px; font-family:'Inter', sans-serif; font-weight:600; color:{'#00f0ff' if acc > 0.95 else '#FAFAFA'}; margin: 10px 0;">
                     {acc*100:.2f}%
                 </div>
-                <div style="font-weight:700; font-family:'Inter'; color:#E4E4E7; margin-top:8px; text-transform:uppercase; letter-spacing: 2px;">STATUS: <span style="color:{'#00f0ff' if acc > 0.95 else '#a78bfa'}; font-weight:700;">{'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</span></div>
+                <div style="font-weight:400; font-family:'Inter'; color:#A1A1AA; text-transform:uppercase; letter-spacing: 1px; font-size:14px;">STATUS: <span style="color:{'#00f0ff' if acc > 0.95 else '#FAFAFA'}; font-weight:600;">{'STABILIZED' if acc > 0.95 else 'PARTIAL CONVERGENCE'}</span></div>
             </div>
             <div style="display:flex; justify-content:space-between; gap:16px; margin: 20px 0; flex-wrap:wrap;">
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.85); border:3px solid #1e1b4b; border-radius:8px; padding:16px; text-align:center; box-shadow: 6px 6px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Final Epoch</div>
-                    <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{ep}/{max_ep}</div>
+                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
+                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Epoch</div>
+                    <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{ep}/{max_ep}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.85); border:3px solid #1e1b4b; border-radius:8px; padding:16px; text-align:center; box-shadow: 6px 6px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Final Loss</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow: 2px 2px 0px #000;">{loss:.6f}</div>
+                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
+                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final Loss</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{loss:.6f}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.85); border:3px solid #1e1b4b; border-radius:8px; padding:16px; text-align:center; box-shadow: 6px 6px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#a78bfa; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Final ŷ</div>
-                    <div style="color:#FAFAFA; font-size:24px; font-weight:700; font-family:'Oswald';">{y_pred:.6f}</div>
+                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
+                    <div style="color:#A1A1AA; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Final ŷ</div>
+                    <div style="color:#FAFAFA; font-size:24px; font-weight:600; font-family:'Inter';">{y_pred:.6f}</div>
                 </div>
-                <div style="flex:1; min-width:150px; background:rgba(10,10,20,0.85); border:3px solid #1e1b4b; border-radius:8px; padding:16px; text-align:center; box-shadow: 6px 6px 0px #8b5cf6; word-wrap:break-word;">
-                    <div style="color:#00f0ff; font-size:12px; font-weight:700; font-family:'Inter'; text-transform:uppercase; letter-spacing:1px;">Avg Gradient</div>
-                    <div style="color:#00f0ff; font-size:24px; font-weight:700; font-family:'Oswald'; text-shadow: 2px 2px 0px #000;">{mean_grad:.6f}</div>
+                <div style="flex:1; min-width:150px; background:rgba(20,20,30,0.6); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:16px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); word-wrap:break-word;">
+                    <div style="color:#00f0ff; font-size:12px; font-weight:500; font-family:'Inter'; letter-spacing:1px;">Avg Gradient</div>
+                    <div style="color:#00f0ff; font-size:24px; font-weight:600; font-family:'Inter';">{mean_grad:.6f}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)

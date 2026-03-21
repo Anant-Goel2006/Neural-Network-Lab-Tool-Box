@@ -28,19 +28,17 @@ p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon
 # ─────────────────────────────────────────────────────────────────────────────
 def sidebar_brand():
     st.sidebar.markdown("""
-    <div style="padding:24px 16px 22px;text-align:center;
-        margin-bottom:12px; background:rgba(10, 10, 20, 0.85); border:3px solid #1e1b4b; border-bottom: 4px solid #00f0ff; border-radius: 8px; box-shadow: 6px 6px 0px #8b5cf6; word-wrap: break-word;">
-        <div style="font-size:48px;margin-bottom:12px; text-shadow: 3px 3px 0px #8b5cf6;">🧠</div>
-        <div style="font-family:'Oswald',sans-serif; font-size:24px;font-weight:700;letter-spacing:2px;
-            color:#FAFAFA; text-transform: uppercase; text-shadow: 2px 2px 0px #00f0ff;">NEUROLAB</div>
-        <div style="font-size:12px;color:#00f0ff;letter-spacing:2px;
-            margin-top:6px;text-transform:uppercase;font-weight:700; font-family:'Inter', sans-serif;">
+    <div style="padding:20px; text-align:center;
+        margin-bottom:12px; background:rgba(20, 20, 30, 0.6); border:1px solid rgba(255,255,255,0.05); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); word-wrap: break-word;">
+        <div style="font-size:40px;margin-bottom:8px;">🧠</div>
+        <div style="font-family:'Inter',sans-serif; font-size:20px;font-weight:600;letter-spacing:1px; color:#FAFAFA;">NEUROLAB</div>
+        <div style="font-size:12px;color:#A1A1AA;letter-spacing:1px;
+            margin-top:4px;font-weight:400; font-family:'Inter', sans-serif;">
             Cosmic Analytics
         </div>
-        <div style="display:flex;justify-content:center;gap:8px;margin-top:20px; flex-wrap:wrap;">
-            <span style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.4); border-radius:12px;
-                color:#FAFAFA;font-size:10px;padding:4px 10px;font-weight:600; font-family:'Inter';
-                letter-spacing:1px; text-transform: uppercase;">v6.1 PRO</span>
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:16px; flex-wrap:wrap;">
+            <span style="background:rgba(255,255,255,0.1);color:#fff;font-size:10px;padding:3px 8px;border-radius:12px;">v2.1.0</span>
+            <span style="background:rgba(0,240,255,0.1);color:#00f0ff;font-size:10px;padding:3px 8px;border-radius:12px;">ACTIVE</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -52,12 +50,11 @@ def home_page():
     inject_global_css()
 
     st.markdown("""
-    <div style="position: relative; overflow: hidden; text-align:center; padding: 60px 20px; background: rgba(10, 10, 20, 0.9); backdrop-filter: blur(8px); border: 4px solid #1e1b4b; border-radius: 12px; margin-bottom: 30px; box-shadow: 8px 8px 0px #00f0ff; word-wrap: break-word; overflow-wrap: break-word;">
-        <div style="position: absolute; top: -50%; left: -10%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%); border-radius: 50%;"></div>
-        <div style="font-size: 80px; margin-bottom: 16px; text-shadow: 5px 5px 0px #8b5cf6;">🧠</div>
-        <h1 style="font-size: 64px; font-weight: 700; color: #FAFAFA; margin: 0; font-family:'Oswald', sans-serif; letter-spacing: 4px; text-transform: uppercase; text-shadow: 4px 4px 0px #8b5cf6, -2px -2px 0px #00f0ff;">NEUROLAB</h1>
-        <div style="width: 100px; height: 5px; background: #00f0ff; margin: 24px auto; box-shadow: 3px 3px 0px #3b0764;"></div>
-        <p style="font-size: 16px; color: #a78bfa; font-family: 'Oswald', sans-serif; max-width: 800px; margin: 16px auto 0; line-height: 1.6; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; background:#040014; padding: 6px 16px; border:2px solid #1e1b4b; display:inline-block;">
+    <div style="text-align:center; padding: 60px 20px; background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; margin-bottom: 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.3); word-wrap: break-word; overflow-wrap: break-word;">
+        <div style="font-size: 64px; margin-bottom: 16px;">🧠</div>
+        <h1 style="font-size: 48px; font-weight: 600; color: #FAFAFA; margin: 0; font-family:'Inter', sans-serif; letter-spacing: 2px;">NEUROLAB</h1>
+        <div style="width: 60px; height: 3px; background: #00f0ff; margin: 24px auto; border-radius: 2px;"></div>
+        <p style="font-size: 16px; color: #A1A1AA; font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6; font-weight: 400;">
             An immersive platform for exploring neural networks, machine learning, and real-time computer vision.
         </p>
     </div>
@@ -113,23 +110,23 @@ def home_page():
 
     def _card(ic, title, sub, desc, tags, clr):
         tags_html = "".join([
-            f'<span style="background:#040014; border: 2px solid {clr}; color:{clr};'
-            f'font-size:11px; padding:4px 10px; font-weight:700; font-family: Oswald;'
-            f'margin-right:6px; display:inline-block; margin-bottom:6px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 2px 2px 0px rgba(0,0,0,0.8);">{t}</span>' for t in tags
+            f'<span style="background:rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color:{clr};'
+            f'font-size:11px; padding:4px 10px; font-weight:500; font-family: Inter; border-radius:12px;'
+            f'margin-right:6px; display:inline-block; margin-bottom:6px;">{t}</span>' for t in tags
         ])
-        return f"""<div style="background:rgba(10, 10, 20, 0.85); backdrop-filter: blur(8px); border: 3px solid #1e1b4b; border-radius: 8px;
-            padding:24px; min-height: 380px; box-shadow: 6px 6px 0px {clr};
-            transition:all 0.2s ease; word-wrap: break-word; overflow-wrap: break-word; display: flex; flex-direction: column;"
-            onmouseover="this.style.boxShadow='9px 9px 0px rgba(0,240,255,1)'; this.style.borderColor='{clr}'; this.style.transform='translate(-3px, -3px)';"
-            onmouseout="this.style.boxShadow='6px 6px 0px {clr}'; this.style.borderColor='#1e1b4b'; this.style.transform='translate(0, 0)';">
+        return f"""<div style="background:rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+            padding:24px; min-height: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition:all 0.3s ease; word-wrap: break-word; overflow-wrap: break-word; display: flex; flex-direction: column;"
+            onmouseover="this.style.boxShadow='0 12px 40px rgba(0,240,255,0.1)'; this.style.borderColor='rgba(255,255,255,0.15)'; this.style.transform='translateY(-2px)';"
+            onmouseout="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.3)'; this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='translateY(0)';">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px; flex-wrap:wrap;">
-                <div style="font-size:48px; text-shadow: 3px 3px 0px {clr};">{ic}</div>
+                <div style="font-size:40px;">{ic}</div>
                 <div style="flex:1; min-width:150px;">
-                    <div style="font-size:26px; font-weight:700; color:#FAFAFA; font-family:'Oswald', sans-serif; letter-spacing:2px; text-transform: uppercase; line-height:1.2;">{title}</div>
-                    <div style="font-size:14px; color:{clr}; font-weight:700; letter-spacing: 2px; text-transform:uppercase; margin-top:4px; font-family:'Oswald';">{sub}</div>
+                    <div style="font-size:22px; font-weight:600; color:#FAFAFA; font-family:'Inter', sans-serif; line-height:1.2;">{title}</div>
+                    <div style="font-size:14px; color:{clr}; font-weight:500; margin-top:4px; font-family:'Inter';">{sub}</div>
                 </div>
             </div>
-            <div style="font-size:15px; color:#E4E4E7; line-height:1.6; font-family:'Inter'; margin-bottom:20px; font-weight:400; flex-grow:1;">{desc}</div>
+            <div style="font-size:15px; color:#A1A1AA; line-height:1.6; font-family:'Inter'; margin-bottom:20px; font-weight:400; flex-grow:1;">{desc}</div>
             <div style="display:flex; flex-wrap:wrap;">{tags_html}</div>
         </div>"""
 
