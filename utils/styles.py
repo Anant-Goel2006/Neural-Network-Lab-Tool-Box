@@ -6,106 +6,125 @@ import streamlit.components.v1 as components
 def inject_global_css():
     st.markdown("""
         <style>
-        /* ──── METALLIC BLACK & SPIDER-MAN SUIT THEME ──── */
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+        /* ──── PREMIUM DEEP LEARNING THEME ──── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono&display=swap');
 
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"], .main, [data-testid="stBlockContainer"], [data-testid="stVerticalBlock"], .block-container, section {
             background-color: transparent !important; 
             color: #E2E8F0;
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
         }
 
-        /* ──── METALLIC SPIDER-SUIT CARDS ──── */
+        /* ──── ULTRA-PREMIUM GLASS CARDS ──── */
         .premium-card {
-            background: linear-gradient(145deg, #16181a, #08090a); /* Metallic brushed Kevlar */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 2px solid #1f2228; /* Gunmetal structure */
-            border-top: 3px solid #DC2626; /* Web-Slinger Red */
-            border-bottom: 3px solid #3B82F6; /* Suit Blue */
-            border-radius: 6px; 
-            padding: 24px;
+            background: rgba(15, 23, 42, 0.4); 
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 16px; 
+            padding: 28px;
             margin-bottom: 24px;
-            box-shadow: 8px 8px 20px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(220, 38, 38, 0.05); 
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             z-index: 2;
             word-wrap: break-word; 
+            overflow: hidden;
         }
         
+        .premium-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6, #3B82F6);
+            background-size: 200% 100%;
+            animation: moveGradient 4s linear infinite;
+        }
+
+        @keyframes moveGradient {
+            0% { background-position: 100% 0%; }
+            100% { background-position: -100% 0%; }
+        }
+
         .premium-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 12px 12px 25px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(220, 38, 38, 0.15);
-            border-color: #DC2626;
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(15, 23, 42, 0.6);
         }
 
         h1, h2, h3 {
-            font-family: 'Bebas Neue', sans-serif !important;
-            color: #FFFFFF !important;
-            letter-spacing: 2.5px !important;
-            text-transform: uppercase;
-            word-wrap: break-word;
+            font-family: 'Montserrat', sans-serif !important;
+            color: #F8FAFC !important;
+            letter-spacing: 0.5px !important;
+            font-weight: 700 !important;
         }
 
-        /* ──── SPIDER ACTION BUTTONS ──── */
+        /* ──── GLOWING BUTTONS ──── */
         .stButton > button {
-            background: linear-gradient(180deg, #DC2626 0%, #991B1B 100%) !important; /* Spider Red Metallic */
-            border: 2px solid #EF4444 !important;
-            border-radius: 4px !important;
+            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important;
+            border: none !important;
+            border-radius: 10px !important;
             color: #ffffff !important;
-            font-family: 'Bebas Neue', sans-serif !important;
-            font-size: 22px !important;
+            font-family: 'Montserrat', sans-serif !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4) !important;
+            padding: 12px 28px !important;
+            transition: all 0.3s ease !important;
+            letter-spacing: 1px !important;
             text-transform: uppercase !important;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4) !important;
-            padding: 10px 24px !important;
-            transition: all 0.2s ease-in-out !important;
-            letter-spacing: 2px !important;
-            white-space: normal !important; 
-            height: auto !important;
         }
         .stButton > button:hover {
-            background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%) !important; /* Spider Blue Metallic */
-            border-color: #60A5FA !important;
-            color: #ffffff !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6) !important;
+            background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%) !important;
         }
 
         /* ──── SIDEBAR ──── */
         [data-testid="stSidebar"] {
-            background-color: rgba(8, 9, 10, 0.95) !important;
-            backdrop-filter: blur(15px) !important;
-            border-right: 2px solid #DC2626;
+            background-color: rgba(7, 10, 15, 0.95) !important;
+            backdrop-filter: blur(25px) !important;
+            border-right: 1px solid rgba(59, 130, 246, 0.2);
         }
 
-        /* ──── METRICS ──── */
-        [data-testid="stMetricValue"] {
-            font-family: 'Bebas Neue', sans-serif !important;
-            font-size: 40px !important; 
-            color: #DC2626 !important; /* Spider Red */
-            word-wrap: break-word;
-            text-shadow: 2px 2px 0px #000000, 0 0 15px rgba(220, 38, 38, 0.5); 
+        /* ──── CUSTOM SCROLLBAR ──── */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
         </style>
     """, unsafe_allow_html=True)
     
-    # ── INJECT SPIDER-WEB METALLIC LIVE CANVAS ──
+    # ── INJECT ELECTRIFYING NEURONS LIVE CANVAS ──
     components.html("""
         <script>
             const parentDoc = window.parent.document;
-            if (!parentDoc.getElementById('spider-metallic-bg')) {
-                const canvas = parentDoc.createElement('canvas');
-                canvas.id = 'spider-metallic-bg';
-                canvas.style.position = 'fixed';
-                canvas.style.top = '0';
-                canvas.style.left = '0';
-                canvas.style.width = '100vw';
-                canvas.style.height = '100vh';
-                canvas.style.zIndex = '-1'; 
-                canvas.style.pointerEvents = 'none';
-                
-                parentDoc.body.insertBefore(canvas, parentDoc.body.firstChild);
+            const oldCanvas = parentDoc.getElementById('neuro-bg-canvas');
+            if (oldCanvas) oldCanvas.remove();
+            
+            const canvas = parentDoc.createElement('canvas');
+            canvas.id = 'neuro-bg-canvas';
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            canvas.style.zIndex = '-1'; 
+            canvas.style.pointerEvents = 'none';
+            canvas.style.background = 'radial-gradient(circle at center, #0B0E14 0%, #020205 100%)';
+            
+            parentDoc.body.insertBefore(canvas, parentDoc.body.firstChild);
                 
                 const ctx = canvas.getContext('2d');
                 let width = canvas.width = parentDoc.defaultView.innerWidth;
@@ -116,96 +135,113 @@ def inject_global_css():
                     height = canvas.height = parentDoc.defaultView.innerHeight;
                 });
 
-                const particles = [];
-                const particleCount = 120;
-                
-                // Metallic Spider Suit Palette
-                const colors = ['#DC2626', '#B91C1C', '#3B82F6', '#ffffff', '#64748b'];
-                
-                for(let i=0; i<particleCount; i++) {
-                    particles.push({
-                        x: Math.random() * width,
-                        y: Math.random() * height,
-                        vx: (Math.random() - 0.5) * 2.5, // High agility spider movement
-                        vy: (Math.random() - 0.5) * 2.5,
-                        radius: Math.random() * 2.5 + 1,
-                        color: colors[Math.floor(Math.random() * colors.length)]
-                    });
+                class Neuron {
+                    constructor() {
+                        this.x = Math.random() * width;
+                        this.y = Math.random() * height;
+                        this.vx = (Math.random() - 0.5) * 0.8;
+                        this.vy = (Math.random() - 0.5) * 0.8;
+                        this.radius = Math.random() * 2.5 + 1;
+                        this.firing = 0; // 0 to 1
+                        this.pulseSpeed = 0.02 + Math.random() * 0.03;
+                    }
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        if(this.x < 0 || this.x > width) this.vx *= -1;
+                        if(this.y < 0 || this.y > height) this.vy *= -1;
+                        
+                        if(Math.random() < 0.01 && this.firing === 0) {
+                            this.firing = 1;
+                        }
+                        if(this.firing > 0) {
+                            this.firing -= this.pulseSpeed;
+                            if(this.firing < 0) this.firing = 0;
+                        }
+                    }
+                    draw() {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius + (this.firing * 3), 0, Math.PI * 2);
+                        const bloom = this.firing * 15;
+                        ctx.shadowBlur = 5 + bloom;
+                        ctx.shadowColor = this.firing > 0 ? `rgba(96, 165, 250, ${0.5 + this.firing})` : 'rgba(59, 130, 246, 0.3)';
+                        ctx.fillStyle = this.firing > 0 ? `rgba(240, 249, 255, ${0.8 + this.firing * 0.2})` : 'rgba(59, 130, 246, 0.6)';
+                        ctx.fill();
+                    }
                 }
+
+                const neurons = [];
+                const neuronCount = 85; 
+                for(let i=0; i<neuronCount; i++) neurons.push(new Neuron());
                 
                 function animate() {
-                    ctx.fillStyle = '#050505'; // Metallic pitch black 
-                    ctx.fillRect(0, 0, width, height);
+                    ctx.clearRect(0, 0, width, height);
                     
-                    for(let i=0; i<particleCount; i++) {
-                        let p = particles[i];
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        
-                        if(p.x < 0 || p.x > width) p.vx *= -1;
-                        if(p.y < 0 || p.y > height) p.vy *= -1;
-                        
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                        ctx.fillStyle = p.color; 
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = p.color;
-                        ctx.fill();
-                        
-                        for(let j=i+1; j<particleCount; j++) {
-                            let p2 = particles[j];
-                            let dx = p.x - p2.x;
-                            let dy = p.y - p2.y;
-                            let dist = Math.sqrt(dx*dx + dy*dy);
+                    // Draw connections first
+                    for(let i=0; i<neuronCount; i++) {
+                        for(let j=i+1; j<neuronCount; j++) {
+                            const n1 = neurons[i];
+                            const n2 = neurons[j];
+                            const dx = n1.x - n2.x;
+                            const dy = n1.y - n2.y;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
                             
-                            if(dist < 140) {
+                            if(dist < 180) {
                                 ctx.beginPath();
-                                ctx.moveTo(p.x, p.y);
-                                ctx.lineTo(p2.x, p2.y); 
+                                ctx.moveTo(n1.x, n1.y);
+                                ctx.lineTo(n2.x, n2.y);
                                 
-                                let alpha = (1 - (dist / 140)) * 0.5;
-                                ctx.globalAlpha = alpha;
-                                ctx.strokeStyle = '#e2e8f0'; // Web-Slinger Silver/White connections
-                                ctx.lineWidth = 1.2;
-                                ctx.shadowBlur = 0; // Performance
+                                const alpha = (1 - (dist / 180)) * 0.15;
+                                const isFiring = (n1.firing > 0.5 || n2.firing > 0.5);
+                                
+                                if(isFiring) {
+                                    ctx.strokeStyle = `rgba(96, 165, 250, ${alpha * 4})`;
+                                    ctx.lineWidth = 1.8;
+                                    ctx.shadowBlur = 10;
+                                    ctx.shadowColor = '#60A5FA';
+                                } else {
+                                    ctx.strokeStyle = `rgba(148, 163, 184, ${alpha})`;
+                                    ctx.lineWidth = 0.8;
+                                    ctx.shadowBlur = 0;
+                                }
                                 ctx.stroke();
-                                ctx.globalAlpha = 1.0;
                             }
                         }
                     }
+                    
+                    neurons.forEach(n => {
+                        n.update();
+                        n.draw();
+                    });
+                    
                     parentDoc.defaultView.requestAnimationFrame(animate);
                 }
                 animate();
-                
-                // Cleanup old light background
-                const oldLight = parentDoc.getElementById('light-comic-bg');
-                if(oldLight) oldLight.remove();
-            }
         </script>
     """, height=0, width=0)
 
 def section_header(title, subtitle):
     st.markdown(f"""
-        <div style="margin-bottom:30px; position: relative; z-index: 10; transform: skewX(-2deg);">
-            <div style="display:inline-block; border-bottom: 2px solid #3B82F6; padding-bottom: 5px; padding-right: 20px; box-shadow: 0 5px 15px rgba(220,38,38,0.2); background: linear-gradient(90deg, #111111, transparent); padding-left: 15px; border-left: 5px solid #DC2626; max-width: 100%;">
-                <h2 style="margin:0; font-size:32px; line-height: 1.1; color: #FFFFFF; text-shadow: 2px 2px 0px #000; word-wrap: break-word;">{title}</h2>
+        <div style="margin-bottom:24px; position: relative; z-index: 10;">
+            <div style="display:inline-block; border-bottom: 2px solid #3B82F6; padding-bottom: 8px; max-width: 100%;">
+                <h2 style="margin:0; font-size:28px; line-height: 1.2; color: #F8FAFC; word-wrap: break-word; font-weight: 700;">{title}</h2>
             </div>
-            <p style="color:#94a3b8; font-size:15px; font-weight:700; margin-top:12px; margin-left:15px; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing: 1.5px; word-wrap: break-word;">{subtitle}</p>
+            <p style="color:#94a3b8; font-size:14px; font-weight:500; margin-top:10px; font-family:'Inter', sans-serif; letter-spacing: 0.5px; word-wrap: break-word;">{subtitle}</p>
         </div>
     """, unsafe_allow_html=True)
 
 def gradient_header(title, sub, icon=""):
     st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #151515 0%, #050505 100%); border: 2px solid #222222; border-left: 5px solid #DC2626; padding:30px; 
-            margin-bottom: 35px; box-shadow: 0 10px 30px rgba(0,0,0,0.9); position:relative; overflow: hidden; transform: skewX(-1deg); border-radius: 6px;">
-            <div style="position: absolute; right: -10px; top: -10px; opacity: 0.05; font-size: 150px; font-family: 'Bebas Neue'; transform: rotate(15deg); color: #DC2626;">
+        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid #3B82F6; padding:32px; 
+            margin-bottom: 35px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; overflow: hidden; border-radius: 12px;">
+            <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.05; font-size: 120px; color: #3B82F6;">
                 {icon}
             </div>
-            <div style="display: flex; align-items: center; gap: 20px; position: relative; z-index: 2; flex-wrap: wrap;">
-                <div style="font-size: 60px; filter: drop-shadow(0 0 15px rgba(220,38,38,0.5));">{icon}</div>
+            <div style="display: flex; align-items: center; gap: 24px; position: relative; z-index: 2; flex-wrap: wrap;">
+                <div style="font-size: 48px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">{icon}</div>
                 <div style="flex:1; min-width: 200px;">
-                    <h1 style="font-size: 46px; margin: 0; line-height:1.1; color: #FFFFFF; text-shadow: 2px 2px 0px #000000, 0 0 10px rgba(255,255,255,0.2); word-wrap: break-word;">{title}</h1>
-                    <p style="color:#FFFFFF; font-size:18px; font-family:'Inter', sans-serif; font-weight: 800; letter-spacing:2px; margin-top:12px; text-transform: uppercase; text-shadow: none; background: #DC2626; display: inline-block; padding: 4px 12px; border-radius: 2px; box-shadow: 0 4px 10px rgba(220,38,38,0.4); word-wrap: break-word;">
+                    <h1 style="font-size: 34px; margin: 0; line-height:1.2; color: #FFFFFF; font-weight: 700; word-wrap: break-word;">{title}</h1>
+                    <p style="color:#DBEAFE; font-size:15px; font-family:'Inter', sans-serif; font-weight: 500; margin-top:8px; display: inline-block; background: rgba(59, 130, 246, 0.15); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.25); word-wrap: break-word;">
                         {sub}
                     </p>
                 </div>
@@ -213,41 +249,44 @@ def gradient_header(title, sub, icon=""):
         </div>
     """, unsafe_allow_html=True)
 
-def speedometer(val, max_val, title, color="#DC2626", height=200):
+def speedometer(val, max_val, title, color="#3B82F6", height=200):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = val,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title.upper(), 'font': {'size': 20, 'color': '#FFFFFF', 'family': 'Bebas Neue'}},
+        title = {'text': title.upper(), 'font': {'size': 14, 'color': '#94A3B8', 'family': 'Inter'}},
         gauge = {
-            'axis': {'range': [None, max_val], 'tickwidth': 2, 'tickcolor': "#475569"},
-            'bar': {'color': color, 'thickness': 0.8},
-            'bgcolor': "rgba(255,255,255,0.05)",
-            'borderwidth': 2,
+            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "#475569"},
+            'bar': {'color': color, 'thickness': 0.75},
+            'bgcolor': "rgba(15,23,42,0.5)",
+            'borderwidth': 1,
             'bordercolor': "#334155",
-            'steps': [{'range': [0, max_val], 'color': 'rgba(220, 38, 38, 0.1)'}]
+            'steps': [{'range': [0, max_val], 'color': 'rgba(59, 130, 246, 0.03)'}]
         }
     ))
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#FFFFFF", 'family': "Bebas Neue"}, height=height, margin=dict(l=10,r=10,t=30,b=10))
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': "#F8FAFC", 'family': "Montserrat"}, height=height, margin=dict(l=10,r=10,t=30,b=10))
     return fig
 
 def render_log(placeholder, logs):
-    log_html = "".join([f'<div style="color: #cbd5e1; font-family: \'JetBrains Mono\', monospace; font-size: 14px; margin-bottom: 6px; border-bottom: 1px dashed #334155; padding-bottom:4px; word-wrap: break-word;">'
-                        f'<span style="color: #DC2626; font-weight: bold; text-shadow: 0 0 5px rgba(220,38,38,0.5);">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
+    log_html = "".join([f'<div style="color: #94A3B8; font-family: \'JetBrains Mono\', monospace; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px; word-wrap: break-word;">'
+                        f'<span style="color: #3B82F6; font-weight: 500;">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
     placeholder.markdown(f"""
-        <div style="background: linear-gradient(145deg, #111111, #050505); border: 2px solid #1f2228; border-top: 3px solid #DC2626; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.9); position: relative; border-radius: 4px;">
-            <div style="font-family: 'Bebas Neue', cursive; font-size: 24px; color: #FFFFFF; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; display: inline-block; background: transparent; padding: 0px; font-weight: 700; text-shadow: 0 0 10px #DC2626;">SPIDER-SUIT UPLINK</div>
-            {log_html if logs else '<div style="color: #475569; font-family: \'JetBrains Mono\', monospace;">AWAITING SYSTEM BOOT...</div>'}
+        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-top: 3px solid #3B82F6; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position: relative; border-radius: 8px;">
+            <div style="font-family: 'Montserrat', sans-serif; font-size: 16px; color: #F8FAFC; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981;"></div>
+                SYSTEM STATUS LOG
+            </div>
+            {log_html if logs else '<div style="color: #64748B; font-family: \'JetBrains Mono\', monospace; font-size: 13px;">AWAITING SYSTEM BOOT...</div>'}
         </div>
     """, unsafe_allow_html=True)
 
 def render_nlp_insight(text, label, clr="#3B82F6"):
     st.markdown(f"""
-        <div style="background: linear-gradient(145deg, #111111, #050505); border: 2px solid #1f2228; border-left: 6px solid {clr}; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.9); position:relative; border-radius: 4px;">
-            <div style="font-family:'Bebas Neue', cursive; font-size:28px; color:#FFFFFF; letter-spacing: 2px; margin-bottom:12px; text-shadow: 0 0 15px rgba(59,130,246,0.6); word-wrap: break-word;">
+        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {clr}; padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; border-radius: 8px;">
+            <div style="font-family:'Montserrat', sans-serif; font-size:18px; color:#F8FAFC; font-weight: 600; margin-bottom:10px; word-wrap: break-word;">
                 {label}
             </div>
-            <div style="font-size:15px; color:#e2e8f0; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 400; background: rgba(0,0,0,0.5); padding: 15px; border: 1px solid #334155; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); word-wrap: break-word; border-radius: 2px;">
+            <div style="font-size:14px; color:#CBD5E1; font-family:'Inter', sans-serif; line-height: 1.6; font-weight: 400; background: rgba(0,0,0,0.15); padding: 16px; border: 1px solid rgba(255,255,255,0.05); word-wrap: break-word; border-radius: 6px;">
                 {text}
             </div>
         </div>

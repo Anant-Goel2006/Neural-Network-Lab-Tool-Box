@@ -69,7 +69,7 @@ def backward_propagation_page():
     weights = make_weights(n_in, hid_sz) # Fresh random init
 
     st.divider()
-    if st.button("🚀 Start Live Backprop Training", type="primary", use_container_width=True):
+    if st.button("🚀 Start Live Backprop Training", type="primary", width="stretch"):
         master_dashboard = st.empty()
         
         losses = []
@@ -118,8 +118,8 @@ def backward_propagation_page():
                 # Restore Gauges
                 gA, gB = st.columns(2)
                 from utils.styles import speedometer
-                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#EF4444", height=200), use_container_width=True, theme=None, key=f"bp_gL_{ep}")
-                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#3B82F6", height=200), use_container_width=True, theme=None, key=f"bp_gA_{ep}")
+                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#EF4444", height=200), width="stretch", theme=None, key=f"bp_gL_{ep}")
+                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#3B82F6", height=200), width="stretch", theme=None, key=f"bp_gA_{ep}")
                 
                 # Double graph: Network Architecture (Live Vals) + Trajectories
                 diag_vals = [Xv] + [As[i+1].flatten().tolist() for i in range(len(sizes)-2)] + [[y_pred]]
@@ -132,13 +132,13 @@ def backward_propagation_page():
                 fig2.add_hline(y=0, line=dict(color="#333", width=1))
                 fig2.update_layout(title_text=f"Loss & Gradient Flow (Epoch {ep})", 
                                    **plotly_layout(height=350, margin=dict(l=40,r=40,t=40,b=40),
-                                                   title=dict(font=dict(family="Bangers", size=24))))
+                                                   title=dict(font=dict(family="Montserrat", size=24))))
                 fig2.update_xaxes(showgrid=True, gridcolor="#DDD", zerolinecolor="#555")
                 fig2.update_yaxes(showgrid=True, gridcolor="#DDD", secondary_y=False)
                 
                 cA, cB = st.columns(2)
-                cA.plotly_chart(fig1, use_container_width=True, theme=None, key=f"bp_net_live_{ep}")
-                cB.plotly_chart(fig2, use_container_width=True, theme=None, key=f"bp_line_live_{ep}")
+                cA.plotly_chart(fig1, width="stretch", theme=None, key=f"bp_net_live_{ep}")
+                cB.plotly_chart(fig2, width="stretch", theme=None, key=f"bp_line_live_{ep}")
 
             if delay > 0: time.sleep(delay)
             if loss < 1e-5:
@@ -155,35 +155,36 @@ def backward_propagation_page():
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
-            <div style="background:#0f172a; border:5px solid #000; border-top: 15px solid #3B82F6; padding:50px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; transform: rotate(1deg);">
-                <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff1a 2px, transparent 0); background-size: 10px 10px; opacity: 0.5;"></div>
-                <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#FACC15; letter-spacing: 2px; position:relative; z-index:2;">// NETWORK_CONVERGENCE_PROBE</div>
-                <div style="font-size:80px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 25px 0; line-height:1; text-shadow: 4px 4px 0px #000; position:relative; z-index:2;">
+            <div class="premium-card fade-in" style="text-align:center; border-top: 5px solid #3B82F6; padding:60px 40px;">
+                <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing:3px; font-weight: 700; text-transform: uppercase;">Neural Convergence Scan</div>
+                <div style="font-size:72px; font-family:'Montserrat', sans-serif; font-weight: 800; color:#FFFFFF; margin: 30px 0; line-height:1; text-shadow: 0 0 30px rgba(59, 130, 246, 0.4);">
                     {acc*100:.2f}%
                 </div>
-                <div style="font-weight:700; font-family:'Luckiest Guy', cursive; background:#000; display:inline-block; padding:8px 16px; border:2px solid #FFF; color:#FACC15; text-transform:uppercase; letter-spacing: 2px; font-size:20px; position:relative; z-index:2;">
-                    STABILITY_RATING: <span style="color:#22C55E;">{'STABILIZED' if acc > 0.95 else 'ADAPTIVE'}</span>
+                <div style="font-weight:700; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.05); display:inline-block; padding:12px 24px; border-radius: 50px; border:1px solid rgba(255,255,255,0.1); color:#FACC15; text-transform:uppercase; letter-spacing: 2px; font-size:18px;">
+                    Stability Rating: <span style="color:#22C55E;">{'STABILIZED' if acc > 0.95 else 'ADAPTIVE'}</span>
                 </div>
             </div>
+            """, unsafe_allow_html=True)
+            st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:20px; margin: 40px 0; flex-wrap:wrap;">
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #EF4444; transform: skewX(-2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// TRAINING_EPOCH</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{ep}/{max_ep}</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #EF4444;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Training Epoch</div>
+                    <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{ep}/{max_ep}</div>
                 </div>
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #3B82F6; transform: skewX(2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// RESIDUAL_ERROR</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{loss:.5f}</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #3B82F6;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Residual Error</div>
+                    <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{loss:.5f}</div>
                 </div>
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #22C55E; transform: skewX(-2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// MODEL_PRED_ŷ</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{y_pred:.5f}</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #22C55E;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Model Pred ŷ</div>
+                    <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{y_pred:.5f}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
             cA, cB = st.columns(2)
-            cA.plotly_chart(fig1, use_container_width=True, theme=None, key="bp_net_final")
-            cB.plotly_chart(fig2, use_container_width=True, theme=None, key="bp_line_final")
+            cA.plotly_chart(fig1, width="stretch", theme=None, key="bp_net_final")
+            cB.plotly_chart(fig2, width="stretch", theme=None, key="bp_line_final")
 
         # ── RESTORED POST-TRAINING MAPS ──
         st.divider()
@@ -193,7 +194,7 @@ def backward_propagation_page():
         
         with t1:
             df_g = pd.DataFrame({"Layer": labels[1:], "Avg |dL/dW|": grad_mags[-abs(n_hid)-1:] if len(grad_mags)>n_hid else grad_mags})
-            st.dataframe(df_g, hide_index=True, use_container_width=True)
+            st.dataframe(df_g, hide_index=True, width="stretch")
             st.info("If gradients fall below 0.1, the network may suffer from the Vanishing Gradient problem.")
         
         with t2:
@@ -203,4 +204,4 @@ def backward_propagation_page():
                 df_w = pd.DataFrame(W)
                 df_w["Bias"] = b.flatten()
                 st.caption(f"**{lbl}**")
-                st.dataframe(df_w, use_container_width=True)
+                st.dataframe(df_w, width="stretch")

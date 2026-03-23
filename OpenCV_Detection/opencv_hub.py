@@ -46,7 +46,7 @@ def process_video_realtime(video_file, callback_fn):
         processed_frame = callback_fn(frame)
         
         # Display
-        st_frame.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), use_container_width=True)
+        st_frame.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), width="stretch")
         time.sleep(0.01) # Small delay for UI stability
         
     cap.release()
@@ -82,11 +82,11 @@ def _attendance_module():
 
         if src == "📷 Photo":
             f = st.file_uploader("Upload Target Photo", type=["jpg", "png"], key="cv_att_photo")
-            if f and st.button("📸 Detect & Register", type="primary", use_container_width=True):
+            if f and st.button("📸 Detect & Register", type="primary", width="stretch"):
                 img_bytes = np.frombuffer(f.read(), np.uint8)
                 img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
                 processed = _att_cb(img)
-                st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
+                st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
 
         elif src == "📹 Video File":
              v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="cv_att_video")
@@ -127,8 +127,8 @@ def _attendance_module():
 
         if st.session_state.cv_attendance:
             df = pd.DataFrame(st.session_state.cv_attendance)
-            st.dataframe(df, hide_index=True, use_container_width=True)
-            if st.button("🗑 Clear Log", use_container_width=True):
+            st.dataframe(df, hide_index=True, width="stretch")
+            if st.button("🗑 Clear Log", width="stretch"):
                 st.session_state.cv_attendance=[]; st.rerun()
 
 
@@ -164,7 +164,7 @@ def _face_scan_module():
             img_bytes = np.frombuffer(f.read(), np.uint8)
             img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
             processed = _fs_cb(img)
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="fs_video")
         if v: process_video_realtime(v, _fs_cb)
@@ -233,7 +233,7 @@ def _vehicle_module():
             img_bytes = np.frombuffer(f.read(), np.uint8)
             img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
             processed = _vd_cb(img)
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="vd_video")
         if v: process_video_realtime(v, _vd_cb)
@@ -304,7 +304,7 @@ def _sign_module():
             img_bytes = np.frombuffer(f.read(), np.uint8)
             img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
             processed = _sd_cb(img)
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="sd_video")
         if v: process_video_realtime(v, _sd_cb)
@@ -502,7 +502,7 @@ def _palm_module():
             
             c1, c2 = st.columns([1, 1])
             with c1:
-                st.image(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Line Segmentation (Life: Red, Head: Green, Heart: Blue)")
+                st.image(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB), width="stretch", caption="Line Segmentation (Life: Red, Head: Green, Heart: Blue)")
             with c2:
                 st.success("### Palm Analysis")
                 st.markdown(f"**Dominant Line:** {classification['dominant_line']} ({classification['confidence']:.1%})")
@@ -562,15 +562,20 @@ def opencv_detection_page():
     for i,(icon,title,desc,key,clr) in enumerate(MODULES):
         active = st.session_state.get("cv_module", None) == key
         cols[i].markdown(f"""
-        <div style="background:#0f172a; border: 5px solid {'#FACC15' if active else '#000'};
-            padding:16px; text-align:center; box-shadow: {'10px 10px 0px #EF4444' if active else '6px 6px 0px #000'};
-            transition:all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); height: 160px; display: flex; flex-direction:column; justify-content:center;
-            margin-bottom: 20px; position:relative; transform: { 'scale(1.05) skewX(-2deg)' if active else 'none' }; z-index: { '10' if active else '1'};">
-            <div style="font-size:42px; margin-bottom:8px; filter: drop-shadow(3px 3px 0px #000);">{icon}</div>
-            <div style="font-family:'Bangers', cursive; font-size:22px; color:#FFFFFF; text-transform: uppercase; letter-spacing: 2px; text-shadow: 2px 2px 0px #000;">{title}</div>
-            <div style="font-size:13px; font-family:'Luckiest Guy', cursive; color:{ '#EF4444' if active else '#FACC15' }; margin-top:6px;">{desc}</div>
+        <div class="premium-card fade-in" style="
+            padding:16px; text-align:center; height: 180px; display: flex; flex-direction:column; justify-content:center;
+            border-top: 3px solid {'#FACC15' if active else 'rgba(255,255,255,0.1)'};
+            background: {'rgba(59, 130, 246, 0.15)' if active else 'rgba(15, 23, 42, 0.4)'};
+            transform: { 'scale(1.05)' if active else 'none' }; transition: all 0.3s ease;
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        ">
+            <div style="font-size:42px; margin-bottom:12px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">{icon}</div>
+            <div style="font-family:'Montserrat', sans-serif; font-size:18px; color:#FFFFFF; font-weight: 700; text-transform: uppercase;">{title}</div>
+            <div style="font-size:12px; font-family:'Inter', sans-serif; color: {'#FACC15' if active else '#94A3B8'}; font-weight: 500; margin-top:8px;">{desc}</div>
         </div>""", unsafe_allow_html=True)
-        if cols[i].button(f"GO {title}", key=f"cv_btn_{key}", use_container_width=True):
+        if cols[i].button(f"GO {title}", key=f"cv_btn_{key}", width="stretch"):
             st.session_state.cv_module=key; st.rerun()
 
     mod = st.session_state.get("cv_module", None)
@@ -586,10 +591,10 @@ def opencv_detection_page():
         <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); border: 8px solid #000; padding: 120px 40px; text-align: center; margin-top: 40px; box-shadow: 16px 16px 0px #EF4444; position:relative; overflow:hidden; transform: rotate(1deg);">
             <div style="position: absolute; top:-50%; left:-50%; width:200%; height:200%; background: radial-gradient(circle, #ffffff1a 2px, transparent 3px); background-size: 15px 15px; transform: rotate(15deg); opacity: 0.8; pointer-events:none;"></div>
             <div style="font-size: 120px; margin-bottom: 25px; filter: drop-shadow(6px 6px 0px #000); position:relative; z-index:2; animation: float 3s ease-in-out infinite;">🔬</div>
-            <h2 style="font-family: 'Bangers', cursive; font-size:64px; color: #FFFFFF; margin: 0; text-shadow: 4px 4px 0px #000, -2px -2px 0px #000; position:relative; z-index:2;">DASHBOARD_STBY // LINKING...</h2>
+            <h2 style="font-family: 'Montserrat', cursive; font-size:64px; color: #FFFFFF; margin: 0; text-shadow: 4px 4px 0px #000, -2px -2px 0px #000; position:relative; z-index:2;">DASHBOARD_STBY // LINKING...</h2>
             <div style="width: 150px; height: 8px; background: #FACC15; margin: 35px auto; border: 4px solid #000; position:relative; z-index:2;"></div>
             <div style="background:#000; display:inline-block; padding:10px 20px; border:3px solid #FFF; transform: skewX(-5deg); position:relative; z-index:2;">
-                <p style="font-family: 'Luckiest Guy', cursive; color: #10B981; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; margin:0;">
+                <p style="font-family: 'Inter', cursive; color: #10B981; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; margin:0;">
                     // AWAITING OPTIC COMMAND UPLINK
                 </p>
             </div>

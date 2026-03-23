@@ -28,10 +28,11 @@ p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon
 # ─────────────────────────────────────────────────────────────────────────────
 def sidebar_brand():
     st.sidebar.markdown("""
-    <div style="padding:30px 20px; text-align:center; background: #3b82f6; background-image: radial-gradient(#ffffff22 2px, transparent 0); background-size:8px 8px; border:5px solid #000; box-shadow: 8px 8px 0px #000; margin-bottom:30px; transform: rotate(-2deg);">
-        <div style="font-size:70px; margin-bottom:10px; filter: drop-shadow(4px 4px 0px #000); transform: scale(1.1);">🧠</div>
-        <div style="font-family:'Bangers', cursive; font-size:42px; color:#FFFFFF; letter-spacing:3px; text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; line-height:1;">NEUROLAB</div>
-        <div style="background: #000; color:#FACC15; padding: 5px 10px; display:inline-block; font-family:'Luckiest Guy', cursive; font-size:16px; margin-top:12px; text-transform:uppercase; letter-spacing:2px; border: 2px solid #FFF;">
+    <div style="padding: 24px 20px; text-align:center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-bottom: 2px solid #3B82F6; border-radius: 12px; margin-bottom: 30px; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; background: #3B82F6; opacity: 0.1; border-radius: 50%; filter: blur(25px);"></div>
+        <div style="font-size: 56px; margin-bottom: 12px; filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));">🧠</div>
+        <div style="font-family:'Montserrat', sans-serif; font-weight: 800; font-size:30px; color:#F8FAFC; letter-spacing: 2px; line-height:1; text-transform: uppercase;">NEUROLAB</div>
+        <div style="background: rgba(59, 130, 246, 0.1); color: #60A5FA; padding: 4px 12px; display: inline-block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 11px; margin-top: 12px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.2);">
             ULTIMATE EDITION
         </div>
     </div>
@@ -44,15 +45,19 @@ def home_page():
     inject_global_css()
 
     st.markdown("""
-    <div style="text-align:center; padding: 120px 40px; background: linear-gradient(135deg, #1e1b4b 0%, #be123c 100%); border: 8px solid #000; box-shadow: 20px 20px 0px #FACC15; margin-bottom: 70px; position: relative; overflow: hidden; transform: skewY(-1deg);">
-        <div style="position: absolute; top:-50%; left:-50%; width:200%; height:200%; background: radial-gradient(circle, #ffffff22 2px, transparent 3px); background-size: 15px 15px; transform: rotate(15deg); opacity: 0.8; pointer-events:none;"></div>
-        <div style="font-size: 140px; margin-bottom: 25px; filter: drop-shadow(8px 8px 0px #000); position:relative; z-index:2; animation: float 3s ease-in-out infinite;">🧠</div>
-        <h1 style="font-size: 130px; color: #FFFFFF; margin: 0; line-height: 0.85; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000; position:relative; z-index:2;">NEUROLAB</h1>
-        <div style="font-family: 'Luckiest Guy', cursive; font-size: 38px; color: #10B981; margin-top: 25px; text-transform: uppercase; letter-spacing: 4px; text-shadow: 3px 3px 0px #000; position:relative; z-index:2; background:#000; padding:10px 20px; display:inline-block; border: 4px solid #FFF; transform: rotate(2deg);">
+    <div class="fade-in" style="text-align:center; padding: 100px 40px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); margin-bottom: 60px; position: relative; overflow: hidden; backdrop-filter: blur(25px);">
+        <div style="position: absolute; top:0; left:0; right:0; height: 1px; background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);"></div>
+        <div style="font-size: 120px; margin-bottom: 30px; filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.4)); position:relative; z-index:2; animation: float 6s ease-in-out infinite;">🧠</div>
+        <h1 style="font-size: 90px; color: #F8FAFC; margin: 0; line-height: 1; font-weight: 800; font-family: 'Montserrat', sans-serif; letter-spacing: 4px; position:relative; z-index:2; text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);">NEUROLAB</h1>
+        <div style="font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; color: #60A5FA; margin-top: 30px; text-transform: uppercase; letter-spacing: 10px; position:relative; z-index:2; display:inline-block; background: rgba(59, 130, 246, 0.1); padding: 8px 20px; border-radius: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
             THE ULTIMATE NEURAL FRONTIER
         </div>
     </div>
-    <style>@keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-20px);} 100% {transform: translateY(0px);} }</style>
+    <style>
+        @keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-20px);} 100% {transform: translateY(0px);} }
+        .fade-in { animation: fadeIn 1.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
     """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
@@ -74,10 +79,10 @@ def home_page():
 
     # ── Section Divider ─────────────────────────────────────────────────────
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:30px 0;">
-        <div style="flex:1;height:2px;background:#27272A;"></div>
-        <span style="font-size:16px;color:#A1A1AA;letter-spacing:4px;
-            font-weight:500;text-transform:uppercase; font-family:'Luckiest Guy', cursive;">Lab Modules</span>
-        <div style="flex:1;height:2px;background:#27272A;"></div>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+        <span style="font-size:14px;color:#94A3B8;letter-spacing:4px;
+            font-weight:600;text-transform:uppercase; font-family:'Inter', sans-serif;">Lab Modules</span>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
     </div>""", unsafe_allow_html=True)
 
     # ── Module Cards ────────────────────────────────────────────────────────
@@ -105,21 +110,21 @@ def home_page():
 
     def _card(ic, title, sub, desc, tags, clr):
         tags_html = "".join([
-            f'<span style="background:#000; color:{clr};'
-            f'font-size:12px; padding:5px 12px; font-weight:700; font-family: \'Luckiest Guy\', cursive; border: 1px solid {clr};'
-            f'margin-right:8px; display:inline-block; margin-bottom:8px;">{t}</span>' for t in tags
+            f'<span style="background: rgba({int(clr[1:3], 16)}, {int(clr[3:5], 16)}, {int(clr[5:7], 16)}, 0.1); color: {clr};'
+            f'font-size: 11px; padding: 4px 10px; font-weight: 600; font-family: \'Inter\', sans-serif; border: 1px solid rgba({int(clr[1:3], 16)}, {int(clr[3:5], 16)}, {int(clr[5:7], 16)}, 0.2);'
+            f'border-radius: 20px; margin-right: 8px; display: inline-block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">{t}</span>' for t in tags
         ])
-        return f"""<div class="premium-card" style="min-height: 440px; display: flex; flex-direction: column;">
-            <div style="display:flex;align-items:center;gap:20px;margin-bottom:25px; border-bottom: 5px solid #000; padding-bottom:15px; position:relative;">
-                <div style="font-size:55px; filter: drop-shadow(4px 4px 0px #000); transform: rotate(-5deg); z-index:2;">{ic}</div>
-                <div style="flex:1; z-index:2;">
-                    <div style="font-size:32px; font-family:'Bangers', cursive; color:#FFFFFF; line-height:1.1; text-shadow: 2px 2px 0px #000;">{title}</div>
-                    <div style="font-size:16px; font-family:'Luckiest Guy', cursive; background:#000; padding:4px 8px; display:inline-block; color:{clr}; text-transform:uppercase; margin-top:8px; letter-spacing:1px; border:2px solid {clr}; transform: skewX(-5deg);">{sub}</div>
+        return f"""<div class="premium-card fade-in" style="min-height: 420px; display: flex; flex-direction: column;">
+            <div style="display:flex;align-items:flex-start;gap:20px;margin-bottom:24px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom:20px; position:relative;">
+                <div style="font-size:44px; filter: drop-shadow(0 0 15px rgba({int(clr[1:3], 16)}, {int(clr[3:5], 16)}, {int(clr[5:7], 16)}, 0.4)); z-index:2; background: rgba(15,23,42,0.8); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">{ic}</div>
+                <div style="flex:1; z-index:2; padding-top: 6px;">
+                    <div style="font-size:26px; font-family:'Montserrat', sans-serif; font-weight: 700; color:#F8FAFC; line-height:1.2; margin-bottom: 6px; letter-spacing: 0.5px;">{title}</div>
+                    <div style="font-size:13px; font-family:'Inter', sans-serif; font-weight: 600; color:{clr}; text-transform:uppercase; letter-spacing: 1.5px; opacity: 0.9;">{sub}</div>
                 </div>
-                <div style="position:absolute; top:0; right:0; width:40px; height:40px; background: {clr}; opacity:0.2; border-radius:50%; filter:blur(10px);"></div>
+                <div style="position:absolute; top: -15px; right: -15px; width:80px; height:80px; background: {clr}; opacity:0.12; border-radius:50%; filter:blur(30px);"></div>
             </div>
-            <div style="font-size:17px; color:#F1F5F9; line-height:1.4; font-family:'Inter', sans-serif; margin-bottom:30px; font-weight:500; flex-grow:1;">{desc}</div>
-            <div style="display:flex; flex-wrap:wrap; margin-bottom:10px;">{tags_html}</div>
+            <div style="font-size:15px; color:#CBD5E1; line-height:1.7; font-family:'Inter', sans-serif; margin-bottom:30px; font-weight:400; flex-grow:1;">{desc}</div>
+            <div style="display:flex; flex-wrap:wrap; margin-bottom:10px; gap: 8px;">{tags_html}</div>
         </div>"""
 
     # Row 1
@@ -129,7 +134,7 @@ def home_page():
         with r1[i]:
             st.markdown(_card(ic, title, sub, desc, tags, clr), unsafe_allow_html=True)
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            if st.button(f"Open {title} →", key=f"home_{i}", use_container_width=True, type="primary"):
+            if st.button(f"Open {title} →", key=f"home_{i}", width="stretch", type="primary"):
                 st.switch_page(page)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -141,15 +146,15 @@ def home_page():
         with r2[i]:
             st.markdown(_card(ic, title, sub, desc, tags, clr), unsafe_allow_html=True)
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            if st.button(f"Open {title} →", key=f"home_{3+i}", use_container_width=True, type="primary"):
+            if st.button(f"Open {title} →", key=f"home_{3+i}", width="stretch", type="primary"):
                 st.switch_page(page)
 
     # ── Tech Stack ──────────────────────────────────────────────────────────
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:40px 0 20px;">
-        <div style="flex:1;height:2px;background:#27272A;"></div>
-        <span style="font-size:12px;color:#A1A1AA;letter-spacing:3px;
-            font-weight:500;text-transform:uppercase; font-family:'Luckiest Guy', cursive;">Core Tech Stack</span>
-        <div style="flex:1;height:2px;background:#27272A;"></div>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+        <span style="font-size:14px;color:#94A3B8;letter-spacing:4px;
+            font-weight:600;text-transform:uppercase; font-family:'Inter', sans-serif;">Core Tech Stack</span>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
     </div>""", unsafe_allow_html=True)
 
     STACK = [("Streamlit","#FF4B4B"),("NumPy","#005BEA"),("Plotly","#ED1D24"),
@@ -162,8 +167,8 @@ def home_page():
         '</div>', unsafe_allow_html=True)
 
     st.markdown("""<div style="text-align:center;margin-top:50px;padding-bottom:30px;">
-        <div style="background:#000; display:inline-block; padding: 10px 20px; border: 4px solid #FACC15; box-shadow: 6px 6px 0px #EF4444; transform: skewX(-5deg);">
-            <span style="font-size:14px; color:#FFF; font-weight:700; font-family:'Luckiest Guy'; text-transform:uppercase; letter-spacing:0.1em;">
+        <div style="background: rgba(15, 23, 42, 0.4); display:inline-block; padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:13px; color:#64748B; font-weight:500; font-family:'Inter', sans-serif; letter-spacing:1px;">
                 NeuroLab Ultimate Suite © 2026 · Stable Release v5.0
             </span>
         </div>

@@ -82,7 +82,7 @@ def perceptron_page():
         if not ginfo["sep"]: st.warning("Not linearly separable (Will never reach 0 loss)")
     with c2:
         df_tt = pd.DataFrame(raw, columns=["X1","X2","Outputs"])
-        st.dataframe(df_tt, use_container_width=True, hide_index=True)
+        st.dataframe(df_tt, width="stretch", hide_index=True)
 
     st.divider()
     section_header("2. Hyperparameters", "Tuning controls")
@@ -91,7 +91,7 @@ def perceptron_page():
     max_ep = h2.slider("Max Epochs", 10, 500, 100)
     delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
 
-    if st.button("🚀 Start Live Training", type="primary", use_container_width=True):
+    if st.button("🚀 Start Live Training", type="primary", width="stretch"):
         master_dashboard = st.empty()
         
         w = np.random.uniform(-0.5, 0.5, 2)
@@ -123,10 +123,10 @@ def perceptron_page():
                 mx4.metric("Weights", f"w1:{w[0]:.2f} w2:{w[1]:.2f} b:{b:.2f}")
                 
                 from utils.styles import speedometer
-                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), use_container_width=True, theme=None, key=f"pct_gauge_{ep}")
+                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), width="stretch", theme=None, key=f"pct_gauge_{ep}")
                 
                 fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-                st.plotly_chart(fig, use_container_width=True, theme=None, key=f"pct_live_{ep}")
+                st.plotly_chart(fig, width="stretch", theme=None, key=f"pct_live_{ep}")
             
             if delay > 0: time.sleep(delay)
             if err == 0:
@@ -144,11 +144,12 @@ def perceptron_page():
             y_pred_m = 1 if z >= 0 else 0
             
             st.markdown(f"""
-            <div class="premium-card" style="text-align:center; border-bottom: 8px solid #EF4444;">
-                <div style="font-family:'Luckiest Guy', cursive; font-size:22px; color:#FACC15; letter-spacing:1px;">>>> PREDICTION_LOG <<<</div>
-                <div style="font-size:64px; color:{G if y_pred_m==1 else R}; font-family:'Bangers', cursive; text-shadow: 3px 3px 0px #000;">
-                    {'POSITIVE (1)' if y_pred_m==1 else 'NEGATIVE (0)'}
+            <div class="premium-card fade-in" style="text-align:center; border-top: 4px solid {G if y_pred_m==1 else R};">
+                <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing:2px; text-transform: uppercase; font-weight: 600;">Neural Prediction Result</div>
+                <div style="font-size:54px; color:{G if y_pred_m==1 else R}; font-family:'Montserrat', sans-serif; font-weight: 800; margin: 20px 0; text-shadow: 0 0 20px rgba({int((G if y_pred_m==1 else R)[1:3], 16)}, {int((G if y_pred_m==1 else R)[3:5], 16)}, {int((G if y_pred_m==1 else R)[5:7], 16)}, 0.3);">
+                    {'POSITIVE (+1)' if y_pred_m==1 else 'NEGATIVE (0)'}
                 </div>
+                <div style="font-size: 13px; color: #64748B; font-weight: 500;">Activation: {'Step (Heaviside)'}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -161,26 +162,28 @@ def perceptron_page():
             
             st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #EF4444; transform: skewX(-2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// MISSION_EPOCH</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{ep}/{max_ep}</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #60A5FA;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Current Epoch</div>
+                    <div style="color:#FFFFFF; font-size:38px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{ep}</div>
                 </div>
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #3B82F6; transform: skewX(2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// SIGNAL_LOSS</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{err:.2f}</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #EF4444;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Signal Loss</div>
+                    <div style="color:#FFFFFF; font-size:38px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{err:.2f}</div>
                 </div>
-                <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #22C55E; transform: skewX(-2deg);">
-                    <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// ACCURACY_RATING</div>
-                    <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{acc:.1f}%</div>
+                <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #10B981;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Accuracy</div>
+                    <div style="color:#FFFFFF; font-size:38px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{acc:.1f}%</div>
                 </div>
-                <div style="flex:1; min-width:200px; background:#1e1b4b; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #FACC15; transform: skewY(1deg);">
-                    <div style="color:#FACC15; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// SYNAPTIC_PULSE</div>
-                    <div style="color:#FFFFFF; font-size:18px; font-weight:600; font-family:'Roboto Mono', monospace; margin-top:16px;">w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}</div>
+                <div class="premium-card fade-in" style="flex:2; min-width:240px; padding:20px; text-align:center; border-top: 3px solid #FACC15;">
+                    <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Final Weights</div>
+                    <div style="color:#FFFFFF; font-size:16px; font-weight:600; font-family:'JetBrains Mono', monospace; margin-top:16px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
+                        w1:{w[0]:.2f} | w2:{w[1]:.2f} | b:{b:.2f}
+                    </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-            st.plotly_chart(fig, use_container_width=True, theme=None, key="pct_final_res")
+            st.plotly_chart(fig, width="stretch", theme=None, key="pct_final_res")
 
         # ── RESTORED POST-TRAINING ANALYTICS ──
         st.divider()
@@ -193,7 +196,7 @@ def perceptron_page():
             tp = int(np.sum((preds==1)&(y==1))); fp = int(np.sum((preds==1)&(y==0)))
             fn = int(np.sum((preds==0)&(y==1))); tn = int(np.sum((preds==0)&(y==0)))
             cmat = pd.DataFrame([[tp, fp], [fn, tn]], columns=["Pred 1", "Pred 0"], index=["Actual 1", "Actual 0"])
-            st.dataframe(cmat, use_container_width=True)
+            st.dataframe(cmat, width="stretch")
             prec = tp/(tp+fp) if (tp+fp) > 0 else 0; rec = tp/(tp+fn) if (tp+fn) > 0 else 0
             st.info(f"**Precision:** {prec:.2f} &nbsp;&nbsp;|&nbsp;&nbsp; **Recall:** {rec:.2f}")
             
@@ -204,9 +207,9 @@ def perceptron_page():
             fig_w.add_trace(go.Scatter(y=df_w["w2"], name="w2"))
             fig_w.add_trace(go.Scatter(y=df_w["bias"], name="bias", line=dict(dash="dot")))
             fig_w.update_layout(title="Weights across Epochs", height=300, margin=dict(t=40,b=20,l=20,r=20))
-            st.plotly_chart(fig_w, use_container_width=True, theme=None, key="pct_weights_traj")
+            st.plotly_chart(fig_w, width="stretch", theme=None, key="pct_weights_traj")
             
         with t3:
             z = X @ w + b
             df_dist = pd.DataFrame({"z_score": z, "Actual Class": y})
-            st.dataframe(df_dist, use_container_width=True, hide_index=True)
+            st.dataframe(df_dist, width="stretch", hide_index=True)

@@ -18,7 +18,7 @@ LAYER_COLS = ["#EF4444", "#3B82F6", "#FACC15", "#22C55E", "#A855F7", "#F97316", 
 PLOTLY_BASE = dict(
     paper_bgcolor="rgba(0,0,0,0)", 
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(color=TEXT, family="'Bangers', cursive"),
+    font=dict(color=TEXT, family="'Montserrat', cursive"),
     margin=dict(t=50, b=40, l=50, r=20)
 )
 

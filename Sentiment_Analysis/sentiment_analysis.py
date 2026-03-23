@@ -69,7 +69,7 @@ def _live_lstm_fig(losses, accs, ep, max_ep):
         line=dict(color="#3B82F6", width=3, dash="dot")), secondary_y=True)
         
     fig.update_layout(
-        title=dict(text=f"LSTM Training Curve — Epoch {ep}/{max_ep}", font=dict(family="Bangers", size=24)),
+        title=dict(text=f"LSTM Training Curve — Epoch {ep}/{max_ep}", font=dict(family="Montserrat", size=24)),
         **plotly_layout(height=350, margin=dict(t=50, b=20, l=40, r=40),
                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     )
@@ -119,7 +119,7 @@ def sentiment_analysis_page():
         epochs = c2.slider("Epochs", 5, 20, 10)
         lr = c3.selectbox("Learning Rate", [0.01, 0.005, 0.001], index=0)
         
-        if st.button("🚀 Initialize & Train LSTM Sequence Model", type="primary", use_container_width=True):
+        if st.button("🚀 Initialize & Train LSTM Sequence Model", type="primary", width="stretch"):
             master_ph = st.empty()
             with master_ph.container():
                 st.info("Generating contextual dataset & tokenizing...")
@@ -161,7 +161,7 @@ def sentiment_analysis_page():
                     m3.metric("Accuracy", f"{acc*100:.1f}%")
                     m4.metric("Vocab Size", len(tokenizer.word_index))
                     
-                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), use_container_width=True, theme=None, key=f"ls_live_{ep}")
+                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), width="stretch", theme=None, key=f"ls_live_{ep}")
                     
             # Save Model
             with master_ph.container():
@@ -176,7 +176,7 @@ def sentiment_analysis_page():
                 m1.metric("Final Epochs", epochs)
                 m2.metric("Final Loss", f"{err:.4f}")
                 m3.metric("Final Accuracy", f"{acc*100:.1f}%")
-                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), use_container_width=True, theme=None, key="ls_final_res")
+                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), width="stretch", theme=None, key="ls_final_res")
 
 
     # ──────────────────────────────────────────────────────
@@ -232,17 +232,17 @@ def sentiment_analysis_page():
                 classes = {0: ("Negative", "#EF4444", "😡"), 1: ("Positive", "#22C55E", "😊"), 2: ("Mixed", "#FACC15", "🤔")}
                 c_name, c_col, c_icon = classes[class_idx]
                 
-                # Comic Tech HUD styling
+                # Premium Global HUD Styling
                 st.markdown(f"""
-                <div style="background:#0f172a; border:5px solid #000; border-top: 15px solid {c_col}; padding:55px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; margin-bottom: 45px; transform: rotate(1deg);">
-                    <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff1a 2px, transparent 0); background-size: 10px 10px; opacity: 0.5;"></div>
-                    <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#FACC15; letter-spacing: 2px; position:relative; z-index:2;">// NEURAL_PATTERN_RECOGNITION</div>
-                    <div style="font-size:80px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 25px 0; line-height:1; text-shadow: 4px 4px 0px #000; position:relative; z-index:2;">
-                        {c_icon} {conf*100:.1f}% Confidence
+                <div class="premium-card fade-in" style="text-align:center; border-top: 5px solid {c_col}; padding:60px 40px;">
+                    <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing: 3px; font-weight: 700; text-transform: uppercase;">Neural Context Analysis</div>
+                    <div style="font-size:72px; font-family:'Montserrat', sans-serif; font-weight: 800; color:#FFFFFF; margin: 30px 0; line-height:1; text-shadow: 0 0 30px rgba({int(c_col[1:3], 16)}, {int(c_col[3:5], 16)}, {int(c_col[5:7], 16)}, 0.4);">
+                        {c_icon} {conf*100:.1f}%
                     </div>
-                    <div style="font-weight:700; font-family:'Luckiest Guy', cursive; background:#000; display:inline-block; padding:8px 16px; border:2px solid #FFF; color:{c_col}; text-transform:uppercase; letter-spacing: 2px; font-size:20px; position:relative; z-index:2;">
-                        RECOGNITION_TYPE: <span style="color:#FFFFFF;">{c_name}</span>
+                    <div style="font-weight:700; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.05); display:inline-block; padding:12px 24px; border-radius: 50px; border:1px solid rgba(255,255,255,0.1); color:{c_col}; text-transform:uppercase; letter-spacing: 2px; font-size:18px;">
+                        Sentiment: <span style="color:#FFFFFF;">{c_name}</span>
                     </div>
+                    <div style="margin-top: 20px; color: #64748B; font-size: 13px; font-weight: 500;">Engine: TensorFlow LSTM Inference Node</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -252,16 +252,16 @@ def sentiment_analysis_page():
                     y=preds,
                     marker=dict(color=["#EF4444", "#22C55E", "#3B82F6"], line=dict(color="#000000", width=3)),
                     text=[f"{p*100:.1f}%" for p in preds], textposition="outside",
-                    textfont=dict(color="#FFFFFF", family="Luckiest Guy", size=16)
+                    textfont=dict(color="#FFFFFF", family="Inter", size=16)
                 ))
                 fig.update_layout(
-                    title=dict(text="LSTM Softmax Output Probabilities", font=dict(family="Bangers", size=24)),
+                    title=dict(text="LSTM Softmax Output Probabilities", font=dict(family="Montserrat", size=24)),
                     **plotly_layout(
                         yaxis=dict(range=[0, min(1.2, max(preds)*1.4)]),
                         height=300, margin=dict(t=50, b=20, l=20, r=20)
                     )
                 )
-                st.plotly_chart(fig, use_container_width=True, theme=None)
+                st.plotly_chart(fig, width="stretch", theme=None)
 
             except Exception as e:
                 st.error(f"Error during LSTM execution: {str(e)}")

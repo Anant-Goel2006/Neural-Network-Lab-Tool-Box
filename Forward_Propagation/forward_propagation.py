@@ -27,7 +27,7 @@ def _act_curve_fig(act_name):
     fig.add_hline(y=0, line=dict(color=MUTED, width=0.5))
     fig.add_vline(x=0, line=dict(color=MUTED, width=0.5))
     fig.update_layout(
-        title=dict(text=f"{act_name} Activation", font=dict(color=TEXT, family="Bangers", size=24)),
+        title=dict(text=f"{act_name} Activation", font=dict(color=TEXT, family="Montserrat", size=24)),
         legend=dict(bgcolor="rgba(0,0,0,0)", x=0.01, y=0.99),
         **plotly_layout(
             xaxis=dict(gridcolor=GRID, color=MUTED, range=[-6,6]),
@@ -99,7 +99,7 @@ def forward_propagation_page():
     st.markdown(arch)
 
     if len(sizes) <= MAX_LAYERS:
-        st.plotly_chart(draw_network(sizes, labels), use_container_width=True, theme=None)
+        st.plotly_chart(draw_network(sizes, labels), width="stretch", theme=None)
 
     st.divider()
     section_header("Inputs & Target", "Set input values and target output")
@@ -118,7 +118,7 @@ def forward_propagation_page():
         st.caption(f"f(z) = `{ACTS[act_all]['eq']}`")
         h_acts = [act_all] * n_hid
         with st.expander("📈 Activation curve"):
-            st.plotly_chart(_act_curve_fig(act_all), use_container_width=True, theme=None)
+            st.plotly_chart(_act_curve_fig(act_all), width="stretch", theme=None)
     else:
         h_acts = []
         ac = st.columns(min(n_hid, 5))
@@ -146,7 +146,7 @@ def forward_propagation_page():
                     index=[f"n{j+1}" for j in range(W.shape[0])])
                 df["bias"] = b_w.flatten()
                 st.caption(f"**{lbl}** W{W.shape}")
-                st.dataframe(df.round(4), use_container_width=True)
+                st.dataframe(df.round(4), width="stretch")
     else:
         wm = []; sz = n_in
         for li, h in enumerate(hid_sz):
@@ -175,13 +175,13 @@ def forward_propagation_page():
     st.divider()
     bc, rc = st.columns([4,1])
     with rc:
-        if st.button("Reset", use_container_width=True):
+        if st.button("Reset", width="stretch"):
             for k in [k for k in st.session_state if k.startswith("fp_")]: del st.session_state[k]
             st.rerun()
     log_ph = st.expander("📋 Computation Log", expanded=False).empty()
 
     with bc:
-        run_btn = st.button("▶ Run Forward Pass", type="primary", use_container_width=True)
+        run_btn = st.button("▶ Run Forward Pass", type="primary", width="stretch")
 
     if run_btn:
         Zs, As = forward_pass(X, weights, h_acts, o_act)
@@ -224,21 +224,21 @@ def forward_propagation_page():
 
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #EF4444; transform: skewX(-2deg);">
-            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// COMP_OUTPUT_ŷ</div>
-            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{y_pred:.6f}</div>
+        <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #EF4444;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Network Output ŷ</div>
+            <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{y_pred:.6f}</div>
         </div>
-        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #3B82F6; transform: skewX(2deg);">
-            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// TARGET_SIGNAL_y</div>
-            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{st.session_state.fp_y_true:.4f}</div>
+        <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #3B82F6;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Target Signal y</div>
+            <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{st.session_state.fp_y_true:.4f}</div>
         </div>
-        <div style="flex:1; min-width:180px; background:#0f172a; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #FACC15; transform: skewX(-2deg);">
-            <div style="color:#FFF; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// ERROR_FUNCTION</div>
-            <div style="color:#FFFFFF; font-size:48px; font-weight:700; font-family:'Bangers', cursive; margin-top:10px; text-shadow: 2px 2px 0px #000;">{loss:.6f}</div>
+        <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #FACC15;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Current Loss</div>
+            <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{loss:.6f}</div>
         </div>
-        <div style="flex:1; min-width:200px; background:#1e1b4b; border:5px solid #000; padding:25px; text-align:center; box-shadow: 10px 10px 0px #A855F7; transform: skewY(1deg);">
-            <div style="color:#FACC15; font-size:14px; font-weight:700; font-family:'Luckiest Guy', cursive; letter-spacing:2px;">// SIGNAL_DELTA_Δ</div>
-            <div style="color:#FFFFFF; font-size:28px; font-weight:700; font-family:'Roboto Mono', monospace; margin-top:18px; text-shadow: 2px 2px 0px #000;">{y_pred - st.session_state.fp_y_true:+.4f}</div>
+        <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #A855F7;">
+            <div style="color:#94A3B8; font-size:12px; font-weight:700; font-family:'Inter', sans-serif; letter-spacing:2px; text-transform: uppercase;">Signal Delta Δ</div>
+            <div style="color:#FFFFFF; font-size:32px; font-weight:800; font-family:'Montserrat', sans-serif; margin-top:10px;">{y_pred - st.session_state.fp_y_true:+.4f}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -246,8 +246,8 @@ def forward_propagation_page():
     # Gauges restored
     g1, g2 = st.columns(2)
     from utils.styles import speedometer
-    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#3B82F6", height=250), use_container_width=True, theme=None, key="fp_g1")
-    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#EF4444", height=250), use_container_width=True, theme=None, key="fp_g2")
+    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#3B82F6", height=250), width="stretch", theme=None, key="fp_g1")
+    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#EF4444", height=250), width="stretch", theme=None, key="fp_g2")
 
     # Gauges removed for cleaner layout as requested.
 
@@ -257,14 +257,13 @@ def forward_propagation_page():
     diff = abs(y_pred - st.session_state.fp_y_true)
     status = "SUCCESS" if diff < 0.05 else "ADJUSTING"
     st.markdown(f"""
-    <div style="background:#0f172a; border:5px solid #000; border-top: 15px solid #3B82F6; padding:50px 40px; box-shadow:12px 12px 0px #000; text-align:center; word-wrap:break-word; position:relative; overflow:hidden; transform: rotate(-1deg);">
-        <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: radial-gradient(#ffffff1a 2px, transparent 0); background-size: 10px 10px; opacity: 0.5;"></div>
-        <div style="font-family:'Luckiest Guy', cursive; font-size:20px; color:#FACC15; letter-spacing:2px; position:relative; z-index:2;">// DATA_STABILITY_SCAN</div>
-        <div style="font-size:80px; font-family:'Bangers', cursive; color:#FFFFFF; margin: 25px 0; line-height:1; text-shadow: 4px 4px 0px #000; position:relative; z-index:2;">
+    <div class="premium-card fade-in" style="text-align:center; border-top: 5px solid #3B82F6; padding:60px 40px;">
+        <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing:3px; font-weight: 700; text-transform: uppercase;">Signal Stability Scan</div>
+        <div style="font-size:72px; font-family:'Montserrat', sans-serif; font-weight: 800; color:#FFFFFF; margin: 30px 0; line-height:1; text-shadow: 0 0 30px rgba(59, 130, 246, 0.4);">
             {100 - (diff*100):.1f}% MATCH
         </div>
-        <div style="font-weight:700; font-family:'Luckiest Guy', cursive; background:#000; display:inline-block; padding:8px 16px; border:2px solid #FFF; color:#FACC15; text-transform:uppercase; letter-spacing:2px; font-size:20px; position:relative; z-index:2;">
-            MISSION_STATUS: <span style="color:#EF4444;">{status}</span>
+        <div style="font-weight:700; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.05); display:inline-block; padding:12px 24px; border-radius: 50px; border:1px solid rgba(255,255,255,0.1); color:#FACC15; text-transform:uppercase; letter-spacing: 2px; font-size:18px;">
+            Inference Status: <span style="color:#EF4444;">{status}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -274,11 +273,11 @@ def forward_propagation_page():
         [As[i+1].flatten().tolist() for i in range(len(s_sizes)-2)] + [[y_pred]]
     if len(s_sizes) <= MAX_LAYERS:
         st.plotly_chart(draw_network(s_sizes, s_lbl, vals=diag_vals),
-            use_container_width=True)
+            width="stretch")
 
     # Activation Heatmap
     heat = _activation_heatmap(As, s_lbl)
-    if heat: st.plotly_chart(heat, use_container_width=True, theme=None)
+    if heat: st.plotly_chart(heat, width="stretch", theme=None)
 
     # Layer tabs
     tabs = st.tabs([f"L{i} — {l}" for i, l in enumerate(s_lbl[1:], 1)] + ["📊 Loss Analysis"])
@@ -310,4 +309,4 @@ def forward_propagation_page():
         fig_b.update_layout(barmode="group",
             title=dict(text="Prediction vs Target", font=dict(color=TEXT, family="Inter", size=16)),
             **plotly_layout())
-        c1.plotly_chart(fig_b, use_container_width=True, theme=None)
+        c1.plotly_chart(fig_b, width="stretch", theme=None)
