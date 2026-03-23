@@ -55,10 +55,11 @@ def backward_propagation_page():
 
     st.divider()
     section_header("3. Hyperparameters & Activations", "Configure training rules")
-    h1, h2, h3 = st.columns(3)
-    lr = h1.number_input("Learning rate η", 0.001, 2.0, 0.1, 0.01)
-    max_ep = h2.slider("Training Epochs", 10, 500, 100)
-    delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
+    with st.container(border=True):
+        h1, h2, h3 = st.columns(3)
+        lr = h1.number_input("Learning rate η", 0.001, 2.0, 0.1, 0.01)
+        max_ep = h2.slider("Training Epochs", 10, 500, 100)
+        delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
 
     a1, a2, a3 = st.columns(3)
     act_all = a1.selectbox("Hidden Activation", list(ACTS.keys()), index=0)

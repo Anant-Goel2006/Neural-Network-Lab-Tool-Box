@@ -54,54 +54,39 @@ def inject_global_css():
             background: rgba(15, 23, 42, 0.6);
         }
 
-        h1, h2, h3 {
-            font-family: 'Montserrat', sans-serif !important;
-            color: #F8FAFC !important;
-            letter-spacing: 0.5px !important;
-            font-weight: 700 !important;
+        /* ──── CLEAN GLASS CARDS (Native) ──── */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background: rgba(15, 23, 42, 0.45) !important;
+            backdrop-filter: blur(10px) saturate(160%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 16px !important;
+            padding: 24px !important;
+            margin-bottom: 24px !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+            position: relative;
+        }
+        
+        [data-testid="stVerticalBlockBorderWrapper"]::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6, #3B82F6);
+            background-size: 200% 100%;
+            animation: moveGradient 4s linear infinite;
+            border-radius: 16px 16px 0 0;
+            z-index: 10;
         }
 
-        /* ──── GLOWING BUTTONS ──── */
-        .stButton > button {
-            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important;
-            border: none !important;
-            border-radius: 10px !important;
-            color: #ffffff !important;
-            font-family: 'Montserrat', sans-serif !important;
-            font-weight: 700 !important;
-            font-size: 15px !important;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4) !important;
-            padding: 12px 28px !important;
-            transition: all 0.3s ease !important;
-            letter-spacing: 1px !important;
-            text-transform: uppercase !important;
-        }
-        .stButton > button:hover {
-            transform: translateY(-3px) !important;
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6) !important;
-            background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%) !important;
-        }
-
-        /* ──── SIDEBAR ──── */
-        [data-testid="stSidebar"] {
-            background-color: rgba(7, 10, 15, 0.95) !important;
-            backdrop-filter: blur(25px) !important;
-            border-right: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
-        /* ──── CUSTOM SCROLLBAR ──── */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0F172A;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        .premium-card {
+            /* Keep for legacy manual HTML blocks in Hub/Dashboard */
+            background: rgba(15, 23, 42, 0.45) !important;
+            backdrop-filter: blur(12px) saturate(160%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 16px !important;
+            padding: 24px !important;
+            margin-bottom: 24px !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+            position: relative;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -139,19 +124,25 @@ def inject_global_css():
                     constructor() {
                         this.x = Math.random() * width;
                         this.y = Math.random() * height;
-                        this.vx = (Math.random() - 0.5) * 0.8;
-                        this.vy = (Math.random() - 0.5) * 0.8;
-                        this.radius = Math.random() * 2.5 + 1;
-                        this.firing = 0; // 0 to 1
-                        this.pulseSpeed = 0.02 + Math.random() * 0.03;
+                        this.vx = (Math.random() - 0.5) * 0.5;
+                        this.vy = (Math.random() - 0.5) * 0.5;
+                        this.radius = Math.random() * 2 + 1.5;
+                        this.firing = 0;
+                        this.pulseSpeed = 0.015 + Math.random() * 0.02;
+                        this.angle = Math.random() * Math.PI * 2;
+                        this.spin = (Math.random() - 0.5) * 0.02;
                     }
                     update() {
-                        this.x += this.vx;
-                        this.y += this.vy;
+                        // Organic drifting
+                        this.angle += this.spin;
+                        this.x += this.vx + Math.cos(this.angle) * 0.2;
+                        this.y += this.vy + Math.sin(this.angle) * 0.2;
+                        
                         if(this.x < 0 || this.x > width) this.vx *= -1;
                         if(this.y < 0 || this.y > height) this.vy *= -1;
                         
-                        if(Math.random() < 0.01 && this.firing === 0) {
+                        // Fire a pulse occasionally
+                        if(Math.random() < 0.008 && this.firing === 0) {
                             this.firing = 1;
                         }
                         if(this.firing > 0) {
@@ -160,54 +151,99 @@ def inject_global_css():
                         }
                     }
                     draw() {
+                        // Draw Dendrites (small organic tendrils)
                         ctx.beginPath();
-                        ctx.arc(this.x, this.y, this.radius + (this.firing * 3), 0, Math.PI * 2);
-                        const bloom = this.firing * 15;
-                        ctx.shadowBlur = 5 + bloom;
-                        ctx.shadowColor = this.firing > 0 ? `rgba(96, 165, 250, ${0.5 + this.firing})` : 'rgba(59, 130, 246, 0.3)';
-                        ctx.fillStyle = this.firing > 0 ? `rgba(240, 249, 255, ${0.8 + this.firing * 0.2})` : 'rgba(59, 130, 246, 0.6)';
+                        ctx.strokeStyle = `rgba(59, 130, 246, ${0.1 + this.firing * 0.2})`;
+                        ctx.lineWidth = 0.5;
+                        for(let i=0; i<6; i++) {
+                            const ang = (i / 6) * Math.PI * 2 + this.angle;
+                            ctx.moveTo(this.x, this.y);
+                            ctx.lineTo(this.x + Math.cos(ang) * 12, this.y + Math.sin(ang) * 12);
+                        }
+                        ctx.stroke();
+
+                        // Draw Nucleus
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius + (this.firing * 4), 0, Math.PI * 2);
+                        const bloom = this.firing * 20;
+                        ctx.shadowBlur = 8 + bloom;
+                        ctx.shadowColor = `rgba(96, 165, 250, ${0.4 + this.firing})`;
+                        ctx.fillStyle = this.firing > 0 ? `rgba(255, 255, 255, ${0.9})` : 'rgba(96, 165, 250, 0.7)';
                         ctx.fill();
                     }
                 }
 
                 const neurons = [];
-                const neuronCount = 85; 
+                const neuronCount = 60; // Optimized for organic feel
                 for(let i=0; i<neuronCount; i++) neurons.push(new Neuron());
                 
-                function animate() {
+                // Synaptic signals (signals traveling between neurons)
+                let signals = [];
+
+                let lastTime = 0;
+                function animate(time) {
+                    if (time - lastTime < 33) {
+                        parentDoc.defaultView.requestAnimationFrame(animate);
+                        return;
+                    }
+                    lastTime = time;
                     ctx.clearRect(0, 0, width, height);
                     
-                    // Draw connections first
+                    const maxDistSq = 200 * 200;
+                    
+                    // Update and Draw Connections & Signals
                     for(let i=0; i<neuronCount; i++) {
                         for(let j=i+1; j<neuronCount; j++) {
                             const n1 = neurons[i];
                             const n2 = neurons[j];
                             const dx = n1.x - n2.x;
                             const dy = n1.y - n2.y;
-                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            const distSq = dx*dx + dy*dy;
                             
-                            if(dist < 180) {
+                            if(distSq < maxDistSq) {
+                                const dist = Math.sqrt(distSq);
                                 ctx.beginPath();
                                 ctx.moveTo(n1.x, n1.y);
-                                ctx.lineTo(n2.x, n2.y);
                                 
-                                const alpha = (1 - (dist / 180)) * 0.15;
-                                const isFiring = (n1.firing > 0.5 || n2.firing > 0.5);
+                                // Organic curved axons
+                                const midX = (n1.x + n2.x) / 2 + Math.cos(n1.angle) * 10;
+                                const midY = (n1.y + n2.y) / 2 + Math.sin(n1.angle) * 10;
+                                ctx.quadraticCurveTo(midX, midY, n2.x, n2.y);
                                 
-                                if(isFiring) {
-                                    ctx.strokeStyle = `rgba(96, 165, 250, ${alpha * 4})`;
-                                    ctx.lineWidth = 1.8;
-                                    ctx.shadowBlur = 10;
-                                    ctx.shadowColor = '#60A5FA';
-                                } else {
-                                    ctx.strokeStyle = `rgba(148, 163, 184, ${alpha})`;
-                                    ctx.lineWidth = 0.8;
-                                    ctx.shadowBlur = 0;
-                                }
+                                const alpha = (1 - (dist / 200)) * 0.12;
+                                ctx.strokeStyle = `rgba(148, 163, 184, ${alpha})`;
+                                ctx.lineWidth = 0.6;
+                                ctx.shadowBlur = 0;
                                 ctx.stroke();
+
+                                // If n1 fires, create a synaptic signal traveling to n2
+                                if (n1.firing > 0.95 && Math.random() < 0.1) {
+                                    signals.push({
+                                        from: n1, to: n2, progress: 0, speed: 0.05 + Math.random() * 0.05
+                                    });
+                                }
                             }
                         }
                     }
+
+                    // Process and Draw Signals
+                    signals = signals.filter(s => {
+                        s.progress += s.speed;
+                        if (s.progress >= 1) {
+                            s.to.firing = Math.min(1, s.to.firing + 0.3); // Trigger receiver
+                            return false;
+                        }
+                        const px = s.from.x + (s.to.x - s.from.x) * s.progress;
+                        const py = s.from.y + (s.to.y - s.from.y) * s.progress;
+                        
+                        ctx.beginPath();
+                        ctx.arc(px, py, 2, 0, Math.PI * 2);
+                        ctx.fillStyle = "#60A5FA";
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = "#3B82F6";
+                        ctx.fill();
+                        return true;
+                    });
                     
                     neurons.forEach(n => {
                         n.update();
@@ -216,7 +252,7 @@ def inject_global_css():
                     
                     parentDoc.defaultView.requestAnimationFrame(animate);
                 }
-                animate();
+                parentDoc.defaultView.requestAnimationFrame(animate);
         </script>
     """, height=0, width=0)
 

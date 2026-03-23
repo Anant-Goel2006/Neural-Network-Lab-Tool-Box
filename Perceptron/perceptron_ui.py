@@ -72,24 +72,26 @@ def perceptron_page():
 
     st.divider()
     section_header("1. Dataset Selection", "Choose linearly separable constraints")
-    c1, c2 = st.columns([1,1])
-    with c1:
-        gate = st.selectbox("Logic Gate", list(GATES.keys()), index=0)
-        ginfo = GATES[gate]
-        raw = ginfo["data"]
-        X = np.array([[r[0],r[1]] for r in raw], dtype=float)
-        y = np.array([r[2] for r in raw], dtype=int)
-        if not ginfo["sep"]: st.warning("Not linearly separable (Will never reach 0 loss)")
-    with c2:
-        df_tt = pd.DataFrame(raw, columns=["X1","X2","Outputs"])
-        st.dataframe(df_tt, width="stretch", hide_index=True)
+    with st.container(border=True):
+        c1, c2 = st.columns([1,1])
+        with c1:
+            gate = st.selectbox("Logic Gate", list(GATES.keys()), index=0)
+            ginfo = GATES[gate]
+            raw = ginfo["data"]
+            X = np.array([[r[0],r[1]] for r in raw], dtype=float)
+            y = np.array([r[2] for r in raw], dtype=int)
+            if not ginfo["sep"]: st.warning("Not linearly separable (Will never reach 0 loss)")
+        with c2:
+            df_tt = pd.DataFrame(raw, columns=["X1","X2","Outputs"])
+            st.dataframe(df_tt, use_container_width=True, hide_index=True)
 
     st.divider()
     section_header("2. Hyperparameters", "Tuning controls")
-    h1, h2, h3 = st.columns(3)
-    lr = h1.number_input("Learning Rate (η)", 0.001, 1.0, 0.1, 0.01)
-    max_ep = h2.slider("Max Epochs", 10, 500, 100)
-    delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
+    with st.container(border=True):
+        h1, h2, h3 = st.columns(3)
+        lr = h1.number_input("Learning Rate (η)", 0.001, 1.0, 0.1, 0.01)
+        max_ep = h2.slider("Max Epochs", 10, 500, 100)
+        delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
 
     if st.button("🚀 Start Live Training", type="primary", width="stretch"):
         master_dashboard = st.empty()

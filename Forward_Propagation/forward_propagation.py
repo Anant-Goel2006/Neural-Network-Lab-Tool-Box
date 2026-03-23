@@ -77,37 +77,39 @@ def forward_propagation_page():
 
     st.divider()
     section_header("Network Architecture Builder", "Define your neural network topology")
-    c1, c2, c3 = st.columns(3)
-    n_in  = c1.slider("Input features", 1, 20, 3)
-    n_hid = c2.slider("Hidden layers", 1, 6, 2)
-    same  = c3.checkbox("Uniform hidden width", True)
-
-    hid_sz = []
-    if same:
-        w = st.slider("Neurons per hidden layer", 1, 20, 4)
-        hid_sz = [w] * n_hid
-    else:
-        nc = st.columns(min(n_hid, 5))
-        for l in range(n_hid):
-            hid_sz.append(nc[l%5].slider(f"H{l+1}", 1, 20, 3, key=f"fp_hl_{l}"))
-
-    sizes = [n_in] + hid_sz + [1]
-    labels = ["Input"] + [f"H{i+1}" for i in range(n_hid)] + ["Output"]
-
-    # Architecture badge
-    arch = " → ".join([f"**{lb}**({sz})" for lb, sz in zip(labels, sizes)])
-    st.markdown(arch)
+    with st.container(border=True):
+        c1, c2, c3 = st.columns(3)
+        n_in  = c1.slider("Input features", 1, 20, 3)
+        n_hid = c2.slider("Hidden layers", 1, 6, 2)
+        same  = c3.checkbox("Uniform hidden width", True)
+        
+        hid_sz = []
+        if same:
+            w = st.slider("Neurons per hidden layer", 1, 20, 4)
+            hid_sz = [w] * n_hid
+        else:
+            nc = st.columns(min(n_hid, 5))
+            for l in range(n_hid):
+                hid_sz.append(nc[l%5].slider(f"H{l+1}", 1, 20, 3, key=f"fp_hl_{l}"))
+        
+        sizes = [n_in] + hid_sz + [1]
+        labels = ["Input"] + [f"H{i+1}" for i in range(n_hid)] + ["Output"]
+        
+        # Architecture badge
+        arch = " → ".join([f"**{lb}**({sz})" for lb, sz in zip(labels, sizes)])
+        st.markdown(arch)
 
     if len(sizes) <= MAX_LAYERS:
         st.plotly_chart(draw_network(sizes, labels), width="stretch", theme=None)
 
     st.divider()
     section_header("Inputs & Target", "Set input values and target output")
-    ic = st.columns(min(n_in+1, 5)); Xv = []
-    for i in range(n_in):
-        Xv.append(ic[i%4].number_input(f"x{i+1}", value=round(0.3+i*0.15, 2), step=0.1, key=f"fp_x{i}"))
-    y_true = ic[min(n_in, 4)].number_input("Target y", value=1.0, step=0.1, key="fp_yt")
-    X = np.array(Xv).reshape(-1, 1)
+    with st.container(border=True):
+        ic = st.columns(min(n_in+1, 5)); Xv = []
+        for i in range(n_in):
+            Xv.append(ic[i%4].number_input(f"x{i+1}", value=round(0.3+i*0.15, 2), step=0.1, key=f"fp_x{i}"))
+        y_true = ic[min(n_in, 4)].number_input("Target y", value=1.0, step=0.1, key="fp_yt")
+        X = np.array(Xv).reshape(-1, 1)
 
     st.divider()
     section_header("Activation Functions", "Configure per-layer activations and loss function")

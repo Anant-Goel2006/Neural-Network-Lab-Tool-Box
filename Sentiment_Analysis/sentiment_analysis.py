@@ -114,10 +114,11 @@ def sentiment_analysis_page():
     with tab2:
         section_header("LSTM Training Setup", "Train a custom TensorFlow model from scratch on synthetic contextual data")
         
-        c1, c2, c3 = st.columns(3)
-        samples = c1.slider("Dataset Samples", 500, 5000, 2000, 500)
-        epochs = c2.slider("Epochs", 5, 20, 10)
-        lr = c3.selectbox("Learning Rate", [0.01, 0.005, 0.001], index=0)
+        with st.container(border=True):
+            c1, c2, c3 = st.columns(3)
+            samples = c1.slider("Dataset Samples", 500, 5000, 2000, 500)
+            epochs = c2.slider("Epochs", 5, 20, 10)
+            lr = c3.selectbox("Learning Rate", [0.01, 0.005, 0.001], index=0)
         
         if st.button("🚀 Initialize & Train LSTM Sequence Model", type="primary", width="stretch"):
             master_ph = st.empty()
@@ -189,7 +190,8 @@ def sentiment_analysis_page():
             st.warning("⚠️ No LSTM model found. Please train the model in the 'Train LSTM Model' tab first.")
             return
             
-        text_input = st.text_area("Enter a review or sentence:", "The design is amazing but the battery life is terrible.")
+        with st.container(border=True):
+            text_input = st.text_area("Enter a review or sentence:", "The design is amazing but the battery life is terrible.")
         
         if st.button("🧠 Run LSTM Predictor", type="primary"):
             try:
