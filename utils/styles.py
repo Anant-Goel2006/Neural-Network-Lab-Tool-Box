@@ -120,29 +120,34 @@ def inject_global_css():
                     height = canvas.height = parentDoc.defaultView.innerHeight;
                 });
 
+                const THEMES = [
+                    { name: "Cosmic", base: "#3B82F6", accent: "#60A5FA", pulse: "#8B5CF6" },
+                    { name: "Marvel", base: "#EF4444", accent: "#F59E0B", pulse: "#FFFFFF" },
+                    { name: "Batman", base: "#1E293B", accent: "#FACC15", pulse: "#475569" }
+                ];
+
                 class Neuron {
                     constructor() {
                         this.x = Math.random() * width;
                         this.y = Math.random() * height;
-                        this.vx = (Math.random() - 0.5) * 0.5;
-                        this.vy = (Math.random() - 0.5) * 0.5;
+                        this.vx = (Math.random() - 0.5) * 0.4;
+                        this.vy = (Math.random() - 0.5) * 0.4;
                         this.radius = Math.random() * 2 + 1.5;
                         this.firing = 0;
-                        this.pulseSpeed = 0.015 + Math.random() * 0.02;
+                        this.pulseSpeed = 0.012 + Math.random() * 0.02;
                         this.angle = Math.random() * Math.PI * 2;
-                        this.spin = (Math.random() - 0.5) * 0.02;
+                        this.spin = (Math.random() - 0.5) * 0.015;
+                        this.theme = THEMES[Math.floor(Math.random() * THEMES.length)];
                     }
                     update() {
-                        // Organic drifting
                         this.angle += this.spin;
-                        this.x += this.vx + Math.cos(this.angle) * 0.2;
-                        this.y += this.vy + Math.sin(this.angle) * 0.2;
+                        this.x += this.vx + Math.cos(this.angle) * 0.15;
+                        this.y += this.vy + Math.sin(this.angle) * 0.15;
                         
                         if(this.x < 0 || this.x > width) this.vx *= -1;
                         if(this.y < 0 || this.y > height) this.vy *= -1;
                         
-                        // Fire a pulse occasionally
-                        if(Math.random() < 0.008 && this.firing === 0) {
+                        if(Math.random() < 0.006 && this.firing === 0) {
                             this.firing = 1;
                         }
                         if(this.firing > 0) {
@@ -151,33 +156,32 @@ def inject_global_css():
                         }
                     }
                     draw() {
-                        // Draw Dendrites (small organic tendrils)
+                        // Dendrites with theme base color
                         ctx.beginPath();
-                        ctx.strokeStyle = `rgba(59, 130, 246, ${0.1 + this.firing * 0.2})`;
+                        ctx.strokeStyle = this.theme.base + (this.firing > 0.1 ? '44' : '1A'); // Hex + Alpha
                         ctx.lineWidth = 0.5;
-                        for(let i=0; i<6; i++) {
-                            const ang = (i / 6) * Math.PI * 2 + this.angle;
+                        for(let i=0; i<5; i++) {
+                            const ang = (i / 5) * Math.PI * 2 + this.angle;
                             ctx.moveTo(this.x, this.y);
-                            ctx.lineTo(this.x + Math.cos(ang) * 12, this.y + Math.sin(ang) * 12);
+                            ctx.lineTo(this.x + Math.cos(ang) * 14, this.y + Math.sin(ang) * 14);
                         }
                         ctx.stroke();
 
-                        // Draw Nucleus
+                        // Nucleus with theme accent color
                         ctx.beginPath();
-                        ctx.arc(this.x, this.y, this.radius + (this.firing * 4), 0, Math.PI * 2);
-                        const bloom = this.firing * 20;
-                        ctx.shadowBlur = 8 + bloom;
-                        ctx.shadowColor = `rgba(96, 165, 250, ${0.4 + this.firing})`;
-                        ctx.fillStyle = this.firing > 0 ? `rgba(255, 255, 255, ${0.9})` : 'rgba(96, 165, 250, 0.7)';
+                        ctx.arc(this.x, this.y, this.radius + (this.firing * 3.5), 0, Math.PI * 2);
+                        const bloom = this.firing * 18;
+                        ctx.shadowBlur = 6 + bloom;
+                        ctx.shadowColor = this.theme.accent;
+                        ctx.fillStyle = this.firing > 0.5 ? this.theme.pulse : this.theme.accent;
                         ctx.fill();
                     }
                 }
 
                 const neurons = [];
-                const neuronCount = 60; // Optimized for organic feel
+                const neuronCount = 55; // Slightly reduced for multi-color complexity
                 for(let i=0; i<neuronCount; i++) neurons.push(new Neuron());
                 
-                // Synaptic signals (signals traveling between neurons)
                 let signals = [];
 
                 let lastTime = 0;
@@ -189,9 +193,8 @@ def inject_global_css():
                     lastTime = time;
                     ctx.clearRect(0, 0, width, height);
                     
-                    const maxDistSq = 200 * 200;
+                    const maxDistSq = 210 * 210;
                     
-                    // Update and Draw Connections & Signals
                     for(let i=0; i<neuronCount; i++) {
                         for(let j=i+1; j<neuronCount; j++) {
                             const n1 = neurons[i];
@@ -204,43 +207,44 @@ def inject_global_css():
                                 const dist = Math.sqrt(distSq);
                                 ctx.beginPath();
                                 ctx.moveTo(n1.x, n1.y);
-                                
-                                // Organic curved axons
-                                const midX = (n1.x + n2.x) / 2 + Math.cos(n1.angle) * 10;
-                                const midY = (n1.y + n2.y) / 2 + Math.sin(n1.angle) * 10;
+                                const midX = (n1.x + n2.x) / 2 + Math.cos(n1.angle) * 12;
+                                const midY = (n1.y + n2.y) / 2 + Math.sin(n1.angle) * 12;
                                 ctx.quadraticCurveTo(midX, midY, n2.x, n2.y);
                                 
-                                const alpha = (1 - (dist / 200)) * 0.12;
+                                const alpha = (1 - (dist / 210)) * 0.1;
                                 ctx.strokeStyle = `rgba(148, 163, 184, ${alpha})`;
-                                ctx.lineWidth = 0.6;
+                                ctx.lineWidth = 0.5;
                                 ctx.shadowBlur = 0;
                                 ctx.stroke();
 
-                                // If n1 fires, create a synaptic signal traveling to n2
-                                if (n1.firing > 0.95 && Math.random() < 0.1) {
+                                if (n1.firing > 0.96 && Math.random() < 0.12) {
                                     signals.push({
-                                        from: n1, to: n2, progress: 0, speed: 0.05 + Math.random() * 0.05
+                                        from: n1, to: n2, progress: 0, speed: 0.04 + Math.random() * 0.04, theme: n1.theme
                                     });
                                 }
                             }
                         }
                     }
 
-                    // Process and Draw Signals
                     signals = signals.filter(s => {
                         s.progress += s.speed;
                         if (s.progress >= 1) {
-                            s.to.firing = Math.min(1, s.to.firing + 0.3); // Trigger receiver
+                            s.to.firing = Math.min(1, s.to.firing + 0.25);
                             return false;
                         }
-                        const px = s.from.x + (s.to.x - s.from.x) * s.progress;
-                        const py = s.from.y + (s.to.y - s.from.y) * s.progress;
+                        const t = s.progress;
+                        const midX = (s.from.x + s.to.x) / 2 + Math.cos(s.from.angle) * 12;
+                        const midY = (s.from.y + s.to.y) / 2 + Math.sin(s.from.angle) * 12;
+                        
+                        // Cubic-style curve for the signal pulse
+                        const px = (1-t)*(1-t)*s.from.x + 2*(1-t)*t*midX + t*t*s.to.x;
+                        const py = (1-t)*(1-t)*s.from.y + 2*(1-t)*t*midY + t*t*s.to.y;
                         
                         ctx.beginPath();
-                        ctx.arc(px, py, 2, 0, Math.PI * 2);
-                        ctx.fillStyle = "#60A5FA";
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = "#3B82F6";
+                        ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+                        ctx.fillStyle = s.theme.accent;
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = s.theme.accent;
                         ctx.fill();
                         return true;
                     });
