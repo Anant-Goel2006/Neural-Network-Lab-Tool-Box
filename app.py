@@ -48,58 +48,87 @@ def home_page():
     hero_base64 = get_image_base64(hero_img_path)
     
     st.markdown(f"""
-    <div class="hero-section fade-in" style="
-        position: relative; 
-        height: 550px; 
-        width: 100%;
-        border-radius: 20px; 
-        overflow: hidden; 
-        margin-bottom: 50px;
-        background-image: linear-gradient(to right, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.4) 50%, rgba(15, 23, 42, 0) 100%), url('{hero_base64}');
-        background-size: cover;
-        background-position: center;
-        display: flex;
-        align-items: center;
-        padding-left: 80px;
-        padding-right: 60px;
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
-    ">
-        <div style="position: relative; z-index: 2; width: 100%; max-width: 850px; overflow: visible;">
-            <h1 style="font-size: 80px; color: #F8FAFC; margin: 0; line-height: 1; font-weight: 950; font-family: 'Montserrat', sans-serif; letter-spacing: 0; text-shadow: 0 0 50px rgba(0,0,0,0.8); display: block; overflow: visible;">NEUROLAB</h1>
-            <div style="margin: 25px 0; display: flex; align-items: center; gap: 15px;">
-                <span style="background: #E50914; color: white; padding: 4px 12px; font-weight: 800; font-size: 13px; border-radius: 2px; letter-spacing: 1px;">ULTIMATE</span>
-                <span style="color: #CBD5E1; font-size: 15px; font-weight: 600;">2026 • 5 MODULES</span>
+    <style>
+        .hero-container-main {{
+            position: relative; 
+            min-height: 450px; 
+            width: 100%;
+            border-radius: 16px; 
+            overflow: hidden; 
+            margin-bottom: 40px;
+            background: linear-gradient(to right, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.4) 60%, rgba(15, 23, 42, 0) 100%), url('{hero_base64}');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            padding: 0 60px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }}
+        .hero-title-text {{
+            font-size: 68px !important; 
+            color: #F8FAFC !important; 
+            margin: 0 !important; 
+            line-height: 1 !important; 
+            font-weight: 900 !important; 
+            font-family: 'Montserrat', sans-serif !important; 
+            letter-spacing: -2px !important;
+            white-space: nowrap;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }}
+        .hero-btn-play {{
+            background: white !important; 
+            color: black !important; 
+            padding: 12px 30px !important; 
+            border-radius: 4px !important; 
+            font-weight: 700 !important; 
+            border: none !important; 
+            font-size: 16px !important; 
+            cursor: pointer !important; 
+            display: inline-flex !important; 
+            align-items: center !important; 
+            gap: 10px !important; 
+            transition: 0.2s !important; 
+            font-family: 'Montserrat', sans-serif !important;
+            text-decoration: none !important;
+        }}
+        .hero-btn-play:hover {{ transform: scale(1.05); background: #eee !important; }}
+    </style>
+    
+    <div class="hero-container-main">
+        <div style="position: relative; z-index: 2; max-width: 650px; width: 100%;">
+            <h1 class="hero-title-text">NEUROLAB</h1>
+            <div style="margin: 20px 0; display: flex; align-items: center; gap: 12px;">
+                <span style="background: #E50914; color: white; padding: 4px 10px; font-weight: 800; font-size: 12px; border-radius: 2px; letter-spacing: 0.5px;">ULTIMATE</span>
+                <span style="color: #94A3B8; font-size: 14px; font-weight: 600;">2026 • 5 MODULES</span>
             </div>
-            <p style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 19px; line-height: 1.5; margin-bottom: 35px; max-width: 600px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+            <p style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.5; margin-bottom: 30px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
                 Experience the next generation of artificial intelligence. A cinematic playground for exploring the architectures that define our future.
             </p>
             <div style="display: flex; gap: 15px;">
-                <button onclick="parent.document.getElementById('modules-list').scrollIntoView({{behavior: 'smooth'}})" 
-                    style="background: white !important; color: black !important; padding: 12px 35px; border-radius: 4px; font-weight: 700; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.3s; font-family: 'Montserrat', sans-serif;">
-                    <span style="font-size: 22px;">▶</span> See Modules
-                </button>
+                <a href="#lab-modules" class="hero-btn-play">
+                    <span style="font-size: 20px;">▶</span> See Modules
+                </a>
             </div>
         </div>
-        
-        <!-- Script for smooth scrolling -->
-        <script>
-            function scrollToModules() {{
-                const el = window.parent.document.getElementById('modules-list');
-                if(el) el.scrollIntoView({{behavior: 'smooth'}});
-            }}
-        </script>
     </div>
-    
-    <style>
-        .hero-section:hover {{
-            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85);
-            border-color: rgba(255,255,255,0.15);
-        }}
-        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-        .fade-in {{ animation: fadeIn 1.2s ease-out; }}
-    </style>
     """, unsafe_allow_html=True)
+
+    # Robust scrolling script injected via separate component to prevent rendering as text
+    components.html("""
+        <script>
+            setTimeout(() => {
+                const links = window.parent.document.querySelectorAll('a[href="#lab-modules"]');
+                links.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const el = window.parent.document.getElementById('modules-list');
+                        if(el) el.scrollIntoView({behavior: 'smooth'});
+                    });
+                });
+            }, 1000);
+        </script>
+    """, height=0)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
