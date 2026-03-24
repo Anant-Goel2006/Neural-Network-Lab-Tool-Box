@@ -44,64 +44,60 @@ def sidebar_brand():
 def home_page():
     inject_global_css()
 
-    hero_img_path = r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\neurolab_hero_banner_1774323520603.png"
+    hero_img_path = r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\neurolab_netflix_style_hero_1774323980383.png"
     hero_base64 = get_image_base64(hero_img_path)
     
     st.markdown(f"""
-    <div class="hero-container fade-in" style="
+    <div class="hero-section fade-in" style="
         position: relative; 
-        height: 500px; 
-        border-radius: 24px; 
+        height: 550px; 
+        width: 100%;
+        border-radius: 20px; 
         overflow: hidden; 
         margin-bottom: 50px;
-        background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.8) 70%, rgba(15, 23, 42, 1) 100%), url('{hero_base64}');
+        background-image: linear-gradient(to right, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.4) 50%, rgba(15, 23, 42, 0) 100%), url('{hero_base64}');
         background-size: cover;
         background-position: center;
         display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        padding: 60px;
-        border: 1px solid rgba(255,255,255,0.05);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        align-items: center;
+        padding-left: 80px;
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
     ">
-        <style>
-            .see-modules-btn {{
-                background: white !important;
-                color: black !important;
-                padding: 12px 30px !important;
-                border-radius: 8px !important;
-                font-weight: 700 !important;
-                text-decoration: none !important;
-                display: inline-flex !important;
-                align-items: center !important;
-                gap: 10px !important;
-                transition: transform 0.2s, background 0.2s !important;
-                font-family: 'Montserrat', sans-serif !important;
-                font-size: 16px !important;
-                width: fit-content;
-            }}
-            .see-modules-btn:hover {{
-                transform: scale(1.05);
-                background: #e5e5e5 !important;
-            }}
-        </style>
-
         <div style="position: relative; z-index: 2; max-width: 800px;">
-            <h1 style="font-size: 80px; color: #F8FAFC; margin: 0; line-height: 0.9; font-weight: 900; font-family: 'Montserrat', sans-serif; letter-spacing: -2px; text-shadow: 0 0 40px rgba(0,0,0,0.5);">NEUROLAB</h1>
-            <div style="margin: 20px 0; display: flex; align-items: center; gap: 15px;">
-                <span style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; padding: 4px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3); letter-spacing: 1px;">PREMIUM</span>
-                <span style="color: #94A3B8; font-size: 14px; font-weight: 600;">2026 • ULTIMATE EDITION • 5 MODULES</span>
+            <h1 style="font-size: 90px; color: #F8FAFC; margin: 0; line-height: 0.85; font-weight: 900; font-family: 'Montserrat', sans-serif; letter-spacing: -3px; text-shadow: 0 0 50px rgba(0,0,0,0.8);">NEUROLAB</h1>
+            <div style="margin: 25px 0; display: flex; align-items: center; gap: 15px;">
+                <span style="background: #E50914; color: white; padding: 4px 12px; font-weight: 800; font-size: 13px; border-radius: 2px; letter-spacing: 1px;">ULTIMATE</span>
+                <span style="color: #CBD5E1; font-size: 15px; font-weight: 600;">2026 • 5 MODULES • 4K HDR</span>
             </div>
-            <p style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.5; margin-bottom: 30px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+            <p style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 19px; line-height: 1.5; margin-bottom: 35px; max-width: 600px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
                 Experience the next generation of artificial intelligence. A cinematic playground for exploring the architectures that define our future.
             </p>
             <div style="display: flex; gap: 15px;">
-                <a href="#modules-list" class="see-modules-btn">
-                    <span style="font-size: 20px;">🔍</span> See Modules
-                </a>
+                <button onclick="parent.document.getElementById('modules-list').scrollIntoView({{behavior: 'smooth'}})" 
+                    style="background: white !important; color: black !important; padding: 12px 35px; border-radius: 4px; font-weight: 700; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.3s; font-family: 'Montserrat', sans-serif;">
+                    <span style="font-size: 22px;">▶</span> See Modules
+                </button>
             </div>
         </div>
+        
+        <!-- Script to make clicking the button work even from inside markdown -->
+        <script>
+            function scrollToModules() {{
+                const el = window.parent.document.getElementById('modules-list');
+                if(el) el.scrollIntoView({{behavior: 'smooth'}});
+            }}
+        </script>
     </div>
+    
+    <style>
+        .hero-section:hover {{
+            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85);
+            border-color: rgba(255,255,255,0.15);
+        }}
+        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        .fade-in {{ animation: fadeIn 1.2s ease-out; }}
+    </style>
     """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
