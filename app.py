@@ -60,13 +60,13 @@ def home_page():
         background-position: center;
         display: flex;
         align-items: center;
-        padding-left: 60px;
+        padding-left: 80px;
         padding-right: 60px;
         border: 1px solid rgba(255,255,255,0.08);
         box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
     ">
         <div style="position: relative; z-index: 2; width: 100%; max-width: 850px; overflow: visible;">
-            <h1 style="font-size: 85px; color: #F8FAFC; margin: 0; line-height: 1; font-weight: 950; font-family: 'Montserrat', sans-serif; letter-spacing: -1px; text-shadow: 0 0 50px rgba(0,0,0,0.8);">NEUROLAB</h1>
+            <h1 style="font-size: 80px; color: #F8FAFC; margin: 0; line-height: 1; font-weight: 950; font-family: 'Montserrat', sans-serif; letter-spacing: 0; text-shadow: 0 0 50px rgba(0,0,0,0.8); display: block; overflow: visible;">NEUROLAB</h1>
             <div style="margin: 25px 0; display: flex; align-items: center; gap: 15px;">
                 <span style="background: #E50914; color: white; padding: 4px 12px; font-weight: 800; font-size: 13px; border-radius: 2px; letter-spacing: 1px;">ULTIMATE</span>
                 <span style="color: #CBD5E1; font-size: 15px; font-weight: 600;">2026 • 5 MODULES</span>
@@ -82,7 +82,7 @@ def home_page():
             </div>
         </div>
         
-        <!-- Script to make clicking the button work even from inside markdown -->
+        <!-- Script for smooth scrolling -->
         <script>
             function scrollToModules() {{
                 const el = window.parent.document.getElementById('modules-list');
