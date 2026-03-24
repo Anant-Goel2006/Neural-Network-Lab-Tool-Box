@@ -542,7 +542,7 @@ def _palm_module():
 # MODULE WRAPPER
 # ─────────────────────────────────────────────────────────────────────────────
 def opencv_detection_page():
-    from utils.styles import inject_global_css
+    from utils.styles import inject_global_css, get_image_base64
     inject_global_css()
     gradient_header("Optical Analytics Hub",
         "Face Identity · Live Motion · Structural Analysis", "👁️")
@@ -550,7 +550,18 @@ def opencv_detection_page():
     if not WEBRTC_READY:
         st.error("`streamlit-webrtc` is missing. Features requiring live camera will not function.")
 
-    # ── Module Selector ─────────────────────────────────────────────────────
+    mod = st.session_state.get("cv_module", None)
+
+    # ── Active Module Rendering (At the Top to avoid scrolling) ───────────
+    if mod:
+        if mod == "attendance": _attendance_module()
+        elif mod == "face_scan": _face_scan_module()
+        elif mod == "vehicle": _vehicle_module()
+        elif mod == "sign": _sign_module()
+        elif mod == "palm": _palm_module()
+        st.divider()
+
+    # ── Module Selector List ────────────────────────────────────────────────
     # ── Netflix-style Sub-Module Selector ──────────────────────────────────
     MODULES = [
         ("📋","Attendance","Face log · Export CSV","attendance","#3B82F6", ["Real-time Face Detection", "User Registration", "CSV Attendance Export"]),
@@ -569,14 +580,14 @@ def opencv_detection_page():
         "palm": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\palm_reading_banner_1774323346147.png"
     }
     
-    st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; color: white; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid #06B6D4; display: inline-block; padding-bottom: 10px;">Modules</h3>', unsafe_allow_html=True)
+    st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; color: white; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid #06B6D4; display: inline-block; padding-bottom: 10px;">Modules Gallery</h3>', unsafe_allow_html=True)
     
     for i, (icon, title, s_desc, key, clr, feats) in enumerate(MODULES):
         with st.container():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
             
             with e_col1:
-                st.image(MODULE_BANNERS.get(key, ""), use_container_width=True)
+                st.image(MODULE_BANNERS.get(key, ""), width="stretch")
             
             with e_col2:
                 st.markdown(f"""
@@ -597,12 +608,3 @@ def opencv_detection_page():
             
             st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
 
-    mod = st.session_state.get("cv_module", None)
-
-    st.divider()
-
-    if mod == "attendance": _attendance_module()
-    elif mod == "face_scan": _face_scan_module()
-    elif mod == "vehicle": _vehicle_module()
-    elif mod == "sign": _sign_module()
-    elif mod == "palm": _palm_module()

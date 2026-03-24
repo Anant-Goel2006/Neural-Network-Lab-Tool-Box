@@ -2,6 +2,8 @@ import streamlit as st
 import time
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
+import base64
+import os
 
 def inject_global_css():
     st.markdown("""
@@ -492,3 +494,10 @@ def render_nlp_insight(text, label, clr="#3B82F6"):
             </div>
         </div>
     """, unsafe_allow_html=True)
+def get_image_base64(path):
+    """Encodes an image to base64 for embedding in HTML/CSS."""
+    if not os.path.exists(path):
+        return ""
+    with open(path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    return f"data:image/png;base64,{encoded_string}"

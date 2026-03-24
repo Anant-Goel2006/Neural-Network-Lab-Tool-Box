@@ -12,7 +12,7 @@ from Forward_Propagation.forward_propagation          import forward_propagation
 from Backward_Propagation.backward_propagation        import backward_propagation_page
 from OpenCV_Detection.opencv_hub                      import opencv_detection_page
 from Sentiment_Analysis.sentiment_analysis            import sentiment_analysis_page
-from utils.styles                                     import inject_global_css
+from utils.styles                                     import inject_global_css, get_image_base64
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGES
@@ -44,7 +44,8 @@ def sidebar_brand():
 def home_page():
     inject_global_css()
 
-    hero_img = r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\neurolab_hero_banner_1774323520603.png"
+    hero_img_path = r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\neurolab_hero_banner_1774323520603.png"
+    hero_base64 = get_image_base64(hero_img_path)
     
     st.markdown(f"""
     <div class="hero-container fade-in" style="
@@ -53,7 +54,7 @@ def home_page():
         border-radius: 24px; 
         overflow: hidden; 
         margin-bottom: 50px;
-        background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 1)), url('https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=2000&auto=format&fit=crop'); /* Fallback */
+        background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.8) 70%, rgba(15, 23, 42, 1) 100%), url('{hero_base64}');
         background-size: cover;
         background-position: center;
         display: flex;
@@ -63,11 +64,7 @@ def home_page():
         border: 1px solid rgba(255,255,255,0.05);
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     ">
-        <!-- Actual Background Image via Data URI or Path -->
         <style>
-            .hero-container {{
-                background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.8) 70%, rgba(15, 23, 42, 1) 100%), url('{"file:///" + hero_img.replace('\\', '/')}');
-            }}
             .see-modules-btn {{
                 background: white !important;
                 color: black !important;
@@ -157,7 +154,7 @@ def home_page():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
             
             with e_col1:
-                st.image(img, use_container_width=True)
+                st.image(img, width="stretch")
             
             with e_col2:
                 st.markdown(f"""
