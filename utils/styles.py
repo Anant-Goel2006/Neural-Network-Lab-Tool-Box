@@ -88,6 +88,167 @@ def inject_global_css():
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
             position: relative;
         }
+
+        /* ──── NETFLIX-STYLE UI COMPONENTS ──── */
+        .netflix-row-container {
+            position: relative;
+            padding: 20px 0;
+            overflow: visible;
+        }
+
+        .netflix-row {
+            display: flex;
+            overflow-x: auto;
+            gap: 20px;
+            padding: 20px 10px;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+            -ms-overflow-style: none; /* Hide scrollbar IE/Edge */
+            scroll-behavior: smooth;
+        }
+
+        .netflix-row::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
+        }
+
+        .netflix-card {
+            flex: 0 0 280px;
+            height: 160px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .netflix-card:hover {
+            transform: scale(1.15);
+            z-index: 100;
+            border-color: #3B82F6;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        .netflix-card-selected {
+            border-bottom: 4px solid #3B82F6 !important;
+            background: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        .netflix-card-icon {
+            font-size: 40px;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .netflix-card-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            color: #F8FAFC;
+        }
+
+        .netflix-detail-container {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            margin-top: 20px;
+            padding: 40px;
+            animation: slideDown 0.5s ease-out;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            backdrop-filter: blur(25px);
+            position: relative;
+            z-index: 5;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .episode-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: background 0.2s ease;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .episode-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .episode-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #64748B;
+            width: 40px;
+        }
+
+        .episode-info {
+            flex: 1;
+        }
+
+        .episode-title {
+            font-weight: 600;
+            color: #F8FAFC;
+            font-size: 16px;
+        }
+
+        .episode-desc {
+            font-size: 13px;
+            color: #94A3B8;
+        }
+
+        .play-button {
+            background: #F8FAFC;
+            color: #0F172A;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 15px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+
+        .play-button:hover {
+            background: #E2E8F0;
+            transform: scale(1.05);
+        }
+
+        .more-info-button {
+            background: rgba(100, 116, 139, 0.4);
+            color: #F8FAFC;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .more-info-button:hover {
+            background: rgba(100, 116, 139, 0.6);
+        }
         </style>
     """, unsafe_allow_html=True)
     

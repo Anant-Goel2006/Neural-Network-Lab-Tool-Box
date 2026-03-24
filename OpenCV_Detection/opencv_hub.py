@@ -551,34 +551,54 @@ def opencv_detection_page():
         st.error("`streamlit-webrtc` is missing. Features requiring live camera will not function.")
 
     # ── Module Selector ─────────────────────────────────────────────────────
+    # ── Netflix-style Sub-Module Selector ──────────────────────────────────
     MODULES = [
-        ("📋","Attendance","Face log · CSV","attendance","#3B82F6"),
-        ("🔍","Face Scanner","Eyes · Smile","face_scan","#3B82F6"),
-        ("🚗","Vehicles","Traffic · Live Analytics","vehicle","#3B82F6"),
-        ("🛑","Sign Detection","Shapes · Colors","sign","#3B82F6"),
-        ("🖐️","Palm Reading","Hands · Gestures","palm","#3B82F6"),
+        ("📋","Attendance","Face log · Export CSV","attendance","#3B82F6", ["Real-time Face Detection", "User Registration", "CSV Attendance Export"]),
+        ("🔍","Face Scanner","Eyes · Smile · ROI","face_scan","#06B6D4", ["Multi-Cascade detection", "Ocular tracking", "Mood/Smile recognition"]),
+        ("🚗","Vehicles","Traffic · Live Counting","vehicle","#F59E0B", ["YOLOv8 Inference", "Vehicle Classification", "Live stats"]),
+        ("🛑","Sign Detection","Shapes · Colors","sign","#EF4444", ["Color Space Filtering", "Contour Analysis", "Symbolic recognition"]),
+        ("🖐️","Palm Reading","Hands · Gestures","palm","#8B5CF6", ["CNN Segmentation", "Feature Extraction", "Career Analysis"]),
     ]
-    cols = st.columns(5)
-    for i,(icon,title,desc,key,clr) in enumerate(MODULES):
-        active = st.session_state.get("cv_module", None) == key
-        cols[i].markdown(f"""
-        <div class="premium-card fade-in" style="
-            padding:16px; text-align:center; height: 180px; display: flex; flex-direction:column; justify-content:center;
-            border-top: 3px solid {'#FACC15' if active else 'rgba(255,255,255,0.1)'};
-            background: {'rgba(59, 130, 246, 0.15)' if active else 'rgba(15, 23, 42, 0.4)'};
-            transform: { 'scale(1.05)' if active else 'none' }; transition: all 0.3s ease;
-            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-            border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        ">
-            <div style="font-size:42px; margin-bottom:12px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">{icon}</div>
-            <div style="font-family:'Montserrat', sans-serif; font-size:18px; color:#FFFFFF; font-weight: 700; text-transform: uppercase;">{title}</div>
-            <div style="font-size:12px; font-family:'Inter', sans-serif; color: {'#FACC15' if active else '#94A3B8'}; font-weight: 500; margin-top:8px;">{desc}</div>
-        </div>""", unsafe_allow_html=True)
-        if cols[i].button(f"GO {title}", key=f"cv_btn_{key}", width="stretch"):
-            st.session_state.cv_module=key; st.rerun()
+
+    # ── Vertical List for Sub-Modules ──────────────────────────────
+    MODULE_BANNERS = {
+        "attendance": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\attendance_banner_1774323273637.png",
+        "face_scan": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\face_scanner_banner_1774323291585.png",
+        "vehicle": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\vehicles_banner_1774323308501.png",
+        "sign": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\sign_detection_banner_1774323328063.png",
+        "palm": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\palm_reading_banner_1774323346147.png"
+    }
+    
+    st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; color: white; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid #06B6D4; display: inline-block; padding-bottom: 10px;">Modules</h3>', unsafe_allow_html=True)
+    
+    for i, (icon, title, s_desc, key, clr, feats) in enumerate(MODULES):
+        with st.container():
+            e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
+            
+            with e_col1:
+                st.image(MODULE_BANNERS.get(key, ""), use_container_width=True)
+            
+            with e_col2:
+                st.markdown(f"""
+                <div style="padding: 5px 0;">
+                    <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 20px; color: white; margin-bottom: 5px;">{title} {icon}</div>
+                    <p style="color: #F8FAFC; font-size: 14px; line-height: 1.5; margin-bottom: 12px; font-weight: 500;">{s_desc}. Optimized for real-time vision processing.</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        {"".join([f'<span style="background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 4px; color: {clr}; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1);">{f}</span>' for f in feats])}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with e_col3:
+                st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
+                if st.button(f"Launch {title}", key=f"launch_cv_v_{key}", type="primary", use_container_width=True):
+                    st.session_state.cv_module = key
+                    st.rerun()
+            
+            st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
 
     mod = st.session_state.get("cv_module", None)
+
     st.divider()
 
     if mod == "attendance": _attendance_module()
@@ -586,18 +606,3 @@ def opencv_detection_page():
     elif mod == "vehicle": _vehicle_module()
     elif mod == "sign": _sign_module()
     elif mod == "palm": _palm_module()
-    else:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); border: 8px solid #000; padding: 120px 40px; text-align: center; margin-top: 40px; box-shadow: 16px 16px 0px #EF4444; position:relative; overflow:hidden; transform: rotate(1deg);">
-            <div style="position: absolute; top:-50%; left:-50%; width:200%; height:200%; background: radial-gradient(circle, #ffffff1a 2px, transparent 3px); background-size: 15px 15px; transform: rotate(15deg); opacity: 0.8; pointer-events:none;"></div>
-            <div style="font-size: 120px; margin-bottom: 25px; filter: drop-shadow(6px 6px 0px #000); position:relative; z-index:2; animation: float 3s ease-in-out infinite;">🔬</div>
-            <h2 style="font-family: 'Montserrat', cursive; font-size:64px; color: #FFFFFF; margin: 0; text-shadow: 4px 4px 0px #000, -2px -2px 0px #000; position:relative; z-index:2;">DASHBOARD_STBY // LINKING...</h2>
-            <div style="width: 150px; height: 8px; background: #FACC15; margin: 35px auto; border: 4px solid #000; position:relative; z-index:2;"></div>
-            <div style="background:#000; display:inline-block; padding:10px 20px; border:3px solid #FFF; transform: skewX(-5deg); position:relative; z-index:2;">
-                <p style="font-family: 'Inter', cursive; color: #10B981; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; margin:0;">
-                    // AWAITING OPTIC COMMAND UPLINK
-                </p>
-            </div>
-        </div>
-        <style>@keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-20px);} 100% {transform: translateY(0px);} }</style>
-        """, unsafe_allow_html=True)
