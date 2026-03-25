@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import hashlib
 import time
 import math
 import os
@@ -54,22 +55,6 @@ class LSTMCore:
 # SHARED HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _gate_bars(gates: dict):
-    label_map = {"f":"Forget","i":"Input","o":"Output","c":"Cell State"}
-    colors = {"f":"#EF4444","i":"#3B82F6","o":"#F59E0B","c":"#8B5CF6"}
-    html = ""
-    for k, lbl in label_map.items():
-        v = float(np.mean(gates[k]))
-        pct = min(max(abs(v) * 100, 0), 100)
-        clr = colors.get(k, "#3B82F6")
-        html += f"""
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <span style="width:80px;font-size:12px;color:#94A3B8;font-weight:600;">{lbl}</span>
-          <div style="flex:1;background:rgba(255,255,255,0.05);height:6px;border-radius:3px;overflow:hidden;"><div style="width:{pct:.0f}%;background:{clr};height:100%;border-radius:3px;"></div></div>
-          <span style="width:35px;text-align:right;font-size:11px;color:#64748B;">{v:.2f}</span>
-        </div>"""
-    st.markdown(html, unsafe_allow_html=True)
-
 def _softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
@@ -79,6 +64,7 @@ def _softmax(x):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _mod_next_word():
+    inject_global_css()
     gradient_header("Next Word Prediction", "Refined Logic & Step-by-Step Inference", "🔮")
     view = st.radio("View", ["🎯 Prediction Terminal", "🏛️ Architecture & Logic", "⚙️ Step-by-Step"], horizontal=True, label_visibility="collapsed")
     
@@ -93,17 +79,18 @@ def _mod_next_word():
     V = len(vocab)
     
     @st.cache_resource(show_spinner=False)
-    def _build(V, hs, _key):
-        return LSTMCore(V, hs), np.random.randn(V, hs), np.zeros((V, 1))
+    def _build(V, hs, _key_hash):
+        return LSTMCore(V, hs), (np.random.randn(V, hs) * 0.1), np.zeros((V, 1))
 
-    lstm, Wy, by = _build(V, hidden_sz, corpus[:20])
+    corpus_hash = hashlib.md5(corpus.encode()).hexdigest()
+    lstm, Wy, by = _build(V, hidden_sz, corpus_hash)
 
     if view == "🎯 Prediction Terminal":
         col1, col2 = st.columns([1.5, 1], gap="medium")
         with col1:
             section_header("Inference Terminal", "Sequence Processor")
-            user_input = st.text_input("✍️ Enter phrase:", "i am from france now i live in")
-            pred_word = "..." # Initialize pred_word
+            user_input = st.text_input("✍️ Enter phrase:", "i am from france now i live in", key="next_word_input")
+            pred_word_init = "..."
             if st.button("🧠 Run LSTM Prediction", type="primary", use_container_width=True):
                 words = user_input.lower().split()
                 h, c = np.zeros((hidden_sz, 1)), np.zeros((hidden_sz, 1))
@@ -116,14 +103,23 @@ def _mod_next_word():
                 pred_idx = int(np.argmax(probs))
                 pred_word = i2w[pred_idx]
                 st.markdown(f"""<div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 40px; border-radius: 16px; text-align: center; margin-top: 10px;"><div style="font-size: 14px; color: #60A5FA; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Predicted Word</div><div style="font-size: 52px; font-weight: 900; color: white; filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));">{pred_word.upper()}</div><div style="color: #10B981; font-weight: 700; font-size: 18px;">{probs[pred_idx]*100:.1f}% Confidence</div></div>""", unsafe_allow_html=True)
-                
-                with col2:
-                    section_header("Softmax Hub", "Probabilities")
-                    for s_idx, p in enumerate(probs):
-                        st.markdown(f"""<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;"><span style="color: #E2E8F0;">{i2w[s_idx]}</span><span style="color: #60A5FA;">{p*100:.1f}%</span></div><div style="background: rgba(255,255,255,0.05); height: 4px; border-radius: 2px;"><div style="background: #3B82F6; width: {p*100}%; height: 100%; border-radius: 2px;"></div></div></div>""", unsafe_allow_html=True)
                 st.session_state.last_pred_word = pred_word
                 
-            display_word = st.session_state.get("last_pred_word", "...")
+            display_word = st.session_state.get("last_pred_word", pred_word_init)
+            
+            with col2:
+                section_header("Softmax Hub", "Probabilities")
+                if "last_pred_word" in st.session_state:
+                    words = user_input.lower().split()
+                    h, c = np.zeros((hidden_sz, 1)), np.zeros((hidden_sz, 1))
+                    for w in words:
+                        if w in w2i:
+                            x = np.zeros((V, 1)); x[w2i[w]] = 1
+                            h, c, _ = lstm.forward(x, h, c)
+                    y = Wy @ h + by
+                    current_probs = _softmax(y.flatten())
+                    for s_idx, p in enumerate(current_probs):
+                        st.markdown(f"""<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;"><span style="color: #E2E8F0;">{i2w[s_idx]}</span><span style="color: #60A5FA;">{p*100:.1f}%</span></div><div style="background: rgba(255,255,255,0.05); height: 4px; border-radius: 2px;"><div style="background: #3B82F6; width: {p*100}%; height: 100%; border-radius: 2px;"></div></div></div>""", unsafe_allow_html=True)
 
             st.divider()
             with st.expander("🤔 How it works & Neural Process", expanded=True):
@@ -149,7 +145,7 @@ def _mod_next_word():
 
     else: # Step-by-Step
         section_header("Word-by-Word", "Gate Activation Trace")
-        user_input_calc = st.text_input("Analysis sequence:", "i am from india")
+        user_input_calc = st.text_input("Analysis sequence:", "i am from india", key="step_input")
         input_words = user_input_calc.lower().split()
         h, c = np.zeros((hidden_sz, 1)), np.zeros((hidden_sz, 1))
         for t, word in enumerate(input_words):
@@ -161,55 +157,46 @@ def _mod_next_word():
                     cels[1].metric("Input", f"{float(np.mean(g['i'])):.2f}")
                     cels[2].metric("Output", f"{float(np.mean(g['o'])):.2f}")
                     cels[3].metric("Cell", f"{float(np.mean(g['c'])):.2f}")
-                    st.divider(); _gate_bars(g)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODULE 2 — SENTIMENT ANALYSIS  🎭
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _mod_sentiment():
-    gradient_header("Sentiment Analysis", "Deep Contextual Engine — Premium HUD & Graphs", "🎭")
+    inject_global_css()
+    gradient_header("Sentiment Analysis", "Lexicon + Softmax Confidence Engine", "🎭")
     
-    with st.container(border=True):
-        text_input = st.text_area("Enter a review or sentence:", "The design is amazing but the battery life is terrible.")
+    st.sidebar.markdown("### 📊 Lexicon Weights")
+    lexicon = {
+        "amazing": 1.2, "excellent": 1.0, "happy": 0.8, "good": 0.5, "love": 1.1, "best": 0.9,
+        "bad": -0.8, "worst": -1.2, "terrible": -1.1, "sad": -0.7, "hate": -1.0, "awful": -0.9,
+        "ok": 0.1, "average": 0.0, "fine": 0.2, "normal": 0.1, "neutral": 0.0
+    }
     
-    if st.button("🧠 Run LSTM Predictor", type="primary", use_container_width=True):
-        # Premium Lexicon + Context Logic (matches user's sentiment_analysis.py)
-        text_clean = text_input.lower().replace(".", "").replace(",", "").replace("!", "")
-        pos_words = {"amazing", "great", "excellent", "brilliant", "fantastic", "love", "wonderful", "perfect", "good", "awesome", "nice", "best", "beautiful", "happy", "yes", "superb", "loved", "cool"}
-        neg_words = {"terrible", "awful", "worst", "bad", "horrible", "hate", "disgusting", "pathetic", "garbage", "poor", "ugly", "sad", "angry", "broken", "useless", "no", "fail", "slow", "trash"}
-        words = text_clean.split()
-        score = sum(1 for w in words if w in pos_words) - sum(1 for w in words if w in neg_words)
+    txt = st.text_area("✍️ Analysis Input:", "The NeuroLab LSTM project is absolutely amazing and powerful!")
+    
+    if txt:
+        score = 0
+        words = txt.lower().split()
+        for w in words:
+            score += lexicon.get(w, 0)
         
-        if score > 0:
-            preds = np.array([0.05, 0.90, 0.05]); c_name, c_col, c_icon = "Positive", "#22C55E", "😊"
-        elif score < 0:
-            preds = np.array([0.90, 0.05, 0.05]); c_name, c_col, c_icon = "Negative", "#EF4444", "😡"
-        elif any(w in pos_words for w in words) and any(w in neg_words for w in words):
-            preds = np.array([0.10, 0.10, 0.80]); c_name, c_col, c_icon = "Mixed", "#FACC15", "🤔"
-        else:
-            preds = np.array([0.20, 0.20, 0.60]); c_name, c_col, c_icon = "Neutral", "#94A3B8", "😐"
+        preds = _softmax(np.array([max(0, score), max(0, -score), 0.5]))
         
-        conf = preds[np.argmax(preds)]
-        
-        st.markdown(f"""
-        <div style="background:rgba(255,255,255,0.02); border-radius:30px; border-top: 5px solid {c_col}; padding:60px 40px; text-align:center; margin-bottom:30px; border: 1px solid rgba(255,255,255,0.05);">
-            <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing: 3px; font-weight: 700; text-transform: uppercase;">Neural Context Analysis</div>
-            <div style="font-size:72px; font-family:'Montserrat', sans-serif; font-weight: 800; color:#FFFFFF; margin: 30px 0; line-height:1;">{c_icon} {conf*100:.1f}%</div>
-            <div style="font-weight:700; background:rgba(255,255,255,0.05); display:inline-block; padding:12px 24px; border-radius: 50px; border:1px solid rgba(255,255,255,0.1); color:{c_col}; text-transform:uppercase; letter-spacing: 2px; font-size:18px;">
-                Sentiment: <span style="color:#FFFFFF;">{c_name}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""<div style="background:rgba(34,197,94,0.1); border:1px solid #22C55E; padding:20px; border-radius:12px; text-align:center;"><div style="font-size:32px;">😊</div><div style="color:#22C55E; font-weight:700;">POSITIVE</div><div style="font-size:24px; color:white;">{preds[0]*100:.1f}%</div></div>""", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""<div style="background:rgba(239,68,68,0.1); border:1px solid #EF4444; padding:20px; border-radius:12px; text-align:center;"><div style="font-size:32px;">😡</div><div style="color:#EF4444; font-weight:700;">NEGATIVE</div><div style="font-size:24px; color:white;">{preds[1]*100:.1f}%</div></div>""", unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""<div style="background:rgba(59,130,246,0.1); border:1px solid #3B82F6; padding:20px; border-radius:12px; text-align:center;"><div style="font-size:32px;">🤔</div><div style="color:#3B82F6; font-weight:700;">MIXED/NEUTRAL</div><div style="font-size:24px; color:white;">{preds[2]*100:.1f}%</div></div>""", unsafe_allow_html=True)
+            
         fig = go.Figure(go.Bar(
-            x=["Negative", "Positive", "Mixed / Neutral"],
-            y=preds,
-            marker=dict(color=["#EF4444", "#22C55E", "#3B82F6"], line=dict(color="#000000", width=2)),
+            x=["Positive", "Negative", "Neutral"], y=preds,
+            marker=dict(color=["#22C55E", "#EF4444", "#3B82F6"]),
             text=[f"{p*100:.1f}%" for p in preds], textposition="outside"
         ))
-        fig.update_layout(title=dict(text="LSTM Softmax Probabilities", font=dict(family="Montserrat", size=20)),
-                          template="plotly_dark", height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_layout(template="plotly_dark", height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -217,51 +204,124 @@ def _mod_sentiment():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _mod_textgen():
-    gradient_header("Creative Text Generator", "Temperature Wars — Creative Story Engine", "✍️")
-    
-    default_story = "the king ruled the land with wisdom and power\nthe queen shared her vision\nthe dragon flew over the mountains\nthe wizard cast a spell\nthe hero walked into the dark forest"
-    corpus_tg = st.sidebar.text_area("Story Corpus:", value=default_story, height=150)
-    gen_len = st.sidebar.slider("Generation Length", 5, 50, 20)
-    temp_low = st.sidebar.slider("Conservative T (Focused)", 0.1, 0.8, 0.3)
-    temp_high = st.sidebar.slider("Creative T (Chaotic)", 0.9, 3.0, 1.8)
-    
+    inject_global_css()
+    gradient_header("Creative Text Generator", "Temperature Wars — Conservative vs Creative Battle", "✍️")
+ 
+    st.sidebar.markdown("### 📜 Story Corpus")
+    default_story = (
+        "the king ruled the land with wisdom and power\n"
+        "the queen stood beside the king and shared her vision\n"
+        "the dragon flew over the mountains at night\n"
+        "the wizard cast a spell to protect the village\n"
+        "the hero walked into the dark forest alone\n"
+        "the princess found the hidden door in the castle\n"
+        "the knight defeated the enemy with one blow\n"
+        "the ancient map led to the buried treasure\n"
+        "the ship sailed through the storm without fear\n"
+        "magic filled the air when the spell was spoken"
+    )
+    corpus_tg = st.sidebar.text_area("Corpus (one sentence per line):", value=default_story, height=200)
+    hidden_tg = st.sidebar.slider("Hidden Units", 6, 32, 12, key="tg_hs")
+    gen_len = st.sidebar.slider("Words to Generate", 5, 30, 15, key="tg_gl")
+    temp_low = st.sidebar.slider("Conservative Temperature", 0.1, 0.8, 0.3, 0.05, key="tg_tl")
+    temp_high = st.sidebar.slider("Creative Temperature", 0.9, 3.0, 1.8, 0.1, key="tg_th")
+    show_word_probs = st.sidebar.checkbox("📊 Show Per-Step Probabilities", value=True)
+ 
     sentences = [s.strip().lower().split() for s in corpus_tg.split("\n") if s.strip()]
+    if not sentences:
+        st.error("Add at least one sentence.")
+        return
+ 
     vocab_tg = sorted(set(w for s in sentences for w in s))
-    w2i_tg, i2w_tg = {w: i for i, w in enumerate(vocab_tg)}, {i: w for w, i in enumerate(vocab_tg)}
+    w2i_tg = {word: i for i, word in enumerate(vocab_tg)}
+    i2w_tg = {i: word for i, word in enumerate(vocab_tg)}
     V_tg = len(vocab_tg)
-    
+ 
     @st.cache_resource(show_spinner=False)
-    def _build_tg(V, hs):
-        return LSTMCore(V, hs, seed=55), np.random.randn(V, hs), np.zeros((V, 1))
-
-    lstm_tg, Wy_tg, by_tg = _build_tg(V_tg, 16)
-    seed_in = st.text_input("🌱 Seed phrase:", "the hero walked")
-    
-    if st.button("⚔️ GENERATE STORY BATTLE", type="primary", use_container_width=True):
-        def generate(temp, seed, rng_seed):
-            np.random.seed(rng_seed)
-            words = seed.lower().split(); out = []
-            h, c = np.zeros((16, 1)), np.zeros((16, 1))
-            for w in words:
-                if w in w2i_tg:
-                    x = np.zeros((V_tg, 1)); x[w2i_tg[w]] = 1; h, c, _ = lstm_tg.forward(x, h, c)
-            for _ in range(gen_len):
-                last = out[-1] if out else words[-1]
-                x = np.zeros((V_tg, 1))
-                if last in w2i_tg: x[w2i_tg[last]] = 1
-                h, c, _ = lstm_tg.forward(x, h, c)
-                y = (Wy_tg @ h + by_tg).flatten() / max(temp, 0.01)
-                probs = _softmax(y); idx = np.random.choice(len(probs), p=probs)
-                out.append(i2w_tg[idx])
-            return " ".join(words + out)
-
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"**🧊 Conservative (T={temp_low})**")
-            st.code(generate(temp_low, seed_in, 42), wrap_lines=True)
-        with c2:
-            st.markdown(f"**🔥 Creative (T={temp_high})**")
-            st.code(generate(temp_high, seed_in, 99), wrap_lines=True)
+    def _build_tg(V, hs, _key_hash):
+        np.random.seed(55)
+        lstm = LSTMCore(V, hs, seed=55)
+        Wy = (np.random.randn(V, hs) * 0.1)
+        by = np.zeros((V, 1))
+        return lstm, Wy, by
+ 
+    corpus_hash_tg = hashlib.md5(corpus_tg.encode()).hexdigest()
+    lstm_tg, Wy_tg, by_tg = _build_tg(V_tg, hidden_tg, corpus_hash_tg)
+ 
+    def one_hot_tg(w):
+        v = np.zeros((V_tg, 1))
+        if w in w2i_tg:
+            v[w2i_tg[w]] = 1
+        return v
+ 
+    def generate(seed_text, length, temperature, rng_seed=0):
+        words = seed_text.lower().split()
+        if not words: return [], []
+        h, c = np.zeros((hidden_tg, 1)), np.zeros((hidden_tg, 1))
+        for w in words:
+            if w in w2i_tg:
+                h, c, _ = lstm_tg.forward(one_hot_tg(w), h, c)
+ 
+        rng = np.random.RandomState(rng_seed)
+        generated, step_probs = list(words), []
+        for _ in range(length):
+            last = generated[-1] if generated else words[-1]
+            x = one_hot_tg(last)
+            h, c, _ = lstm_tg.forward(x, h, c)
+            y = (Wy_tg @ h + by_tg).flatten() / max(temperature, 0.01)
+            probs = _softmax(y)
+            probs = probs / (np.sum(probs) + 1e-10) 
+            idx = int(rng.choice(len(probs), p=probs))
+            generated.append(i2w_tg[idx])
+            step_probs.append({"word": i2w_tg[idx], "confidence": float(probs[idx]), "top": i2w_tg[int(np.argmax(probs))]})
+        return generated[len(words):], step_probs
+ 
+    # ── UI ───────────────────────────────────────────────────────────────────
+    seed_in = st.text_input("🌱 Seed phrase:", "the hero walked into", key="tg_seed_phrase")
+    col_btn1, col_btn2 = st.columns(2)
+    run_conservative = col_btn1.button(f"🧊 Conservative (T={temp_low})", use_container_width=True)
+    run_creative = col_btn2.button(f"🔥 Creative (T={temp_high})", use_container_width=True)
+    run_battle = st.button("⚔️ TEMPERATURE WARS — Generate Both!", type="primary", use_container_width=True)
+ 
+    do_run = run_battle or run_conservative or run_creative
+ 
+    if do_run:
+        show_con = run_battle or run_conservative
+        show_cre = run_battle or run_creative
+        col_con, col_cre = st.columns(2) if run_battle else (st.container(), st.container())
+ 
+        results = []
+        if show_con:
+            gen_c, sp_c = generate(seed_in, gen_len, temp_low, rng_seed=42)
+            results.append((gen_c, sp_c, temp_low, "🧊 Conservative", "#3B82F6", col_con if run_battle else st))
+        if show_cre:
+            gen_h, sp_h = generate(seed_in, gen_len, temp_high, rng_seed=99)
+            results.append((gen_h, sp_h, temp_high, "🔥 Creative", "#EC4899", col_cre if run_battle else st))
+ 
+        for gen_words, step_probs, temp, label, clr, col in results:
+            with col:
+                seed_html = " ".join(f'<span style="color:#64748B;">{w}</span>' for w in seed_in.split())
+                gen_html = " ".join(f'<span style="color:{clr};opacity:{0.5 + sp["confidence"]*0.5:.2f};">{w}</span>' for w, sp in zip(gen_words, step_probs))
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03);border:1px solid {clr}44;border-radius:14px;padding:20px;margin-bottom:12px;">
+                  <div style="font-size:12px;color:{clr};font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">{label}</div>
+                  <div style="font-size:1.05em;line-height:1.8;font-family:'JetBrains Mono',monospace;">{seed_html} {gen_html}</div>
+                  <div style="margin-top:12px;font-size:11px;color:#64748B;">Temperature: {temp} · {len(gen_words)} words generated</div>
+                </div>""", unsafe_allow_html=True)
+ 
+                if show_word_probs and step_probs:
+                    confs = [sp["confidence"] for sp in step_probs]
+                    fig_sp = go.Figure(go.Bar(x=[sp["word"] for sp in step_probs], y=confs, marker_color=[clr] * len(confs),
+                        opacity=0.75, text=[f"{c:.2f}" for c in confs], textposition="outside", textfont=dict(color="#64748B", size=10)))
+                    fig_sp.update_layout(template="plotly_dark", height=200, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.1)",
+                        margin=dict(l=0, r=0, t=10, b=0), xaxis=dict(color="#475569", tickangle=-30, tickfont=dict(size=10)),
+                        yaxis=dict(visible=False), title=dict(text="Step Confidence", font=dict(size=11, color="#64748B"), x=0))
+                    col.plotly_chart(fig_sp, use_container_width=True)
+ 
+    st.markdown("""
+    <div style="background: rgba(59, 130, 246, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #3B82F6; margin-top:20px;">
+        💡 <b>Temperature Wars</b> makes the creativity/predictability tradeoff tangible in a single side-by-side view. Low temp (0.3) picks the "mathematically safest" words, while high temp (1.8) exploration leads to wild and dreamy narratives.
+    </div>""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MAIN HUB PAGE (Gallery Navigation)
@@ -295,6 +355,3 @@ def lstm_hub_page():
                 if st.button(f"Launch {title}", key=f"launch_{key}", use_container_width=True):
                     st.session_state.lstm_active_mod = key; st.rerun()
             st.divider()
-
-if __name__ == "__main__":
-    st.set_page_config(page_title="LSTM Hub", layout="wide"); lstm_hub_page()
