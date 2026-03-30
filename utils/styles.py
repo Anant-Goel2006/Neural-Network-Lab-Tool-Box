@@ -473,13 +473,14 @@ def speedometer(val, max_val, title, color="#3B82F6", height=200):
 def render_log(placeholder, logs):
     log_html = "".join([f'<div style="color: #94A3B8; font-family: \'JetBrains Mono\', monospace; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:6px; word-wrap: break-word;">'
                         f'<span style="color: #3B82F6; font-weight: 500;">[{time.strftime("%H:%M:%S")}]</span> {msg}</div>' for msg in logs[-8:]])
+    fallback_html = '<div style="color: #64748B; font-family: \'JetBrains Mono\', monospace; font-size: 13px;">AWAITING SYSTEM BOOT...</div>'
     placeholder.markdown(f"""
         <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-top: 3px solid #3B82F6; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position: relative; border-radius: 8px;">
             <div style="font-family: 'Montserrat', sans-serif; font-size: 16px; color: #F8FAFC; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #10B981;"></div>
                 SYSTEM STATUS LOG
             </div>
-            {log_html if logs else '<div style="color: #64748B; font-family: \'JetBrains Mono\', monospace; font-size: 13px;">AWAITING SYSTEM BOOT...</div>'}
+            {log_html if logs else fallback_html}
         </div>
     """, unsafe_allow_html=True)
 
