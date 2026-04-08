@@ -80,7 +80,7 @@ def canvas_to_bipolar(data):
     img = Image.fromarray(data.astype('uint8'), 'RGBA').convert('L')
     img = img.filter(ImageFilter.BoxBlur(2))
     small = img.resize((G, G), Image.Resampling.LANCZOS)
-    return np.where(np.array(small) > 15, 1.0, -1.0).flatten()
+    return np.where(np.array(small) > 50, 1.0, -1.0).flatten()
 
 def canvas_to_base64(data):
     """Convert canvas to clean black-on-white PNG for best AI recognition."""
@@ -89,8 +89,9 @@ def canvas_to_base64(data):
         img = Image.fromarray(data.astype('uint8'), 'RGBA')
         gray = img.convert('L')
         arr = np.array(gray)
-        # Threshold: drawn is black, bg is white
-        bw = np.where(arr > 20, 0, 255).astype('uint8')
+        # The background #0f172a has a luminance of ~23. The cyan stroke is ~170.
+        # Threshold: if > 50 it's a stroke (make it black), else it's background (make it white).
+        bw = np.where(arr > 50, 0, 255).astype('uint8')
         bw_img = Image.fromarray(bw, 'L').filter(ImageFilter.BoxBlur(2))
         final = np.where(np.array(bw_img) < 200, 0, 255).astype('uint8')
         clean = Image.fromarray(final, 'L').convert('RGB')
@@ -112,7 +113,7 @@ def is_blank(data):
     if data is None or not isinstance(data, np.ndarray): return True
     try:
         gray = Image.fromarray(data.astype('uint8'), 'RGBA').convert('L')
-        return np.array(gray).max() < 20
+        return np.array(gray).max() < 50
     except Exception:
         return True
 
