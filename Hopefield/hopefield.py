@@ -59,7 +59,7 @@ GLOBAL_CSS = """
 
 /* ── Base ── */
 html, body, [data-testid="stAppViewContainer"] {
-    background: var(--bg-void) !important;
+    background: transparent !important;
     font-family: var(--body);
     color: var(--text-bright);
 }
@@ -1319,6 +1319,8 @@ def sidebar():
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
+    from utils.styles import inject_global_css
+    inject_global_css()
     st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
     init_state()
     sidebar()

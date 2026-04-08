@@ -573,11 +573,11 @@ def opencv_detection_page():
 
     # ── Vertical List for Sub-Modules ──────────────────────────────
     MODULE_BANNERS = {
-        "attendance": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\attendance_banner_1774323273637.png",
-        "face_scan": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\face_scanner_banner_1774323291585.png",
-        "vehicle": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\vehicles_banner_1774323308501.png",
-        "sign": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\sign_detection_banner_1774323328063.png",
-        "palm": r"C:\Users\konik\.gemini\antigravity\brain\08efec81-b5d1-4f14-94c7-3ba739dfee9a\palm_reading_banner_1774323346147.png"
+        "attendance": r"assets\banners\attendance_banner_1774323273637.png",
+        "face_scan": r"assets\banners\face_scanner_banner_1774323291585.png",
+        "vehicle": r"assets\banners\vehicles_banner_1774323308501.png",
+        "sign": r"assets\banners\sign_detection_banner_1774323328063.png",
+        "palm": r"assets\banners\palm_reading_banner_1774323346147.png"
     }
     
     st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; color: white; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid #06B6D4; display: inline-block; padding-bottom: 10px;">Modules Gallery</h3>', unsafe_allow_html=True)
