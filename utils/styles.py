@@ -56,16 +56,26 @@ def inject_global_css():
             background: rgba(15, 23, 42, 0.6);
         }
 
-        /* ──── CLEAN GLASS CARDS (Native) ──── */
+        /* ──── NEON PULSE GLASS CARDS ──── */
         [data-testid="stVerticalBlockBorderWrapper"] {
-            background: rgba(15, 23, 42, 0.45) !important;
-            backdrop-filter: blur(10px) saturate(160%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(15, 23, 42, 0.55) !important;
+            backdrop-filter: blur(12px) saturate(160%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
             border-radius: 16px !important;
             padding: 24px !important;
             margin-bottom: 24px !important;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.05) !important;
             position: relative;
+        }
+
+        .neon-pulse-border {
+            border: 2px solid rgba(59, 130, 246, 0.3) !important;
+            animation: neonPulse 2.5s infinite alternate !important;
+        }
+
+        @keyframes neonPulse {
+            0% { border-color: rgba(59, 130, 246, 0.2); box-shadow: 0 0 5px rgba(59, 130, 246, 0.1); }
+            100% { border-color: rgba(59, 130, 246, 0.6); box-shadow: 0 0 25px rgba(59, 130, 246, 0.3); }
         }
         
         [data-testid="stVerticalBlockBorderWrapper"]::before {
@@ -80,14 +90,13 @@ def inject_global_css():
         }
 
         .premium-card {
-            /* Keep for legacy manual HTML blocks in Hub/Dashboard */
-            background: rgba(15, 23, 42, 0.45) !important;
-            backdrop-filter: blur(12px) saturate(160%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            background: rgba(15, 23, 42, 0.55) !important;
+            backdrop-filter: blur(14px) saturate(160%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
             border-radius: 16px !important;
             padding: 24px !important;
             margin-bottom: 24px !important;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5) !important;
             position: relative;
         }
 

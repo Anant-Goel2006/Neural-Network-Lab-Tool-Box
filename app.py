@@ -14,6 +14,7 @@ from Backward_Propagation.backward_propagation        import backward_propagatio
 from OpenCV_Detection.opencv_hub                      import opencv_detection_page
 from Sentiment_Analysis.sentiment_analysis            import sentiment_analysis_page
 from LSTM_Application.lstm_hub                     import lstm_hub_page
+from Hopefield.hopefield                             import main as hopfield_page
 from utils.styles                                     import inject_global_css, get_image_base64
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,9 +23,10 @@ from utils.styles                                     import inject_global_css, 
 p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon="🟢")
 p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="➡️")
 p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="⬅️")
-p_cv   = st.Page(opencv_detection_page,    title="4. OpenCV Detection",     icon="📷")
-p_sa   = st.Page(sentiment_analysis_page,  title="5. Sentiment Analysis",   icon="💬")
-p_hub  = st.Page(lstm_hub_page,            title="6. LSTM Application Hub", icon="🚀")
+p_hop  = st.Page(hopfield_page,            title="4. Hopfield Network",     icon="🧠")
+p_cv   = st.Page(opencv_detection_page,    title="5. OpenCV Detection",     icon="📷")
+p_sa   = st.Page(sentiment_analysis_page,  title="6. Sentiment Analysis",   icon="💬")
+p_hub  = st.Page(lstm_hub_page,            title="7. LSTM Application Hub", icon="🚀")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR BRANDING
@@ -103,7 +105,7 @@ def home_page():
             <h1 class="hero-title-text">NEUROLAB</h1>
             <div style="margin: 20px 0; display: flex; align-items: center; gap: 12px;">
                 <span style="background: #E50914; color: white; padding: 4px 10px; font-weight: 800; font-size: 12px; border-radius: 2px; letter-spacing: 0.5px;">ULTIMATE</span>
-                <span style="color: #94A3B8; font-size: 14px; font-weight: 600;">2026 • 6 MODULES</span>
+                <span style="color: #94A3B8; font-size: 14px; font-weight: 600;">2026 • 7 MODULES</span>
             </div>
             <p style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 18px; line-height: 1.5; margin-bottom: 30px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
                 Experience the next generation of artificial intelligence. A cinematic playground for exploring the architectures that define our future.
@@ -161,6 +163,11 @@ def home_page():
          p_bwd, ["Chain Rule Viz","Gradient Heatmap","Weight Diff","Live Gauges"], "#8B5CF6",
          r"C:\Users\konik\.gemini\antigravity\brain\4dcf7e85-c8ff-4bb1-803c-e8c5b7438e47\backward_prop_module_banner_1774322334899.png"),
 
+        ("🧠", "Hopfield Network", "Associative Memory",
+         "Explore content-addressable memory and energy minimization in a recurrent neural architecture.",
+         p_hop, ["Associative Memory","Energy Landscape","Pattern Recovery","Hebbian Learning"], "#3B82F6",
+         r"C:\Users\konik\.gemini\antigravity\brain\2d0d8d94-cc5b-41e2-9275-ad5d686a1800\hopfield_module_banner_1775024868657.png"),
+
         ("📷", "OpenCV Detection", "Vision Lab",
          "Advanced computer vision for face logging, vehicle counting, and gesture analytics.",
          p_cv, ["YOLO Vehicles","Live Analytics","Face Scanner","CSV Export"], "#F59E0B",
@@ -175,6 +182,7 @@ def home_page():
          "A refined powerhouse of LSTM modules including Dynamic Word Prediction, Sentiment HUD, and Creative Story Engines.",
          p_hub, ["Word Prediction","Sentiment HUD","Creative Gen","Architecture Viz"], "#8B5CF6",
          r"C:\Users\konik\.gemini\antigravity\brain\0ff54ae9-eb2e-452a-822c-5379801685fc\lstm_module_banner_1774322380000_1774328471585.png"),
+
     ]
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -239,7 +247,7 @@ p_home = st.Page(home_page, title="Dashboard", icon="🧠", default=True)
 
 pages = {
     "Home":           [p_home],
-    "Neural Network": [p_pct, p_fwd, p_bwd],
+    "Neural Network": [p_pct, p_fwd, p_bwd, p_hop],
     "Applied AI":     [p_cv, p_sa],
     "LSTM Projects":  [p_hub],
 }
