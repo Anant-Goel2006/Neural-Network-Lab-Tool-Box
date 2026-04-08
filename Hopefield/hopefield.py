@@ -1,16 +1,15 @@
-import base64
 import hashlib
-import io
 import json
-import re
+from functools import lru_cache
 
+import cv2
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
 from PIL import Image, ImageFilter
 
-from utils.ai_helper import OPENAI_OK, get_ai_explanation, get_api_key
+from utils.ai_helper import get_ai_explanation
 from utils.chatbot import push_tutor_insight, render_chatbot
 from utils.learning_ui import (
     contribution_bar,
@@ -27,11 +26,6 @@ from utils.styles import gradient_header, inject_global_css, render_log, section
 from utils.voice import render_voice_button
 
 try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
-try:
     from streamlit_drawable_canvas import st_canvas
 
     CANVAS_OK = True
@@ -41,6 +35,15 @@ except ImportError:
 
 GRID_SIDE = 16
 N = GRID_SIDE * GRID_SIDE
+DETECTOR_SIDE = 96
+CLASSIFIER_SIDE = 32
+CLASSIFIER_K = 9
+CLASSIFIER_SHAPE_LABELS = ["Circle", "Triangle", "Square", "Rectangle", "Diamond", "Star", "Plus", "Minus", "Slash", "Backslash", "Arrow"]
+CLASSIFIER_LABELS = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") + CLASSIFIER_SHAPE_LABELS
+CLASSIFIER_FONTS = [cv2.FONT_HERSHEY_SIMPLEX, cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_COMPLEX]
+CLASSIFIER_ANGLES = (-12, 0, 12)
+CLASSIFIER_SCALES = (0.94, 1.0, 1.08)
+CLASSIFIER_SHIFTS = [(-2, -2), (0, 0), (2, 2), (-2, 2), (2, -2)]
 
 
 class HopfieldEngine:
@@ -103,12 +106,6 @@ def _is_blank(data):
         return True
     arr = np.array(img)
     return int(np.sum(arr < 180)) < 18
-
-
-def _image_to_base64(img):
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
 def _plot_grid(vec, title):
@@ -191,77 +188,337 @@ def _plot_state_3d(input_vec, recovered_vec):
     )
 
 
-def _parse_detection_response(text):
-    fields = {"name": "Unknown", "category": "Sketch", "confidence": 70, "note": text.strip() or "No additional analysis."}
-    patterns = {
-        "name": r"NAME\s*:\s*(.+)",
-        "category": r"CATEGORY\s*:\s*(.+)",
-        "confidence": r"CONFIDENCE\s*:\s*(.+)",
-        "note": r"NOTE\s*:\s*(.+)",
+def _binary_mask_from_image(clean_img):
+    arr = np.array(clean_img.convert("L"))
+    mask = (arr < 200).astype(np.uint8)
+    if mask.sum() == 0:
+        return mask
+
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if num_labels <= 1:
+        return mask
+
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    largest = max(int(areas.max()), 1)
+    keep = [idx + 1 for idx, area in enumerate(areas) if area >= max(6, largest * 0.03)]
+    if not keep:
+        keep = [1 + int(np.argmax(areas))]
+    return np.isin(labels, keep).astype(np.uint8)
+
+
+def _normalize_mask(mask, size=DETECTOR_SIDE, pad=10):
+    mask = (mask > 0).astype(np.uint8)
+    ys, xs = np.where(mask > 0)
+    if len(xs) == 0:
+        return np.zeros((size, size), dtype=np.uint8)
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    crop = (mask[y0 : y1 + 1, x0 : x1 + 1] * 255).astype(np.uint8)
+    h, w = crop.shape
+    scale = (size - 2 * pad) / max(h, w, 1)
+    new_w = max(1, int(round(w * scale)))
+    new_h = max(1, int(round(h * scale)))
+    interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
+    resized = cv2.resize(crop, (new_w, new_h), interpolation=interp)
+    resized = (resized > 80).astype(np.uint8)
+
+    canvas = np.zeros((size, size), dtype=np.uint8)
+    y_off = (size - new_h) // 2
+    x_off = (size - new_w) // 2
+    canvas[y_off : y_off + new_h, x_off : x_off + new_w] = resized
+    return canvas
+
+
+def _find_contours(binary_img, mode=cv2.RETR_CCOMP):
+    found = cv2.findContours(binary_img, mode, cv2.CHAIN_APPROX_SIMPLE)
+    if len(found) == 2:
+        return found[0], found[1]
+    return found[1], found[2]
+
+
+def _mask_descriptors(mask):
+    binary = (mask > 0).astype(np.uint8)
+    active = float(binary.sum())
+    if active <= 0:
+        zero = np.zeros(DETECTOR_SIDE, dtype=float)
+        return {
+            "active_ratio": 0.0,
+            "aspect": 1.0,
+            "extent": 0.0,
+            "solidity": 0.0,
+            "circularity": 0.0,
+            "holes": 0,
+            "vertices": 0,
+            "h_sym": 0.0,
+            "v_sym": 0.0,
+            "d_sym": 0.0,
+            "ad_sym": 0.0,
+            "hu": np.zeros(7, dtype=float),
+            "proj_h": zero,
+            "proj_v": zero,
+        }
+
+    ys, xs = np.where(binary > 0)
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    w = max(1, x1 - x0 + 1)
+    h = max(1, y1 - y0 + 1)
+    binary255 = (binary * 255).astype(np.uint8)
+    contours, hierarchy = _find_contours(binary255, mode=cv2.RETR_CCOMP)
+    main = max(contours, key=cv2.contourArea) if contours else None
+
+    contour_area = float(cv2.contourArea(main)) if main is not None else active
+    perimeter = float(cv2.arcLength(main, True)) if main is not None else float(2 * (w + h))
+    approx = cv2.approxPolyDP(main, 0.045 * perimeter, True) if main is not None and perimeter > 0 else np.empty((0, 1, 2))
+    hull = cv2.convexHull(main) if main is not None else None
+    hull_area = float(cv2.contourArea(hull)) if hull is not None else contour_area
+    moments = cv2.moments(main) if main is not None else cv2.moments(binary255)
+    hu = cv2.HuMoments(moments).flatten()
+    hu = -np.sign(hu) * np.log10(np.abs(hu) + 1e-12)
+
+    holes = 0
+    if hierarchy is not None:
+        hierarchy = hierarchy[0] if hierarchy.ndim == 3 else hierarchy
+        holes = int(np.sum(hierarchy[:, 3] != -1))
+
+    float_mask = binary.astype(float)
+    return {
+        "active_ratio": active / binary.size,
+        "aspect": w / max(h, 1),
+        "extent": contour_area / max(w * h, 1),
+        "solidity": contour_area / max(hull_area, 1.0),
+        "circularity": (4.0 * np.pi * contour_area) / max(perimeter * perimeter, 1.0),
+        "holes": holes,
+        "vertices": int(len(approx)),
+        "h_sym": 1.0 - float(np.mean(np.abs(float_mask - np.fliplr(float_mask)))),
+        "v_sym": 1.0 - float(np.mean(np.abs(float_mask - np.flipud(float_mask)))),
+        "d_sym": 1.0 - float(np.mean(np.abs(float_mask - float_mask.T))),
+        "ad_sym": 1.0 - float(np.mean(np.abs(float_mask - np.flipud(float_mask.T)))),
+        "hu": hu,
+        "proj_h": float_mask.mean(axis=1),
+        "proj_v": float_mask.mean(axis=0),
     }
-    for key, pattern in patterns.items():
-        match = re.search(pattern, text, flags=re.IGNORECASE)
-        if match:
-            fields[key] = match.group(1).strip()
-
-    confidence_match = re.search(r"(\d+)", str(fields["confidence"]))
-    if confidence_match:
-        fields["confidence"] = max(0, min(100, int(confidence_match.group(1))))
-    else:
-        fields["confidence"] = 70
-    return fields
 
 
-def _detect_with_ai(clean_img):
-    key = get_api_key()
-    if not key or not OPENAI_OK or OpenAI is None:
-        return {
-            "name": "Unknown",
-            "category": "Sketch",
-            "confidence": 0,
-            "note": "Vision API is unavailable, so direct sketch detection could not run.",
-            "raw": "Vision API unavailable.",
-        }
+def _label_category(label):
+    if len(label) == 1 and label.isdigit():
+        return "Number"
+    if len(label) == 1 and label.isalpha():
+        return "Letter"
+    if label in {"Plus", "Minus", "Slash", "Backslash", "Arrow"}:
+        return "Symbol"
+    return "Shape"
 
-    b64 = _image_to_base64(clean_img)
-    prompt = (
-        "Look at this single hand-drawn black sketch on a white background. "
-        "Identify what was drawn as accurately as possible, even if it is a letter, digit, symbol, object, shape, or doodle. "
-        "Reply in exactly four lines:\n"
-        "NAME: <short label>\n"
-        "CATEGORY: <letter, number, shape, symbol, object, doodle, or word>\n"
-        "CONFIDENCE: <0-100>\n"
-        "NOTE: <one short sentence>"
-    )
 
-    try:
-        client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=key)
-        resp = client.chat.completions.create(
-            model="meta/llama-3.2-90b-vision-instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-                    ],
-                }
-            ],
-            temperature=0.1,
-            max_tokens=120,
+def _draw_shape_prototype(label, size=DETECTOR_SIDE):
+    canvas = np.zeros((size, size), dtype=np.uint8)
+    c = size // 2
+    margin = int(size * 0.18)
+    thickness = max(4, size // 18)
+
+    if label == "Circle":
+        cv2.circle(canvas, (c, c), size // 3, 255, thickness)
+    elif label == "Triangle":
+        pts = np.array([[c, margin], [size - margin, size - margin], [margin, size - margin]], dtype=np.int32)
+        cv2.polylines(canvas, [pts], True, 255, thickness)
+    elif label == "Square":
+        cv2.rectangle(canvas, (margin, margin), (size - margin, size - margin), 255, thickness)
+    elif label == "Rectangle":
+        cv2.rectangle(canvas, (int(size * 0.14), int(size * 0.28)), (int(size * 0.86), int(size * 0.72)), 255, thickness)
+    elif label == "Diamond":
+        pts = np.array([[c, margin], [size - margin, c], [c, size - margin], [margin, c]], dtype=np.int32)
+        cv2.polylines(canvas, [pts], True, 255, thickness)
+    elif label == "Star":
+        outer = size * 0.34
+        inner = size * 0.14
+        pts = []
+        for idx in range(10):
+            angle = -np.pi / 2 + idx * np.pi / 5
+            radius = outer if idx % 2 == 0 else inner
+            pts.append((int(round(c + radius * np.cos(angle))), int(round(c + radius * np.sin(angle)))))
+        cv2.polylines(canvas, [np.array(pts, dtype=np.int32)], True, 255, thickness)
+    elif label == "Plus":
+        cv2.line(canvas, (c, margin), (c, size - margin), 255, thickness)
+        cv2.line(canvas, (margin, c), (size - margin, c), 255, thickness)
+    elif label == "Minus":
+        cv2.line(canvas, (margin, c), (size - margin, c), 255, thickness)
+    elif label == "Slash":
+        cv2.line(canvas, (margin, size - margin), (size - margin, margin), 255, thickness)
+    elif label == "Backslash":
+        cv2.line(canvas, (margin, margin), (size - margin, size - margin), 255, thickness)
+    elif label == "Arrow":
+        cv2.arrowedLine(canvas, (margin, c), (size - margin, c), 255, thickness, tipLength=0.25)
+    return (canvas > 0).astype(np.uint8)
+
+
+def _render_text_prototype(label, font, thickness, size=DETECTOR_SIDE):
+    canvas = np.zeros((size, size), dtype=np.uint8)
+    scale = 2.4 if label.isalpha() else 2.2
+    (text_w, text_h), baseline = cv2.getTextSize(label, font, scale, thickness)
+    x = max(2, (size - text_w) // 2)
+    y = max(text_h + 2, (size + text_h) // 2 - baseline // 2)
+    cv2.putText(canvas, label, (x, y), font, scale, 255, thickness, cv2.LINE_AA)
+    return canvas
+
+
+def _classifier_mask(mask):
+    mask = np.array(mask, dtype=np.uint8)
+    if mask.ndim != 2:
+        raise ValueError("Classifier mask must be 2D.")
+    norm = _normalize_mask(mask, size=CLASSIFIER_SIDE, pad=3)
+    return (norm > 0).astype(np.uint8) * 255
+
+
+def _augment_training_mask(base_mask):
+    base = np.array(base_mask, dtype=np.uint8)
+    samples = []
+    center = (DETECTOR_SIDE / 2, DETECTOR_SIDE / 2)
+    for angle in CLASSIFIER_ANGLES:
+        for scale in CLASSIFIER_SCALES:
+            for shift_x, shift_y in CLASSIFIER_SHIFTS:
+                matrix = cv2.getRotationMatrix2D(center, angle, scale)
+                matrix[0, 2] += shift_x
+                matrix[1, 2] += shift_y
+                warped = cv2.warpAffine(base, matrix, (DETECTOR_SIDE, DETECTOR_SIDE), flags=cv2.INTER_LINEAR, borderValue=0)
+                samples.append(_classifier_mask(warped))
+    return samples
+
+
+def _hog_descriptor():
+    return cv2.HOGDescriptor((CLASSIFIER_SIDE, CLASSIFIER_SIDE), (16, 16), (8, 8), (8, 8), 9)
+
+
+@lru_cache(maxsize=1)
+def _local_classifier_bank():
+    hog = _hog_descriptor()
+    label_to_idx = {label: idx for idx, label in enumerate(CLASSIFIER_LABELS)}
+    samples = []
+    targets = []
+
+    for label in CLASSIFIER_LABELS:
+        if len(label) == 1 and label.isalnum():
+            for font in CLASSIFIER_FONTS:
+                for thickness in [2, 3, 5]:
+                    base_mask = _render_text_prototype(label, font, thickness)
+                    for sample in _augment_training_mask(base_mask):
+                        samples.append(hog.compute(sample).flatten())
+                        targets.append(label_to_idx[label])
+        else:
+            base_mask = (_draw_shape_prototype(label, size=DETECTOR_SIDE) * 255).astype(np.uint8)
+            for sample in _augment_training_mask(base_mask):
+                samples.append(hog.compute(sample).flatten())
+                targets.append(label_to_idx[label])
+
+    train_x = np.array(samples, dtype=np.float32)
+    train_y = np.array(targets, dtype=np.int32)
+    knn = cv2.ml.KNearest_create()
+    knn.train(train_x, cv2.ml.ROW_SAMPLE, train_y)
+    return {"hog": hog, "knn": knn, "labels": CLASSIFIER_LABELS}
+
+
+def _rank_classifier_matches(classifier_mask):
+    bank = _local_classifier_bank()
+    feature = bank["hog"].compute(classifier_mask).reshape(1, -1).astype(np.float32)
+    _, result, neighbours, distances = bank["knn"].findNearest(feature, k=CLASSIFIER_K)
+
+    labels = bank["labels"]
+    neighbour_ids = neighbours[0].astype(int).tolist()
+    distance_values = [float(val) for val in distances[0].tolist()]
+    max_distance = max(max(distance_values), 1.0)
+
+    aggregates = {}
+    for idx, dist in zip(neighbour_ids, distance_values):
+        label = labels[idx]
+        bucket = aggregates.setdefault(
+            label,
+            {"label": label, "category": _label_category(label), "votes": 0, "distance_sum": 0.0},
         )
-        raw = resp.choices[0].message.content.strip()
-        parsed = _parse_detection_response(raw)
-        parsed["raw"] = raw
-        return parsed
-    except Exception as exc:
-        return {
-            "name": "Unknown",
-            "category": "Sketch",
-            "confidence": 0,
-            "note": f"Vision API error: {exc}",
-            "raw": f"Vision API error: {exc}",
+        bucket["votes"] += 1
+        bucket["distance_sum"] += dist
+
+    ranked = []
+    for item in aggregates.values():
+        avg_distance = item["distance_sum"] / max(item["votes"], 1)
+        closeness = max(0.0, 1.0 - (avg_distance / max_distance))
+        score = 0.7 * (item["votes"] / CLASSIFIER_K) + 0.3 * closeness
+        ranked.append(
+            {
+                "label": item["label"],
+                "category": item["category"],
+                "votes": item["votes"],
+                "avg_distance": avg_distance,
+                "score": max(0.0, min(1.0, float(score))),
+            }
+        )
+
+    ranked.sort(key=lambda item: (item["score"], item["votes"], -item["avg_distance"]), reverse=True)
+    predicted_label = labels[int(result[0, 0])]
+    if ranked and ranked[0]["label"] != predicted_label:
+        ranked.sort(key=lambda item: (item["label"] != predicted_label, -item["score"], -item["votes"], item["avg_distance"]))
+    return ranked
+
+
+def _local_detection_note(best_label, confidence, top_matches):
+    runner = top_matches[1]["label"] if len(top_matches) > 1 else None
+    if confidence >= 80:
+        note = f"Local classifier strongly matched your strokes to `{best_label}`."
+    elif confidence >= 60:
+        note = f"Best local match is `{best_label}` from the offline sketch classifier."
+    else:
+        note = f"Offline classifier's best guess is `{best_label}`, but the sketch is still fairly ambiguous."
+    if runner:
+        note += f" Next closest match: `{runner}`."
+    return note
+
+
+def _detect_locally(clean_img):
+    raw_mask = _binary_mask_from_image(clean_img)
+    norm_mask = _normalize_mask(raw_mask)
+    desc = _mask_descriptors(norm_mask)
+
+    if desc["active_ratio"] <= 0.001:
+        empty = {"name": "Blank", "category": "Sketch", "confidence": 0, "note": "The detector did not find enough stroke pixels to classify.", "raw": "{}", "top_matches": []}
+        return empty
+
+    classifier_mask = _classifier_mask(raw_mask)
+    ranked = _rank_classifier_matches(classifier_mask)
+    top_matches = [
+        {
+            "label": item["label"],
+            "category": item["category"],
+            "votes": item["votes"],
+            "score": round(float(item["score"]) * 100.0, 1),
         }
+        for item in ranked[:5]
+    ]
+
+    best = ranked[0]
+    second_score = float(ranked[1]["score"]) if len(ranked) > 1 else 0.0
+    margin = max(0.0, float(best["score"]) - second_score)
+    confidence = int(np.clip(30 + best["score"] * 45 + margin * 35 + min(best["votes"], CLASSIFIER_K) * 2.5, 10, 99))
+    if best["score"] < 0.32:
+        confidence = min(confidence, 42)
+
+    payload = {
+        "detector": "local-hog-knn-sketch-classifier",
+        "best_match": best["label"],
+        "category": best["category"],
+        "confidence": confidence,
+        "top_matches": top_matches,
+        "active_ratio": round(float(desc["active_ratio"]), 4),
+        "aspect": round(float(desc["aspect"]), 4),
+        "holes": int(desc["holes"]),
+        "vertices": int(desc["vertices"]),
+    }
+    return {
+        "name": best["label"],
+        "category": best["category"],
+        "confidence": confidence,
+        "note": _local_detection_note(best["label"], confidence, top_matches),
+        "raw": json.dumps(payload, indent=2),
+        "top_matches": top_matches,
+    }
 
 
 def _prepare_ai_analysis(result):
@@ -302,7 +559,7 @@ def _analyze_drawing(clean_img, analysis_hash):
     engine.store(input_vec)
     recovered, energies = engine.recover(input_vec, steps=90)
     changed = (recovered != input_vec).astype(float)
-    detection = _detect_with_ai(clean_img)
+    detection = _detect_locally(clean_img)
     return {
         "analysis_hash": analysis_hash,
         "clean_img": clean_img,
@@ -316,6 +573,7 @@ def _analyze_drawing(clean_img, analysis_hash):
         "detected_confidence": detection["confidence"],
         "detected_note": detection["note"],
         "detected_raw": detection["raw"],
+        "detected_top_matches": detection["top_matches"],
         "ai_attempted": False,
         "ai_pushed": False,
     }
@@ -344,7 +602,7 @@ def main():
     )
 
     theory_text = (
-        "This page now reads your drawing directly and tells you what it looks like. "
+        "This page now reads your drawing with a fully local sketch detector and tells you what it most likely looks like. "
         "Alongside that, it converts your sketch into a Hopfield-style bipolar matrix so you can see how the drawing becomes a neural state."
     )
     with st.expander("📚 Theory & Mathematical Explanation", expanded=False):
@@ -353,7 +611,7 @@ def main():
             **Free-Form Sketch Detection + Hopfield Matrix**
 
             1. Clean the canvas into a sharp black-on-white sketch image
-            2. Ask a vision model what the drawing most likely represents
+            2. Compare the sketch against a local bank of geometric and character fingerprints
             3. Downsample the drawing into a 16 × 16 bipolar neuron matrix
             4. Build a Hopfield-style weight matrix from the current sketch and observe its energy behavior
             """
@@ -362,14 +620,14 @@ def main():
 
     render_learning_journey(
         "Draw Anything And Get A Direct Output",
-        "This version is no longer limited to stored memory patterns. It detects the free-form sketch directly, then shows you the neural matrix and energy views built from the exact drawing you made.",
+        "This version is no longer limited to stored memory patterns, and it no longer depends on an external AI API to name the sketch. It uses a local detector first, then shows you the neural matrix and energy views built from the exact drawing you made.",
         [
-            "The visible label comes from direct sketch analysis, not from matching against a tiny fixed memory bank.",
+            "The visible label comes from a local HOG plus k nearest-neighbor sketch classifier trained on letters, digits, and common shapes.",
             "The 16 by 16 matrix is a compact neural representation of your strokes.",
             "The Hopfield weight matrix now reflects the current sketch itself, so the matrix view always matches what you drew.",
             "Analysis runs on demand when you click the button, which keeps the page much faster.",
         ],
-        "Think of the system as having two eyes. One eye describes what the drawing looks like, and the other eye turns the same drawing into a grid of neural states and energy patterns.",
+        "Think of the system as having two local tools. One tool makes a best sketch guess from offline visual features, and the other turns the same sketch into a grid of neural states and energy patterns.",
         audio_text=theory_text,
         key_suffix="hop_intro",
     )
@@ -379,8 +637,8 @@ def main():
     with top1:
         view_mode = render_visualization_mode("hop", accent=C, subject="the sketch detector and Hopfield matrix lab")
     with top2:
-        explain_with_ai = st.checkbox("Generate AI coach explanation", value=False, key="hop_explain_ai")
-        st.caption("Keeping this off makes the page faster. You can still analyze the drawing output immediately.")
+        explain_with_ai = st.checkbox("Generate optional AI coach explanation", value=False, key="hop_explain_ai")
+        st.caption("Detection works locally with no API key. This toggle only affects the extra explanation panel.")
 
     if CANVAS_OK:
         canvas = st_canvas(
@@ -485,7 +743,7 @@ def main():
             "The energy plot shows how self-consistent the sketch state is under the Hopfield-style weight matrix created from the same drawing."
         ),
         "Why This Is Faster": (
-            "The app now waits for your Analyze button before calling detection or building the heavy charts. That avoids expensive recomputation on every tiny brush movement."
+            "The app now waits for your Analyze button before calling the local detector or building the heavy charts. That avoids expensive recomputation on every tiny brush movement."
         ),
     }
     if view_mode == "Immersive Coach":
@@ -495,8 +753,26 @@ def main():
         st.caption("DETECTION RESULT")
         st.markdown(f"### {result['detected_name']}")
         st.write(result["detected_note"])
+        st.caption("Detector: Local HOG + k-NN sketch classifier")
         with st.expander("Raw detector response", expanded=False):
             st.code(result["detected_raw"])
+
+    if result.get("detected_top_matches"):
+        top_matches = result["detected_top_matches"]
+        st.plotly_chart(
+            contribution_bar(
+                [item["label"] for item in top_matches],
+                [float(item["score"]) for item in top_matches],
+                "Top Local Matches",
+                positive=G,
+                negative=R,
+                neutral=A,
+                height=300,
+                y_title="Match score",
+            ),
+            use_container_width=True,
+            key="hop_top_matches",
+        )
 
     if explain_with_ai:
         if not result.get("ai_attempted"):
@@ -517,6 +793,7 @@ def main():
         f"Detected drawing: {result['detected_name']}",
         f"Category: {result['detected_category']}",
         f"Detection confidence: {result['detected_confidence']}%",
+        f"Detector: local HOG + k-NN sketch classifier",
         f"Energy start -> end: {result['energies'][0]:.4f} -> {result['energies'][-1]:.4f}",
         f"State stability: {stability:.2f}%",
     ]
