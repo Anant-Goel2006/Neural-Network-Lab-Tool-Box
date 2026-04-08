@@ -38,8 +38,9 @@ N = GRID_SIDE * GRID_SIDE
 DETECTOR_SIDE = 96
 CLASSIFIER_SIDE = 32
 CLASSIFIER_K = 9
-CLASSIFIER_SHAPE_LABELS = ["Circle", "Triangle", "Square", "Rectangle", "Diamond", "Star", "Plus", "Minus", "Slash", "Backslash", "Arrow"]
-CLASSIFIER_LABELS = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") + CLASSIFIER_SHAPE_LABELS
+CHARACTER_LABELS = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+CHARACTER_LABELS += list("abcdefghijklmnopqrstuvwxyz")
+SHAPE_LABELS = ["Circle", "Triangle", "Square", "Rectangle", "Diamond", "Star", "Plus", "Minus", "Slash", "Backslash", "Arrow"]
 CLASSIFIER_FONTS = [cv2.FONT_HERSHEY_SIMPLEX, cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_COMPLEX]
 CLASSIFIER_ANGLES = (-12, 0, 12)
 CLASSIFIER_SCALES = (0.94, 1.0, 1.08)
@@ -311,6 +312,14 @@ def _label_category(label):
     return "Shape"
 
 
+def _text_render_scale(label):
+    if len(label) == 1 and label.islower():
+        return 2.0
+    if len(label) == 1 and label.isalpha():
+        return 2.4
+    return 2.2
+
+
 def _draw_shape_prototype(label, size=DETECTOR_SIDE):
     canvas = np.zeros((size, size), dtype=np.uint8)
     c = size // 2
@@ -354,7 +363,7 @@ def _draw_shape_prototype(label, size=DETECTOR_SIDE):
 
 def _render_text_prototype(label, font, thickness, size=DETECTOR_SIDE):
     canvas = np.zeros((size, size), dtype=np.uint8)
-    scale = 2.4 if label.isalpha() else 2.2
+    scale = _text_render_scale(label)
     (text_w, text_h), baseline = cv2.getTextSize(label, font, scale, thickness)
     x = max(2, (size - text_w) // 2)
     y = max(text_h + 2, (size + text_h) // 2 - baseline // 2)
@@ -390,35 +399,48 @@ def _hog_descriptor():
 
 
 @lru_cache(maxsize=1)
-def _local_classifier_bank():
+def _character_classifier_bank():
     hog = _hog_descriptor()
-    label_to_idx = {label: idx for idx, label in enumerate(CLASSIFIER_LABELS)}
+    label_to_idx = {label: idx for idx, label in enumerate(CHARACTER_LABELS)}
     samples = []
     targets = []
 
-    for label in CLASSIFIER_LABELS:
-        if len(label) == 1 and label.isalnum():
-            for font in CLASSIFIER_FONTS:
-                for thickness in [2, 3, 5]:
-                    base_mask = _render_text_prototype(label, font, thickness)
-                    for sample in _augment_training_mask(base_mask):
-                        samples.append(hog.compute(sample).flatten())
-                        targets.append(label_to_idx[label])
-        else:
-            base_mask = (_draw_shape_prototype(label, size=DETECTOR_SIDE) * 255).astype(np.uint8)
-            for sample in _augment_training_mask(base_mask):
-                samples.append(hog.compute(sample).flatten())
-                targets.append(label_to_idx[label])
+    for label in CHARACTER_LABELS:
+        for font in CLASSIFIER_FONTS:
+            for thickness in [2, 3, 5]:
+                base_mask = _render_text_prototype(label, font, thickness)
+                for sample in _augment_training_mask(base_mask):
+                    samples.append(hog.compute(sample).flatten())
+                    targets.append(label_to_idx[label])
 
     train_x = np.array(samples, dtype=np.float32)
     train_y = np.array(targets, dtype=np.int32)
     knn = cv2.ml.KNearest_create()
     knn.train(train_x, cv2.ml.ROW_SAMPLE, train_y)
-    return {"hog": hog, "knn": knn, "labels": CLASSIFIER_LABELS}
+    return {"hog": hog, "knn": knn, "labels": CHARACTER_LABELS}
 
 
-def _rank_classifier_matches(classifier_mask):
-    bank = _local_classifier_bank()
+@lru_cache(maxsize=1)
+def _shape_classifier_bank():
+    hog = _hog_descriptor()
+    label_to_idx = {label: idx for idx, label in enumerate(SHAPE_LABELS)}
+    samples = []
+    targets = []
+
+    for label in SHAPE_LABELS:
+        base_mask = (_draw_shape_prototype(label, size=DETECTOR_SIDE) * 255).astype(np.uint8)
+        for sample in _augment_training_mask(base_mask):
+            samples.append(hog.compute(sample).flatten())
+            targets.append(label_to_idx[label])
+
+    train_x = np.array(samples, dtype=np.float32)
+    train_y = np.array(targets, dtype=np.int32)
+    knn = cv2.ml.KNearest_create()
+    knn.train(train_x, cv2.ml.ROW_SAMPLE, train_y)
+    return {"hog": hog, "knn": knn, "labels": SHAPE_LABELS}
+
+
+def _rank_matches_from_bank(classifier_mask, bank):
     feature = bank["hog"].compute(classifier_mask).reshape(1, -1).astype(np.float32)
     _, result, neighbours, distances = bank["knn"].findNearest(feature, k=CLASSIFIER_K)
 
@@ -459,6 +481,14 @@ def _rank_classifier_matches(classifier_mask):
     return ranked
 
 
+def _rank_character_matches(classifier_mask):
+    return _rank_matches_from_bank(classifier_mask, _character_classifier_bank())
+
+
+def _rank_shape_matches(classifier_mask):
+    return _rank_matches_from_bank(classifier_mask, _shape_classifier_bank())
+
+
 def _local_detection_note(best_label, confidence, top_matches):
     runner = top_matches[1]["label"] if len(top_matches) > 1 else None
     if confidence >= 80:
@@ -472,7 +502,202 @@ def _local_detection_note(best_label, confidence, top_matches):
     return note
 
 
-def _detect_locally(clean_img):
+def _confidence_from_ranked(ranked):
+    best = ranked[0]
+    second_score = float(ranked[1]["score"]) if len(ranked) > 1 else 0.0
+    margin = max(0.0, float(best["score"]) - second_score)
+    confidence = int(np.clip(30 + best["score"] * 45 + margin * 35 + min(best["votes"], CLASSIFIER_K) * 2.5, 10, 99))
+    if best["score"] < 0.32:
+        confidence = min(confidence, 42)
+    return confidence
+
+
+def _extract_character_boxes(raw_mask):
+    binary = (np.array(raw_mask, dtype=np.uint8) > 0).astype(np.uint8)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    boxes = []
+    for idx in range(1, num_labels):
+        x, y, w, h, area = stats[idx]
+        if area < 14 or w < 2 or h < 8:
+            continue
+        boxes.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "area": int(area)})
+
+    if not boxes:
+        return []
+
+    boxes.sort(key=lambda item: item["x"])
+    merged = []
+    for box in boxes:
+        if not merged:
+            merged.append(box.copy())
+            continue
+
+        prev = merged[-1]
+        prev_right = prev["x"] + prev["w"]
+        gap = box["x"] - prev_right
+        overlap_y = min(prev["y"] + prev["h"], box["y"] + box["h"]) - max(prev["y"], box["y"])
+        center_dx = abs((prev["x"] + prev["w"] / 2.0) - (box["x"] + box["w"] / 2.0))
+        stacked = center_dx <= max(prev["w"], box["w"]) * 0.45
+        close_side_by_side = gap <= max(4, int(0.16 * max(prev["h"], box["h"]))) and overlap_y >= -int(0.2 * max(prev["h"], box["h"]))
+        detached_dot = stacked and gap <= max(5, int(0.18 * max(prev["h"], box["h"])))
+
+        if close_side_by_side or detached_dot:
+            x0 = min(prev["x"], box["x"])
+            y0 = min(prev["y"], box["y"])
+            x1 = max(prev["x"] + prev["w"], box["x"] + box["w"])
+            y1 = max(prev["y"] + prev["h"], box["y"] + box["h"])
+            prev.update({"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0, "area": prev["area"] + box["area"]})
+        else:
+            merged.append(box.copy())
+
+    return merged
+
+
+def _projection_character_boxes(raw_mask):
+    binary = (np.array(raw_mask, dtype=np.uint8) > 0).astype(np.uint8)
+    if binary.sum() == 0:
+        return []
+
+    work = cv2.erode(binary, np.ones((2, 2), dtype=np.uint8), iterations=1)
+    col_proj = work.sum(axis=0)
+    active = col_proj > max(1, int(0.02 * work.shape[0]))
+
+    runs = []
+    start = None
+    for idx, flag in enumerate(active):
+        if flag and start is None:
+            start = idx
+        elif not flag and start is not None:
+            if idx - start >= 3:
+                runs.append((start, idx - 1))
+            start = None
+    if start is not None and len(active) - start >= 3:
+        runs.append((start, len(active) - 1))
+
+    if len(runs) < 2:
+        return []
+
+    boxes = []
+    for x0, x1 in runs:
+        slice_mask = binary[:, x0 : x1 + 1]
+        ys, xs = np.where(slice_mask > 0)
+        if len(xs) == 0:
+            continue
+        y0 = int(ys.min())
+        y1 = int(ys.max())
+        boxes.append({"x": int(x0), "y": y0, "w": int(x1 - x0 + 1), "h": int(y1 - y0 + 1)})
+    return boxes
+
+
+def _split_box_on_valley(raw_mask, box):
+    binary = (np.array(raw_mask, dtype=np.uint8) > 0).astype(np.uint8)
+    sub = binary[:, box["x"] : box["x"] + box["w"]]
+    work = cv2.erode(sub, np.ones((2, 2), dtype=np.uint8), iterations=1)
+    proj = work.sum(axis=0).astype(float)
+    if len(proj) < 12 or proj.max() <= 0:
+        return [box]
+
+    left = max(2, int(len(proj) * 0.18))
+    right = min(len(proj) - 3, int(len(proj) * 0.82))
+    if left >= right:
+        return [box]
+
+    valley_threshold = max(1.0, proj.max() * 0.40)
+    valley_indices = [idx for idx in range(left, right + 1) if proj[idx] <= valley_threshold]
+    if not valley_indices:
+        return [box]
+
+    center = valley_indices[len(valley_indices) // 2]
+    segments = [(0, center - 1), (center + 1, len(proj) - 1)]
+    boxes_out = []
+    for seg_x0, seg_x1 in segments:
+        if seg_x1 - seg_x0 < 2:
+            continue
+        seg_mask = binary[:, box["x"] + seg_x0 : box["x"] + seg_x1 + 1]
+        ys, xs = np.where(seg_mask > 0)
+        if len(xs) == 0:
+            continue
+        x0 = box["x"] + seg_x0 + int(xs.min())
+        x1 = box["x"] + seg_x0 + int(xs.max())
+        y0 = int(ys.min())
+        y1 = int(ys.max())
+        boxes_out.append({"x": x0, "y": y0, "w": x1 - x0 + 1, "h": y1 - y0 + 1})
+    return boxes_out if len(boxes_out) >= 2 else [box]
+
+
+def _refine_character_boxes(raw_mask, boxes):
+    if len(boxes) < 2:
+        return boxes
+
+    widths = [box["w"] for box in boxes]
+    median_width = float(np.median(widths)) if widths else 0.0
+    refined = []
+    for box in boxes:
+        aspect = box["w"] / max(box["h"], 1)
+        if median_width > 0 and aspect >= 0.9 and box["w"] >= median_width * 1.25:
+            refined.extend(_split_box_on_valley(raw_mask, box))
+        else:
+            refined.append(box)
+    refined.sort(key=lambda item: item["x"])
+    return refined
+
+
+def _character_candidates(raw_mask):
+    boxes = _extract_character_boxes(raw_mask)
+    if len(boxes) < 2:
+        boxes = _projection_character_boxes(raw_mask)
+    boxes = _refine_character_boxes(raw_mask, boxes)
+    if len(boxes) < 2:
+        return None
+
+    chars = []
+    for box in boxes:
+        crop = raw_mask[box["y"] : box["y"] + box["h"], box["x"] : box["x"] + box["w"]]
+        ranked = _rank_character_matches(_classifier_mask(crop))
+        best = ranked[0]
+        chars.append(
+            {
+                "label": best["label"],
+                "confidence": _confidence_from_ranked(ranked),
+                "ranked": ranked,
+            }
+        )
+
+    text = "".join(item["label"] for item in chars)
+    confidence = int(np.mean([item["confidence"] for item in chars])) if chars else 0
+    top_matches = [
+        {
+            "label": f"{idx + 1}:{item['label']}",
+            "category": "Character",
+            "votes": int(item["ranked"][0]["votes"]),
+            "score": float(item["confidence"]),
+        }
+        for idx, item in enumerate(chars[:6])
+    ]
+    payload = {
+        "detector": "local-text-segmentation-ocr",
+        "text": text,
+        "confidence": confidence,
+        "characters": [
+            {
+                "position": idx + 1,
+                "label": item["label"],
+                "confidence": item["confidence"],
+            }
+            for idx, item in enumerate(chars)
+        ],
+    }
+    return {
+        "name": text,
+        "category": "Text",
+        "confidence": confidence,
+        "note": f"Local text reader split the sketch into {len(chars)} character region(s) and read it as `{text}`.",
+        "raw": json.dumps(payload, indent=2),
+        "top_matches": top_matches,
+    }
+
+
+def _detect_locally(clean_img, prefer_text=False):
     raw_mask = _binary_mask_from_image(clean_img)
     norm_mask = _normalize_mask(raw_mask)
     desc = _mask_descriptors(norm_mask)
@@ -481,8 +706,20 @@ def _detect_locally(clean_img):
         empty = {"name": "Blank", "category": "Sketch", "confidence": 0, "note": "The detector did not find enough stroke pixels to classify.", "raw": "{}", "top_matches": []}
         return empty
 
+    text_detection = _character_candidates(raw_mask)
+    if text_detection:
+        return text_detection
+
     classifier_mask = _classifier_mask(raw_mask)
-    ranked = _rank_classifier_matches(classifier_mask)
+    char_ranked = _rank_character_matches(classifier_mask)
+    shape_ranked = _rank_shape_matches(classifier_mask)
+    ranked = char_ranked
+    if prefer_text:
+        if shape_ranked and shape_ranked[0]["score"] > char_ranked[0]["score"] + 0.18:
+            ranked = shape_ranked
+    elif shape_ranked and shape_ranked[0]["score"] > char_ranked[0]["score"] + 0.08:
+        ranked = shape_ranked
+
     top_matches = [
         {
             "label": item["label"],
@@ -494,11 +731,7 @@ def _detect_locally(clean_img):
     ]
 
     best = ranked[0]
-    second_score = float(ranked[1]["score"]) if len(ranked) > 1 else 0.0
-    margin = max(0.0, float(best["score"]) - second_score)
-    confidence = int(np.clip(30 + best["score"] * 45 + margin * 35 + min(best["votes"], CLASSIFIER_K) * 2.5, 10, 99))
-    if best["score"] < 0.32:
-        confidence = min(confidence, 42)
+    confidence = _confidence_from_ranked(ranked)
 
     payload = {
         "detector": "local-hog-knn-sketch-classifier",
@@ -553,13 +786,13 @@ def _prepare_ai_analysis(result):
     return result
 
 
-def _analyze_drawing(clean_img, analysis_hash):
+def _analyze_drawing(clean_img, analysis_hash, prefer_text=False):
     input_vec = _image_to_bipolar(clean_img)
     engine = HopfieldEngine(N)
     engine.store(input_vec)
     recovered, energies = engine.recover(input_vec, steps=90)
     changed = (recovered != input_vec).astype(float)
-    detection = _detect_locally(clean_img)
+    detection = _detect_locally(clean_img, prefer_text=prefer_text)
     return {
         "analysis_hash": analysis_hash,
         "clean_img": clean_img,
@@ -574,6 +807,7 @@ def _analyze_drawing(clean_img, analysis_hash):
         "detected_note": detection["note"],
         "detected_raw": detection["raw"],
         "detected_top_matches": detection["top_matches"],
+        "text_mode": bool(prefer_text),
         "ai_attempted": False,
         "ai_pushed": False,
     }
@@ -602,7 +836,7 @@ def main():
     )
 
     theory_text = (
-        "This page now reads your drawing with a fully local sketch detector and tells you what it most likely looks like. "
+        "This page reads your drawing locally and returns the closest text, symbol, or shape match it can find. "
         "Alongside that, it converts your sketch into a Hopfield-style bipolar matrix so you can see how the drawing becomes a neural state."
     )
     with st.expander("📚 Theory & Mathematical Explanation", expanded=False):
@@ -620,30 +854,34 @@ def main():
 
     render_learning_journey(
         "Draw Anything And Get A Direct Output",
-        "This version is no longer limited to stored memory patterns, and it no longer depends on an external AI API to name the sketch. It uses a local detector first, then shows you the neural matrix and energy views built from the exact drawing you made.",
+        "This lab reads the sketch on the canvas with a local text-and-shape detector, then builds the Hopfield-style matrix and energy views from that same drawing.",
         [
-            "The visible label comes from a local HOG plus k nearest-neighbor sketch classifier trained on letters, digits, and common shapes.",
+            "The visible label comes from a local text-and-shape detector trained on letters, digits, and common symbols.",
+            "Turn on Text Mode when you want the detector to favor letters and words over symbols and geometric shapes.",
             "The 16 by 16 matrix is a compact neural representation of your strokes.",
             "The Hopfield weight matrix now reflects the current sketch itself, so the matrix view always matches what you drew.",
             "Analysis runs on demand when you click the button, which keeps the page much faster.",
         ],
-        "Think of the system as having two local tools. One tool makes a best sketch guess from offline visual features, and the other turns the same sketch into a grid of neural states and energy patterns.",
+        "Think of the system as having two linked views of the same sketch. One view reads what the strokes most likely represent, and the other turns those strokes into a grid of neural states and energy patterns.",
         audio_text=theory_text,
         key_suffix="hop_intro",
     )
 
     section_header("1. Draw And Analyze", "Sketch freely, then run detection only when you want the result")
-    top1, top2 = st.columns([1.2, 1])
+    top1, top2, top3 = st.columns([1.15, 0.85, 1.0])
     with top1:
         view_mode = render_visualization_mode("hop", accent=C, subject="the sketch detector and Hopfield matrix lab")
     with top2:
+        text_mode = st.toggle("Text Mode", value=False, key="hop_text_mode")
+        st.caption("Use this when you are drawing letters or short words so the detector prioritizes text reading.")
+    with top3:
         explain_with_ai = st.checkbox("Generate optional AI coach explanation", value=False, key="hop_explain_ai")
-        st.caption("Detection works locally with no API key. This toggle only affects the extra explanation panel.")
+        st.caption("Recognition runs locally. Turn this on only if you want an extra explanation panel.")
 
     if CANVAS_OK:
         canvas = st_canvas(
             fill_color="rgba(0,0,0,0)",
-            stroke_width=20,
+            stroke_width=14 if text_mode else 20,
             stroke_color="#00f0ff",
             background_color="#0f172a",
             height=360,
@@ -675,9 +913,13 @@ def main():
             clean_img = _clean_canvas_image(canvas.image_data)
             analysis_hash = _canvas_hash(canvas.image_data)
             cached = st.session_state.get("hop_result")
-            if not cached or cached.get("analysis_hash") != analysis_hash:
+            if (
+                not cached
+                or cached.get("analysis_hash") != analysis_hash
+                or cached.get("text_mode") != bool(text_mode)
+            ):
                 with st.spinner("Analyzing your sketch..."):
-                    result = _analyze_drawing(clean_img, analysis_hash)
+                    result = _analyze_drawing(clean_img, analysis_hash, prefer_text=text_mode)
                     st.session_state.hop_result = result
             if explain_with_ai and st.session_state.hop_result:
                 with st.spinner("Generating AI coach explanation..."):
@@ -754,6 +996,7 @@ def main():
         st.markdown(f"### {result['detected_name']}")
         st.write(result["detected_note"])
         st.caption("Detector: Local HOG + k-NN sketch classifier")
+        st.caption(f"Mode used: {'Text Mode' if result.get('text_mode') else 'Auto Mode'}")
         with st.expander("Raw detector response", expanded=False):
             st.code(result["detected_raw"])
 
