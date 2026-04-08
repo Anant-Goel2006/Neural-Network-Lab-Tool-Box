@@ -80,12 +80,21 @@ def canvas_to_bipolar(data):
     return np.where(np.array(small) > 15, 1.0, -1.0).flatten()
 
 def canvas_to_base64(data):
+    """Convert canvas to clean black-on-white PNG for best AI recognition."""
     img = Image.fromarray(data.astype('uint8'), 'RGBA')
-    bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
-    bg.paste(img, mask=img.split()[3])
-    rgb = bg.convert('RGB')
+    gray = img.convert('L')
+    arr = np.array(gray)
+    # Threshold: anything drawn becomes black, background becomes white
+    bw = np.where(arr > 20, 0, 255).astype('uint8')
+    # Make it thicker with a slight blur then re-threshold
+    bw_img = Image.fromarray(bw, 'L').filter(ImageFilter.BoxBlur(2))
+    bw_arr = np.array(bw_img)
+    final = np.where(bw_arr < 200, 0, 255).astype('uint8')
+    clean = Image.fromarray(final, 'L').convert('RGB')
+    # Scale up to 256x256 for better AI visibility
+    clean = clean.resize((256, 256), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
-    rgb.save(buf, format='PNG')
+    clean.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 def canvas_hash(data):
@@ -115,20 +124,23 @@ def detect_with_ai(canvas_data):
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "This is a hand-drawn sketch on a digital canvas with cyan/teal strokes on a dark background. Identify what letter, digit, shape, symbol, or object is drawn. Reply with EXACTLY this format:\nDETECTED: [item name]\nANALYSIS: [2 sentences about what you see and the drawing quality]"},
+                    {"type": "text", "text": "Look at this hand-drawn black ink sketch on white paper. What single letter, number, or shape is drawn? Answer in this exact format on two lines:\nNAME: (one word only, like A or Circle or 7)\nNOTE: (one short sentence about the drawing)"},
                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
                 ]
             }],
-            temperature=0.2,
-            max_tokens=200
+            temperature=0.1,
+            max_tokens=100
         )
-        result = resp.choices[0].message.content
-        # Parse DETECTED line
+        result = resp.choices[0].message.content.strip()
         detected = "Drawing"
         for line in result.split('\n'):
-            if line.strip().upper().startswith("DETECTED:"):
-                detected = line.split(":", 1)[1].strip()
+            ln = line.strip()
+            if ln.upper().startswith("NAME:"):
+                detected = ln.split(":", 1)[1].strip().strip('"\' ')
                 break
+        # If the model didn't follow format, use the first word
+        if detected == "Drawing" and result:
+            detected = result.split()[0].strip(".,!:;\"'*#")
         return detected, result
     except Exception as e:
         # Fallback to text model
@@ -274,10 +286,9 @@ def main():
             st.subheader("⚡ Live AI Detection")
             if st.session_state.hop_detected is not None:
                 st.markdown(f"""
-                <div style="text-align:center; padding: 15px 0;">
-                    <div style="font-size:0.85rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em;">AI Detected</div>
-                    <div style="font-size:3rem; font-weight:900; color:#00ffcc; font-family:'Montserrat',sans-serif;
-                        text-shadow: 0 0 30px rgba(0,255,204,0.4);">{st.session_state.hop_detected}</div>
+                <div style="text-align:center; padding: 10px 0;">
+                    <div style="font-size:0.75rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em;">AI Detected</div>
+                    <div style="font-size:1.8rem; font-weight:700; color:#00ffcc; font-family:'Montserrat',sans-serif;">{st.session_state.hop_detected}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -294,7 +305,9 @@ def main():
         with st.container(border=True):
             st.subheader("🤖 AI Analysis")
             if st.session_state.hop_ai_text:
-                st.markdown(st.session_state.hop_ai_text)
+                # Render in a controlled font size to prevent oversized headers
+                safe_text = st.session_state.hop_ai_text.replace('#', '').strip()
+                st.markdown(f'<div style="font-size:0.9rem; line-height:1.6; color:#E2E8F0;">{safe_text}</div>', unsafe_allow_html=True)
             else:
                 st.caption("Live analysis appears here as you draw.")
 
