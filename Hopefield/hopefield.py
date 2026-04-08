@@ -250,10 +250,14 @@ def main():
         
         if st.session_state.recovered is not None:
             out = st.session_state.recovered
-            overlaps = {k: float(out @ v) / N for k, v in st.session_state.hop_memories.items()}
-            best_match = max(overlaps, key=overlaps.get)
+            if len(st.session_state.hop_memories) > 0:
+                overlaps = {k: float(out @ v) / N for k, v in st.session_state.hop_memories.items()}
+                best_match = max(overlaps, key=overlaps.get)
+                display_match = best_match
+            else:
+                display_match = "Unknown (Empty Memory)"
             
-            st.markdown(f'<div style="text-align:center; padding-bottom: 20px;"><div style="font-size:0.9rem; color:#A0AEC0; text-transform:uppercase; letter-spacing:0.1em;">Most Probable Concept</div><div style="font-size:2.5rem; font-weight:bold; color:#00ffcc; text-shadow:0 0 20px rgba(0,255,204,0.4);">{best_match}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align:center; padding-bottom: 20px;"><div style="font-size:0.9rem; color:#A0AEC0; text-transform:uppercase; letter-spacing:0.1em;">Most Probable Concept</div><div style="font-size:2.5rem; font-weight:bold; color:#00ffcc; text-shadow:0 0 20px rgba(0,255,204,0.4);">{display_match}</div></div>', unsafe_allow_html=True)
             
             p1, p2 = st.columns(2)
             with p1: st.plotly_chart(plot_matrix(st.session_state.user_input, "What you drew"), use_container_width=True)
@@ -297,9 +301,20 @@ def main():
     # -----------------------------------------------------------
     st.markdown('<div class="premium-card">', unsafe_allow_html=True)
     st.markdown('<h3 style="color:white; margin-top:0;">📚 Deep Structural Memories</h3>', unsafe_allow_html=True)
-    cols = st.columns(6)
-    for i, (name, pat) in enumerate(st.session_state.hop_memories.items()):
-        with cols[i % 6]: st.plotly_chart(plot_matrix(pat, name), use_container_width=True)
+    
+    if len(st.session_state.hop_memories) == 0:
+        st.markdown('<div style="text-align:center; padding: 30px; color:#A0AEC0;">The memory matrix is empty. Teach it a new shape!</div>', unsafe_allow_html=True)
+    else:
+        # Avoid creating unnecessary empty columns
+        num_patterns = len(st.session_state.hop_memories)
+        num_cols = min(num_patterns, 6)
+        cols = st.columns(num_cols)
+        for i, (name, pat) in enumerate(st.session_state.hop_memories.items()):
+            with cols[i % num_cols]: 
+                st.plotly_chart(plot_matrix(pat, name), use_container_width=True)
+    
+        # Ensure spacing
+        st.markdown('<br>', unsafe_allow_html=True)
     
     if st.button("🚨 Purge All Synaptic Pathways (Empty Matrix)", type="primary"):
         st.session_state.hop_memories = {}
