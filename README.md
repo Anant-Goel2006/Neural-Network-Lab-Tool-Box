@@ -33,42 +33,49 @@ NeuroLab features seven dedicated environments for mastering Artificial Intellig
 
 ### 🟢 1. The Perceptron
 *The Foundation of Learning*
+![Perceptron Module](assets/banners/perceptron_module_banner_1774322293698.png)
 - Watch a single neuron learn binary logic gates in real-time.
 - Interactive decision boundary visualization.
 - Instant confusion matrix generation.
 
 ### ➡️ 2. Forward Propagation
 *The Signal Flow*
+![Forward Prop Module](assets/banners/forward_prop_module_banner_1774322313582.png)
 - Visualizing data transformation through multi-layer networks.
 - Live activation heatmaps (Sigmoid, ReLU, Tanh, etc.).
 - Real-time weight and bias manipulation.
 
 ### ⬅️ 3. Backward Propagation
 *The Heart of Optimization*
+![Backward Prop Module](assets/banners/backward_prop_module_banner_1774322334899.png)
 - Master the Chain Rule through visual gradient flow.
 - Automated weight convergence dashboard.
 - Loss landscape exploration.
 
 ### 🧠 4. Hopfield Network
 *Associative Memory*
+![Hopfield Module](assets/banners/hopfield_module_banner_1775024868657.png)
 - Explore recurrent neural architectures and energy landscapes.
 - Pattern recovery and Hebbian learning simulations.
 - Content-addressable memory visualization.
 
 ### 📷 5. OpenCV Detection Hub
-*Computer Vision Powerhouse*
+*Vision Intelligence Suite*
+![OpenCV Module](assets/banners/opencv_module_banner_1774322354099.png)
 - **YOLOv8 Intelligence**: Real-time vehicle counting and sign detection.
 - **Biometric Hub**: Face scanning and automated attendance logging.
 - **Gesture Control**: Hand landmark tracking via MediaPipe.
 
 ### 💬 6. Sentiment Analysis
 *Text Intelligence*
+![Sentiment Analysis Module](assets/banners/sentiment_analysis_banner_1774322370417.png)
 - Deep language processing using LSTM cores.
 - 8-emotion detection with confidence distribution.
 - Mixed-sentiment tactical HUD.
 
 ### 🚀 7. LSTM Application Hub
 *Sequence Synthesis*
+![LSTM Hub Module](assets/banners/lstm_module_banner_1774322380000_1774328471585.png)
 - **Next-Word Prediction**: Forecasting logic in real-time.
 - **Creative Story Gen**: AI-driven narrative synthesis.
 - **Temperature Control**: Tweak creativity vs. predictability settings.
