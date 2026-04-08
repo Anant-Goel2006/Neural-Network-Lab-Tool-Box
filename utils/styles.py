@@ -324,6 +324,59 @@ def inject_global_css():
             margin-bottom: 5px;
         }
 
+        /* ──── FORM CONTROLS ──── */
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div {
+            background: rgba(15, 23, 42, 0.72) !important;
+            border: 1px solid rgba(148, 163, 184, 0.22) !important;
+            border-radius: 12px !important;
+            box-shadow: none !important;
+        }
+
+        div[data-baseweb="select"] span,
+        div[data-baseweb="input"] input,
+        div[data-baseweb="textarea"] textarea {
+            color: #F8FAFC !important;
+        }
+
+        div[data-baseweb="select"]:hover > div,
+        div[data-baseweb="input"]:hover > div,
+        div[data-baseweb="textarea"]:hover > div {
+            border-color: rgba(59, 130, 246, 0.45) !important;
+        }
+
+        div[role="radiogroup"] {
+            gap: 8px !important;
+            padding: 4px 0 !important;
+        }
+
+        div[role="radiogroup"] label {
+            background: rgba(15, 23, 42, 0.68) !important;
+            border: 1px solid rgba(148, 163, 184, 0.18) !important;
+            border-radius: 999px !important;
+            padding: 8px 14px !important;
+        }
+
+        button[kind="tab"] {
+            background: rgba(15, 23, 42, 0.62) !important;
+            border-radius: 12px 12px 0 0 !important;
+            border: 1px solid rgba(148, 163, 184, 0.14) !important;
+            margin-right: 6px !important;
+        }
+
+        button[kind="tab"][aria-selected="true"] {
+            background: rgba(59, 130, 246, 0.18) !important;
+            border-color: rgba(59, 130, 246, 0.45) !important;
+        }
+
+        [data-testid="stMetric"] {
+            background: rgba(15, 23, 42, 0.55) !important;
+            border: 1px solid rgba(148, 163, 184, 0.12) !important;
+            border-radius: 14px !important;
+            padding: 14px !important;
+        }
+
         </style>
     """, unsafe_allow_html=True)
     

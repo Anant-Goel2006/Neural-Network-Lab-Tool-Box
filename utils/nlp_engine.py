@@ -23,11 +23,11 @@ def generate_fwd_insight(activation, loss_type, final_loss):
     ]
     return random.choice(templates)
 
-def generate_bwd_insight(optimizer, lr, total_epochs):
+def generate_bwd_insight(epoch, total_epochs, loss, mean_grad):
     templates = [
-        f"Backpropagation traces successfully computed via Chain Rule. {optimizer} algorithm adjusting synaptic weights with learning rate {lr}.",
-        f"Gradient descent engaged for {total_epochs} iterations. The network is actively migrating down the high-dimensional cost surface.",
-        f"Cost function derivatives successfully transmitted backwards. Weight matrices are updating optimally using {optimizer} kinetics."
+        f"Backpropagation reached epoch {epoch} of {total_epochs}. The loss is now {loss:.4f}, while the average gradient magnitude is {mean_grad:.4f}.",
+        f"The chain rule is actively sending learning signals backward through the network. Residual loss sits at {loss:.4f}, with gradients averaging {mean_grad:.4f}.",
+        f"Gradient descent is still shaping the weight landscape. By epoch {epoch}, the model has reduced the error to {loss:.4f} with an average update strength of {mean_grad:.4f}."
     ]
     return random.choice(templates)
 

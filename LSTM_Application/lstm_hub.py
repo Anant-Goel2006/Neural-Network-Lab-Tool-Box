@@ -59,6 +59,17 @@ def _softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
 
+
+def _module_nav(key, items):
+    return st.radio("Module Navigation", items, horizontal=True, key=key, label_visibility="collapsed")
+
+
+def _settings_summary_card(title, rows):
+    with st.container(border=True):
+        st.caption(title.upper())
+        for label, value in rows:
+            st.write(f"**{label}:** {value}")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODULE 1 — NEXT WORD PREDICTION  🔮
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -66,11 +77,39 @@ def _softmax(x):
 def _mod_next_word():
     inject_global_css()
     gradient_header("Next Word Prediction", "Refined Logic & Step-by-Step Inference", "🔮")
+    workspace = _module_nav("lstm_next_workspace", ["Main View", "Training Inputs", "Tutor Notes"])
     view = st.radio("View", ["🎯 Prediction Terminal", "🏛️ Architecture & Logic", "⚙️ Step-by-Step"], horizontal=True, label_visibility="collapsed")
     
     default_corpus = "i am from france now i live in india\ni am from india now i live in france\nshe is from china and she works in london"
-    corpus = st.sidebar.text_area("Training Data:", value=default_corpus, height=100)
-    hidden_sz = st.sidebar.slider("Hidden Units", 4, 32, 8)
+    if "lstm_next_corpus" not in st.session_state:
+        st.session_state.lstm_next_corpus = default_corpus
+    if "lstm_next_hidden" not in st.session_state:
+        st.session_state.lstm_next_hidden = 8
+
+    if workspace == "Training Inputs":
+        section_header("Training Inputs", "Edit the corpus and hidden size directly in the page")
+        st.text_area("Training Data", key="lstm_next_corpus", height=140)
+        st.slider("Hidden Units", 4, 32, key="lstm_next_hidden")
+    elif workspace == "Tutor Notes":
+        _settings_summary_card(
+            "Tutor Notes",
+            [
+                ("Goal", "Predict the most likely next token from learned sequence context"),
+                ("Corpus Lines", len([s for s in st.session_state.lstm_next_corpus.splitlines() if s.strip()])),
+                ("Hidden Units", st.session_state.lstm_next_hidden),
+            ],
+        )
+    else:
+        _settings_summary_card(
+            "Current Training Setup",
+            [
+                ("Corpus Lines", len([s for s in st.session_state.lstm_next_corpus.splitlines() if s.strip()])),
+                ("Hidden Units", st.session_state.lstm_next_hidden),
+            ],
+        )
+
+    corpus = st.session_state.lstm_next_corpus
+    hidden_sz = st.session_state.lstm_next_hidden
     
     sentences = [s.strip().lower().split() for s in corpus.split("\n") if s.strip()]
     vocab = sorted(list(set(w for s in sentences for w in s)))
@@ -165,15 +204,31 @@ def _mod_next_word():
 def _mod_sentiment():
     inject_global_css()
     gradient_header("Sentiment Analysis", "Lexicon + Softmax Confidence Engine", "🎭")
-    
-    st.sidebar.markdown("### 📊 Lexicon Weights")
+    workspace = _module_nav("lstm_sent_workspace", ["Main View", "Input + Lexicon", "Tutor Notes"])
+
     lexicon = {
         "amazing": 1.2, "excellent": 1.0, "happy": 0.8, "good": 0.5, "love": 1.1, "best": 0.9,
         "bad": -0.8, "worst": -1.2, "terrible": -1.1, "sad": -0.7, "hate": -1.0, "awful": -0.9,
         "ok": 0.1, "average": 0.0, "fine": 0.2, "normal": 0.1, "neutral": 0.0
     }
-    
-    txt = st.text_area("✍️ Analysis Input:", "The NeuroLab LSTM project is absolutely amazing and powerful!")
+    if "lstm_sent_text" not in st.session_state:
+        st.session_state.lstm_sent_text = "The NeuroLab LSTM project is absolutely amazing and powerful!"
+
+    if workspace == "Input + Lexicon":
+        section_header("Sentiment Inputs", "Edit the text and inspect the built-in lexicon")
+        st.text_area("Analysis Input", key="lstm_sent_text", height=120)
+        st.dataframe(pd.DataFrame(sorted(lexicon.items()), columns=["Word", "Weight"]), use_container_width=True, hide_index=True)
+    elif workspace == "Tutor Notes":
+        _settings_summary_card(
+            "Tutor Notes",
+            [
+                ("Engine", "Lexicon-weighted sentiment proxy"),
+                ("Vocabulary Size", len(lexicon)),
+                ("Focus", "Positive vs negative word accumulation"),
+            ],
+        )
+
+    txt = st.session_state.lstm_sent_text
     
     if txt:
         score = 0
@@ -206,8 +261,8 @@ def _mod_sentiment():
 def _mod_textgen():
     inject_global_css()
     gradient_header("Creative Text Generator", "Temperature Wars — Conservative vs Creative Battle", "✍️")
- 
-    st.sidebar.markdown("### 📜 Story Corpus")
+    workspace = _module_nav("lstm_text_workspace", ["Main View", "Training Inputs", "Tutor Notes"])
+
     default_story = (
         "the king ruled the land with wisdom and power\n"
         "the queen stood beside the king and shared her vision\n"
@@ -220,12 +275,54 @@ def _mod_textgen():
         "the ship sailed through the storm without fear\n"
         "magic filled the air when the spell was spoken"
     )
-    corpus_tg = st.sidebar.text_area("Corpus (one sentence per line):", value=default_story, height=200)
-    hidden_tg = st.sidebar.slider("Hidden Units", 6, 32, 12, key="tg_hs")
-    gen_len = st.sidebar.slider("Words to Generate", 5, 30, 15, key="tg_gl")
-    temp_low = st.sidebar.slider("Conservative Temperature", 0.1, 0.8, 0.3, 0.05, key="tg_tl")
-    temp_high = st.sidebar.slider("Creative Temperature", 0.9, 3.0, 1.8, 0.1, key="tg_th")
-    show_word_probs = st.sidebar.checkbox("📊 Show Per-Step Probabilities", value=True)
+    if "lstm_text_corpus" not in st.session_state:
+        st.session_state.lstm_text_corpus = default_story
+    if "lstm_text_hidden" not in st.session_state:
+        st.session_state.lstm_text_hidden = 12
+    if "lstm_text_gen_len" not in st.session_state:
+        st.session_state.lstm_text_gen_len = 15
+    if "lstm_text_temp_low" not in st.session_state:
+        st.session_state.lstm_text_temp_low = 0.3
+    if "lstm_text_temp_high" not in st.session_state:
+        st.session_state.lstm_text_temp_high = 1.8
+    if "lstm_text_show_probs" not in st.session_state:
+        st.session_state.lstm_text_show_probs = True
+
+    if workspace == "Training Inputs":
+        section_header("Training Inputs", "Edit the story corpus and generation controls without scrolling the sidebar")
+        st.text_area("Corpus (one sentence per line)", key="lstm_text_corpus", height=220)
+        c1, c2, c3 = st.columns(3)
+        c1.slider("Hidden Units", 6, 32, key="lstm_text_hidden")
+        c2.slider("Words to Generate", 5, 30, key="lstm_text_gen_len")
+        c3.checkbox("Show Per-Step Probabilities", key="lstm_text_show_probs")
+        c4, c5 = st.columns(2)
+        c4.slider("Conservative Temperature", 0.1, 0.8, key="lstm_text_temp_low")
+        c5.slider("Creative Temperature", 0.9, 3.0, key="lstm_text_temp_high")
+    elif workspace == "Tutor Notes":
+        _settings_summary_card(
+            "Tutor Notes",
+            [
+                ("Corpus Lines", len([s for s in st.session_state.lstm_text_corpus.splitlines() if s.strip()])),
+                ("Hidden Units", st.session_state.lstm_text_hidden),
+                ("Generation Range", f"{st.session_state.lstm_text_temp_low} to {st.session_state.lstm_text_temp_high}"),
+            ],
+        )
+    else:
+        _settings_summary_card(
+            "Current Training Setup",
+            [
+                ("Corpus Lines", len([s for s in st.session_state.lstm_text_corpus.splitlines() if s.strip()])),
+                ("Hidden Units", st.session_state.lstm_text_hidden),
+                ("Words To Generate", st.session_state.lstm_text_gen_len),
+            ],
+        )
+
+    corpus_tg = st.session_state.lstm_text_corpus
+    hidden_tg = st.session_state.lstm_text_hidden
+    gen_len = st.session_state.lstm_text_gen_len
+    temp_low = st.session_state.lstm_text_temp_low
+    temp_high = st.session_state.lstm_text_temp_high
+    show_word_probs = st.session_state.lstm_text_show_probs
  
     sentences = [s.strip().lower().split() for s in corpus_tg.split("\n") if s.strip()]
     if not sentences:
@@ -332,22 +429,6 @@ def lstm_hub_page():
     mod = st.session_state.get("lstm_active_mod", None)
     
     if mod:
-        # ── AUTOMATIC SIDEBAR SCROLL ──
-        # Ensures that "Training Data" is visible when a module is launched
-        scroll_key = f"lstm_scrolled_{mod}"
-        if scroll_key not in st.session_state:
-            components.html(f"""
-                <script>
-                    setTimeout(() => {{
-                        const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
-                        if (sidebar) {{
-                            sidebar.scrollTo({{ top: 380, behavior: 'smooth' }});
-                        }}
-                    }}, 800);
-                </script>
-            """, height=0)
-            st.session_state[scroll_key] = True
-
         if st.button("⬅️ Back to Gallery"):
             st.session_state.lstm_active_mod = None; st.rerun()
         if mod == "next_word": _mod_next_word()

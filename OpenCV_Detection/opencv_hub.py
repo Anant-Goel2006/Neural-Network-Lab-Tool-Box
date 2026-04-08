@@ -27,6 +27,69 @@ RTC_CONFIG = RTCConfiguration({
 import tempfile
 import os
 
+CV_GALLERY_PATH = "OpenCV_Detection/page_gallery.py"
+
+CV_MODULES = [
+    {
+        "key": "attendance",
+        "icon": "📋",
+        "title": "Attendance",
+        "gallery_subtitle": "Face log · Export CSV",
+        "page_title": "OpenCV Attendance Studio",
+        "page_subtitle": "Face logging, registration, and CSV-ready attendance tracking",
+        "path": "OpenCV_Detection/page_attendance.py",
+        "banner": os.path.join("assets", "banners", "attendance_banner_1774323273637.png"),
+        "features": ["Real-time Face Detection", "User Registration", "CSV Attendance Export"],
+    },
+    {
+        "key": "face_scan",
+        "icon": "🔍",
+        "title": "Face Scanner",
+        "gallery_subtitle": "Eyes · Smile · ROI",
+        "page_title": "OpenCV Face Scanner",
+        "page_subtitle": "Multi-cascade face analysis with eyes, smile, and region tracking",
+        "path": "OpenCV_Detection/page_face_scan.py",
+        "banner": os.path.join("assets", "banners", "face_scanner_banner_1774323291585.png"),
+        "features": ["Multi-Cascade Detection", "Ocular Tracking", "Mood and Smile Recognition"],
+    },
+    {
+        "key": "vehicle",
+        "icon": "🚗",
+        "title": "Vehicles",
+        "gallery_subtitle": "Traffic · Live Counting",
+        "page_title": "OpenCV Vehicle Detection",
+        "page_subtitle": "YOLO-powered traffic counting and live vehicle analytics",
+        "path": "OpenCV_Detection/page_vehicle.py",
+        "banner": os.path.join("assets", "banners", "vehicles_banner_1774323308501.png"),
+        "features": ["YOLOv8 Inference", "Vehicle Classification", "Live Stats"],
+    },
+    {
+        "key": "sign",
+        "icon": "🛑",
+        "title": "Sign Detection",
+        "gallery_subtitle": "Shapes · Colors",
+        "page_title": "OpenCV Sign Detection",
+        "page_subtitle": "Color filtering and contour analysis for road-sign style recognition",
+        "path": "OpenCV_Detection/page_sign.py",
+        "banner": os.path.join("assets", "banners", "sign_detection_banner_1774323328063.png"),
+        "features": ["Color Space Filtering", "Contour Analysis", "Symbolic Recognition"],
+    },
+    {
+        "key": "palm",
+        "icon": "🖐️",
+        "title": "Palm Reading",
+        "gallery_subtitle": "Hands · Gestures",
+        "page_title": "OpenCV Palm Reading",
+        "page_subtitle": "Hand segmentation, feature extraction, and palm-line overlays",
+        "path": "OpenCV_Detection/page_palm.py",
+        "banner": os.path.join("assets", "banners", "palm_reading_banner_1774323346147.png"),
+        "features": ["CNN Segmentation", "Feature Extraction", "Career Analysis"],
+    },
+]
+
+CV_MODULE_MAP = {item["key"]: item for item in CV_MODULES}
+
+
 def process_video_realtime(video_file, callback_fn):
     """Processes an uploaded video file frame-by-frame with a callback."""
     tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
@@ -535,91 +598,146 @@ def _palm_module():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MODULE WRAPPER
+# PAGE HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
-def opencv_detection_page():
-    from utils.styles import inject_global_css, get_image_base64
+def _cv_module_renderer(module_key):
+    renderers = {
+        "attendance": _attendance_module,
+        "face_scan": _face_scan_module,
+        "vehicle": _vehicle_module,
+        "sign": _sign_module,
+        "palm": _palm_module,
+    }
+    return renderers[module_key]
+
+
+def _render_cv_shell(title, subtitle, icon):
+    from utils.styles import inject_global_css
+
     inject_global_css()
-    gradient_header("Optical Analytics Hub",
-        "Face Identity · Live Motion · Structural Analysis", "👁️")
+    gradient_header(title, subtitle, icon)
 
     if not WEBRTC_READY:
         st.error("`streamlit-webrtc` is missing. Features requiring live camera will not function.")
 
-    mod = st.session_state.get("cv_module", None)
 
-    # ── Active Module Rendering ───────────────────────────────────────────
-    if mod:
-        if st.button("⬅️ Back to Gallery", key="back_cv"):
-            st.session_state.cv_module = None; st.rerun()
-            
-        if mod == "attendance": _attendance_module()
-        elif mod == "face_scan": _face_scan_module()
-        elif mod == "vehicle": _vehicle_module()
-        elif mod == "sign": _sign_module()
-        elif mod == "palm": _palm_module()
-        
-        # --- AI TUTOR INTEGRATION ---
-        st.divider()
-        from utils.chatbot import render_chatbot, push_tutor_insight
-        
-        insight_key = f"cv_insight_{mod}"
-        if insight_key not in st.session_state:
-            from utils.ai_helper import get_ai_explanation
-            prompt = f"The user is exploring the {mod} computer vision module. Give a 2-sentence expert tip on how this specific technology works in real-time."
-            ai_text = get_ai_explanation(prompt)
-            if ai_text:
-                push_tutor_insight(ai_text, f"AI Tutor // {mod.title()} Tips")
-                st.session_state[insight_key] = True
+def _render_cv_jump_bar(active_key=None):
+    options = [("OpenCV Gallery", CV_GALLERY_PATH)] + [(f"{item['icon']} {item['title']}", item["path"]) for item in CV_MODULES]
+    labels = [label for label, _ in options]
+    route_map = {label: path for label, path in options}
 
-        render_chatbot(f"the {mod} computer vision module")
-        return
+    current_label = "OpenCV Gallery"
+    if active_key is not None:
+        current_label = next(f"{item['icon']} {item['title']}" for item in CV_MODULES if item["key"] == active_key)
 
-    # ── Module Selector List (RESORED GALLERY STYLE) ────────────────────────
-    MODULES = [
-        ("📋","Attendance","Face log · Export CSV","attendance","#3B82F6", ["Real-time Face Detection", "User Registration", "CSV Attendance Export"]),
-        ("🔍","Face Scanner","Eyes · Smile · ROI","face_scan","#06B6D4", ["Multi-Cascade detection", "Ocular tracking", "Mood/Smile recognition"]),
-        ("🚗","Vehicles","Traffic · Live Counting","vehicle","#F59E0B", ["YOLOv8 Inference", "Vehicle Classification", "Live stats"]),
-        ("🛑","Sign Detection","Shapes · Colors","sign","#EF4444", ["Color Space Filtering", "Contour Analysis", "Symbolic recognition"]),
-        ("🖐️","Palm Reading","Hands · Gestures","palm","#8B5CF6", ["CNN Segmentation", "Feature Extraction", "Career Analysis"]),
-    ]
+    c1, c2 = st.columns([1, 2.2])
+    with c1:
+        if active_key is None:
+            st.button("📷 Gallery Home", use_container_width=True, disabled=True, key="cv_gallery_home_disabled")
+        else:
+            if st.button("⬅ Back to Gallery", use_container_width=True, key=f"cv_back_{active_key}"):
+                st.switch_page(CV_GALLERY_PATH)
+    with c2:
+        selected = st.selectbox(
+            "Jump to OpenCV page",
+            labels,
+            index=labels.index(current_label),
+            key=f"cv_jump_{active_key or 'gallery'}",
+        )
+        if selected != current_label:
+            st.switch_page(route_map[selected])
 
-    MODULE_BANNERS = {
-        "attendance": os.path.join("assets", "banners", "attendance_banner_1774323273637.png"),
-        "face_scan": os.path.join("assets", "banners", "face_scanner_banner_1774323291585.png"),
-        "vehicle": os.path.join("assets", "banners", "vehicles_banner_1774323308501.png"),
-        "sign": os.path.join("assets", "banners", "sign_detection_banner_1774323328063.png"),
-        "palm": os.path.join("assets", "banners", "palm_reading_banner_1774323346147.png")
-    }
-    
+
+def _render_cv_tutor(module_key, topic_label):
+    from utils.chatbot import render_chatbot, push_tutor_insight
+
+    insight_key = f"cv_insight_{module_key}"
+    if insight_key not in st.session_state:
+        from utils.ai_helper import get_ai_explanation
+
+        prompt = (
+            f"The user is exploring the {topic_label}. "
+            "Give a short expert tip explaining how it works in real time and what to watch in the output."
+        )
+        ai_text = get_ai_explanation(prompt)
+        if ai_text:
+            push_tutor_insight(ai_text, f"AI Tutor // {topic_label.title()} Tips")
+            st.session_state[insight_key] = True
+
+    render_chatbot(topic_label)
+
+
+def _render_cv_gallery():
+    _render_cv_shell("Optical Analytics Hub", "Face Identity · Live Motion · Structural Analysis", "👁️")
+    _render_cv_jump_bar()
+
+    st.info("Each OpenCV tool below now opens on its own dedicated page, so you can focus on one vision workflow at a time.")
     st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; color: white; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid #06B6D4; display: inline-block; padding-bottom: 10px;">Modules Gallery</h3>', unsafe_allow_html=True)
-    
-    for i, (icon, title, s_desc, key, clr, feats) in enumerate(MODULES):
+
+    for idx, item in enumerate(CV_MODULES):
+        card_color = "#06B6D4" if idx % 2 == 0 else "#3B82F6"
         with st.container():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
-            
+
             with e_col1:
-                st.image(MODULE_BANNERS.get(key, ""), width="stretch")
-            
+                st.image(item["banner"], width="stretch")
+
             with e_col2:
-                st.markdown(f"""
-                <div style="padding: 5px 0;">
-                    <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 20px; color: white; margin-bottom: 5px;">{title} {icon}</div>
-                    <p style="color: #F8FAFC; font-size: 14px; line-height: 1.5; margin-bottom: 12px; font-weight: 500;">{s_desc}. Optimized for real-time vision processing.</p>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        {"".join([f'<span style="background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 4px; color: {clr}; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1);">{f}</span>' for f in feats])}
+                st.markdown(
+                    f"""
+                    <div style="padding: 5px 0;">
+                        <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 20px; color: white; margin-bottom: 5px;">{item['title']} {item['icon']}</div>
+                        <p style="color: #F8FAFC; font-size: 14px; line-height: 1.5; margin-bottom: 12px; font-weight: 500;">{item['gallery_subtitle']}. Optimized for real-time vision processing.</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            {"".join([f'<span style="background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 4px; color: {card_color}; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1);">{feature}</span>' for feature in item['features']])}
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                    """,
+                    unsafe_allow_html=True,
+                )
+
             with e_col3:
                 st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
-                if st.button(f"Launch {title}", key=f"launch_cv_v_{key}", type="primary", use_container_width=True):
-                    st.session_state.cv_module = key
-                    st.rerun()
-            
+                if st.button(f"Open {item['title']}", key=f"launch_cv_page_{item['key']}", type="primary", use_container_width=True):
+                    st.switch_page(item["path"])
+
             st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
 
-    # --- CHATBOT TUTOR ---
     from utils.chatbot import render_chatbot
+
     render_chatbot("Computer Vision Analytics Hub")
+
+
+def _render_cv_module_page(module_key):
+    module = CV_MODULE_MAP[module_key]
+    _render_cv_shell(module["page_title"], module["page_subtitle"], module["icon"])
+    _render_cv_jump_bar(module_key)
+    st.caption("OpenCV Lab")
+    st.write("This tool now lives on its own page, so the workspace stays focused on the selected vision workflow.")
+    _cv_module_renderer(module_key)()
+    st.divider()
+    _render_cv_tutor(module_key, f"{module['title']} computer vision module")
+
+
+def opencv_detection_page():
+    _render_cv_gallery()
+
+
+def opencv_attendance_page():
+    _render_cv_module_page("attendance")
+
+
+def opencv_face_scan_page():
+    _render_cv_module_page("face_scan")
+
+
+def opencv_vehicle_page():
+    _render_cv_module_page("vehicle")
+
+
+def opencv_sign_page():
+    _render_cv_module_page("sign")
+
+
+def opencv_palm_page():
+    _render_cv_module_page("palm")

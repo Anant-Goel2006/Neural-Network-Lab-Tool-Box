@@ -12,7 +12,6 @@ st.set_page_config(
 from Perceptron.perceptron_ui                         import perceptron_page
 from Forward_Propagation.forward_propagation          import forward_propagation_page
 from Backward_Propagation.backward_propagation        import backward_propagation_page
-from OpenCV_Detection.opencv_hub                      import opencv_detection_page
 from Sentiment_Analysis.sentiment_analysis            import sentiment_analysis_page
 from LSTM_Application.lstm_hub                     import lstm_hub_page
 from Hopefield.hopefield                             import main as hopfield_page
@@ -25,7 +24,12 @@ p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon
 p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="➡️")
 p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="⬅️")
 p_hop  = st.Page(hopfield_page,            title="4. Hopfield Network",     icon="🧠")
-p_cv   = st.Page(opencv_detection_page,    title="5. OpenCV Detection",     icon="📷")
+p_cv   = st.Page("OpenCV_Detection/page_gallery.py",    title="5. OpenCV Detection",     icon="📷")
+p_cv_att = st.Page("OpenCV_Detection/page_attendance.py", title="5.1 CV Attendance", icon="📋")
+p_cv_face = st.Page("OpenCV_Detection/page_face_scan.py", title="5.2 CV Face Scanner", icon="🔍")
+p_cv_vehicle = st.Page("OpenCV_Detection/page_vehicle.py", title="5.3 CV Vehicles", icon="🚗")
+p_cv_sign = st.Page("OpenCV_Detection/page_sign.py", title="5.4 CV Sign Detection", icon="🛑")
+p_cv_palm = st.Page("OpenCV_Detection/page_palm.py", title="5.5 CV Palm Reading", icon="🖐️")
 p_sa   = st.Page(sentiment_analysis_page,  title="6. Sentiment Analysis",   icon="💬")
 p_hub  = st.Page(lstm_hub_page,            title="7. LSTM Application Hub", icon="🚀")
 
@@ -249,7 +253,8 @@ p_home = st.Page(home_page, title="Dashboard", icon="🧠", default=True)
 pages = {
     "Home":              [p_home],
     "Neural Networks":   [p_pct, p_fwd, p_bwd, p_hop],
-    "Applied AI & LSTM": [p_cv, p_sa, p_hub],
+    "OpenCV Lab":        [p_cv, p_cv_att, p_cv_face, p_cv_vehicle, p_cv_sign, p_cv_palm],
+    "Applied AI & LSTM": [p_sa, p_hub],
 }
 
 inject_global_css()
