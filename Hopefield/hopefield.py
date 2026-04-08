@@ -227,76 +227,97 @@ def main():
 
     st.markdown("""
     <div class="premium-card">
-        <h1 style="color:white; margin-bottom:4px; font-family:'Montserrat',sans-serif; font-weight:800;">🧠 Full-Span Hopfield Neural Array</h1>
+        <h1 style="color:white; margin-bottom:4px; font-family:'Montserrat',sans-serif; font-weight:800;">🧠 Hopfield</h1>
         <p style="color:#A0AEC0; font-size:1.05rem; margin:0;">Massive live canvas. Draw anything — AI detects it instantly below.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 1. Full-width Canvas
+    # 1. Full-width Canvas with controls BELOW it
     with st.container(border=True):
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.subheader("🖌️ Draw Box")
-            st.caption("Live AI tracking active.")
-            if st.button("🗑️ Clear Canvas", use_container_width=True, type="primary"):
-                clear_canvas()
-                st.rerun()
-                
-        with col2:
-            if CANVAS_OK:
-                # Use large, rectangular canvas covering the screen width
-                canvas = st_canvas(
-                    fill_color="rgba(0,0,0,0)", stroke_width=25, stroke_color="#00f0ff",
-                    background_color="#0f172a", height=380, width=900, drawing_mode="freedraw",
-                    key=f"hc_{st.session_state.hop_ck}"
-                )
+        st.subheader("🖌️ Draw Here - Live Detection")
+        if CANVAS_OK:
+            # Use large, rectangular canvas covering the screen width
+            canvas = st_canvas(
+                fill_color="rgba(0,0,0,0)", stroke_width=25, stroke_color="#00f0ff",
+                background_color="#0f172a", height=380, width=1000, drawing_mode="freedraw",
+                key=f"hc_{st.session_state.hop_ck}"
+            )
 
-                # Process changes automatically
-                if canvas.image_data is not None and not is_blank(canvas.image_data):
-                    current_hash = canvas_hash(canvas.image_data)
-                    if current_hash != st.session_state.hop_last_hash:
-                        st.session_state.hop_last_hash = current_hash
+            # Process changes automatically
+            if canvas.image_data is not None and not is_blank(canvas.image_data):
+                current_hash = canvas_hash(canvas.image_data)
+                if current_hash != st.session_state.hop_last_hash:
+                    st.session_state.hop_last_hash = current_hash
 
-                        bipolar = canvas_to_bipolar(canvas.image_data)
-                        st.session_state.hop_bipolar = bipolar
-                        engine.store(bipolar)
-                        recovered, energies = engine.recover(bipolar, steps=100)
-                        st.session_state.hop_recovered = recovered
-                        st.session_state.hop_energies = energies
+                    bipolar = canvas_to_bipolar(canvas.image_data)
+                    st.session_state.hop_bipolar = bipolar
+                    engine.store(bipolar)
+                    recovered, energies = engine.recover(bipolar, steps=100)
+                    st.session_state.hop_recovered = recovered
+                    st.session_state.hop_energies = energies
 
-                        with st.spinner("🔍 Scanning neural structure..."):
-                            detected, ai_text = detect_with_ai(canvas.image_data)
-                            st.session_state.hop_detected = detected
-                            st.session_state.hop_ai_text = ai_text
-            else:
-                st.error("Missing `streamlit-drawable-canvas`")
+                    with st.spinner("🔍 Scanning neural structure..."):
+                        detected, ai_text = detect_with_ai(canvas.image_data)
+                        st.session_state.hop_detected = detected
+                        st.session_state.hop_ai_text = ai_text
 
-    # 2. Output Panel (Below Canvas)
+            st.markdown("<br>", unsafe_allow_html=True)
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                if st.button("🗑️ Clear Canvas", use_container_width=True, type="primary"):
+                    clear_canvas()
+                    st.rerun()
+        else:
+            st.error("Missing `streamlit-drawable-canvas`")
+
+    # 2. Output Panel (Below Canvas, Horizontal Layout)
     if st.session_state.hop_detected is not None:
-        c_left, c_right = st.columns([1.2, 2])
-        
-        with c_left:
-            with st.container(border=True):
-                st.markdown(f"""
-                <div style="text-align:center; padding: 20px 0;">
-                    <div style="font-size:0.85rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em; margin-bottom:10px;">⚡ AI Identification</div>
-                    <div style="font-size:3.5rem; font-weight:800; color:#00ffcc; line-height:1.1; font-family:'Montserrat',sans-serif; text-shadow: 0 0 20px rgba(0,255,204,0.3);">{st.session_state.hop_detected}</div>
-                </div>
-                <hr style="border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;">
-                """, unsafe_allow_html=True)
-                
-                st.markdown("<div style='font-size:0.85rem; color:#A0AEC0; margin-bottom:5px;'>🤖 Analysis:</div>", unsafe_allow_html=True)
-                safe_text = st.session_state.hop_ai_text.replace('#', '').strip()
-                st.markdown(f'<div style="font-size:1.1rem; line-height:1.6; color:#F8FAFC;">{safe_text}</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown(f"""
+            <div style="text-align:center; padding: 20px 0;">
+                <div style="font-size:0.85rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em; margin-bottom:10px;">⚡ AI Identification</div>
+                <div style="font-size:3.5rem; font-weight:800; color:#00ffcc; line-height:1.1; font-family:'Montserrat',sans-serif; text-shadow: 0 0 20px rgba(0,255,204,0.3);">{st.session_state.hop_detected}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("<hr style='border-top:1px solid rgba(255,255,255,0.1); margin:10px 0;'>", unsafe_allow_html=True)
+            
+            safe_text = st.session_state.hop_ai_text.replace('#', '').strip()
+            st.markdown(f"""
+            <div style="text-align:center; max-width:800px; margin:0 auto;">
+                <div style='font-size:0.85rem; color:#A0AEC0; margin-bottom:5px;'>🤖 Analysis</div>
+                <div style="font-size:1.1rem; line-height:1.6; color:#F8FAFC;">{safe_text}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        with c_right:
-            with st.container(border=True):
-                st.markdown("<h4 style='margin-top:0;'>Neural Topography & Energy Process</h4>", unsafe_allow_html=True)
-                nc1, nc2, nc3 = st.columns(3)
-                with nc1: st.plotly_chart(plot_grid(st.session_state.hop_bipolar, "Sensor (16x16)"), use_container_width=True, key="pg1")
-                with nc2: st.plotly_chart(plot_grid(st.session_state.hop_recovered, "Network Output"), use_container_width=True, key="pg2")
-                with nc3: st.plotly_chart(plot_weight(engine.W), use_container_width=True, key="pw1")
-                st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True, key="pe1")
+        with st.container(border=True):
+            st.markdown("<h4 style='text-align:center; margin-top:0;'>Neural Topography & Energy Process</h4>", unsafe_allow_html=True)
+            nc1, nc2, nc3 = st.columns(3)
+            with nc1: st.plotly_chart(plot_grid(st.session_state.hop_bipolar, "Sensor (16x16)"), use_container_width=True, key="pg1")
+            with nc2: st.plotly_chart(plot_grid(st.session_state.hop_recovered, "Network Output"), use_container_width=True, key="pg2")
+            with nc3: st.plotly_chart(plot_weight(engine.W), use_container_width=True, key="pw1")
+            st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True, key="pe1")
+
+    # 3. Interface Log & Architecture Expander
+    with st.expander("🛠️ Interface Log: Internal Working Steps, Logic & Mathematics"):
+        st.markdown("""
+        ### Two-Engine Architecture
+
+        1. **NVIDIA Vision AI (Live)** — Every stroke triggers a capture: the canvas is converted to PNG, base64-encoded, and sent to `llama-3.2-90b-vision-instruct` for object identification.
+        2. **Hopfield Network (Educational Process)** — The canvas is mapped to a 16×16 binary grid (256 neurons), enabling energy minimization and associative memory reconstruction.
+
+        ### Hopfield Step-by-Step Mathematical Log
+        1. Canvas image → Downsampled to 16×16 → Flattened to bipolar vector (+1 or −1)
+        2. Pattern stored via outer product: $W += \\frac{p \\cdot p^T}{N}$
+        3. Noisy input fed to network → Asynchronous neuron updates → Energy decreases monotonically
+        4. Converges to attractor state (nearest stored pattern)
+        """)
+
+        if st.session_state.hop_energies is not None:
+            st.markdown("### Energy Convergence Log")
+            st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True, key="pe_log")
+            st.markdown("### Raw State Tensor Log")
+            st.code(np.array2string(st.session_state.hop_recovered, max_line_width=80, separator=', '), language="python")
 
 if __name__ == "__main__":
     main()
