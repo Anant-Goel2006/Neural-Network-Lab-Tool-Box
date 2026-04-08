@@ -242,15 +242,14 @@ def home_page():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NAVIGATION
+# NAVIGATION — Split into two sidebar sections to avoid scrolling
 # ─────────────────────────────────────────────────────────────────────────────
 p_home = st.Page(home_page, title="Dashboard", icon="🧠", default=True)
 
 pages = {
-    "Home":           [p_home],
-    "Neural Network": [p_pct, p_fwd, p_bwd, p_hop],
-    "Applied AI":     [p_cv, p_sa],
-    "LSTM Projects":  [p_hub],
+    "Home":              [p_home],
+    "Neural Networks":   [p_pct, p_fwd, p_bwd, p_hop],
+    "Applied AI & LSTM": [p_cv, p_sa, p_hub],
 }
 
 inject_global_css()

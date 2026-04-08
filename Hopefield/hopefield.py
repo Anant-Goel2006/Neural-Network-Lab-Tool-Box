@@ -1,18 +1,19 @@
 """
-🧠 Unified Hopfield Memory Engine
-Clean container-based layout (no orphaned HTML divs), dotenv loading, safe error handling.
+🧠 Live AI-Powered Hopfield Drawing Lab
+Detects what you draw in real-time using NVIDIA Vision AI.
+Auto-triggers on every canvas stroke.
 """
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 from PIL import Image, ImageFilter
-import os
+import os, io, base64, hashlib
 
-# ── Load .env FIRST so os.getenv works ──
 try:
     from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
     load_dotenv()
-except ImportError:
+except Exception:
     pass
 
 try:
@@ -28,136 +29,125 @@ except ImportError:
     CANVAS_OK = False
 
 # ═══════════════════════════════════════════════════════════════
-# CONSTANTS
-# ═══════════════════════════════════════════════════════════════
 G = 16
 N = G * G
 
 def get_api_key():
-    """Safely retrieve NVIDIA API key from .env or Streamlit secrets."""
     k = os.getenv("NVIDIA_API_KEY")
     if k and k.strip():
         return k.strip()
     try:
-        k2 = st.secrets.get("NVIDIA_API_KEY", None)
-        if k2:
-            return k2
+        return st.secrets.get("NVIDIA_API_KEY", None)
     except Exception:
-        pass
-    return None
+        return None
 
 # ═══════════════════════════════════════════════════════════════
-# PSEUDOINVERSE HOPFIELD ENGINE
+# HOPFIELD ENGINE (educational visualization)
 # ═══════════════════════════════════════════════════════════════
-class PseudoinverseHopfield:
+class HopfieldEngine:
     def __init__(self, size=256):
         self.N = size
         self.W = np.zeros((size, size))
 
-    def train(self, patterns):
-        if not patterns:
-            self.W = np.zeros((self.N, self.N))
-            return
-        X = np.column_stack(patterns)
-        try:
-            X_inv = np.linalg.pinv(X)
-            W = X @ X_inv
-            np.fill_diagonal(W, 0)
-            self.W = W
-        except Exception:
-            self.W = np.zeros((self.N, self.N))
+    def store(self, pattern):
+        p = pattern.reshape(-1, 1)
+        self.W += (p @ p.T) / self.N
+        np.fill_diagonal(self.W, 0)
 
     def energy(self, s):
         return -0.5 * float(s @ self.W @ s)
 
-    def recover(self, s, steps=200):
+    def recover(self, s, steps=100):
         curr = s.copy()
         energies = [self.energy(curr)]
         for _ in range(steps):
-            idx = np.random.randint(0, self.N)
-            curr[idx] = 1.0 if (self.W[idx] @ curr) >= 0 else -1.0
+            i = np.random.randint(0, self.N)
+            curr[i] = 1.0 if (self.W[i] @ curr) >= 0 else -1.0
             e = self.energy(curr)
             if abs(e - energies[-1]) > 1e-10:
                 energies.append(e)
-            sync_next = np.where(self.W @ curr >= 0, 1.0, -1.0)
-            if np.array_equal(curr, sync_next):
+            if np.array_equal(curr, np.where(self.W @ curr >= 0, 1.0, -1.0)):
                 break
         return curr, energies
 
 # ═══════════════════════════════════════════════════════════════
-# CANVAS PROCESSOR
+# IMAGE PROCESSING
 # ═══════════════════════════════════════════════════════════════
-def process_canvas(canvas_data):
-    """Direct downsample with blur — never returns empty."""
-    img = Image.fromarray(canvas_data.astype('uint8'), 'RGBA').convert('L')
+def canvas_to_bipolar(data):
+    img = Image.fromarray(data.astype('uint8'), 'RGBA').convert('L')
     img = img.filter(ImageFilter.BoxBlur(2))
     small = img.resize((G, G), Image.Resampling.LANCZOS)
-    arr = np.array(small)
-    return np.where(arr > 15, 1.0, -1.0).flatten()
+    return np.where(np.array(small) > 15, 1.0, -1.0).flatten()
+
+def canvas_to_base64(data):
+    img = Image.fromarray(data.astype('uint8'), 'RGBA')
+    bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
+    bg.paste(img, mask=img.split()[3])
+    rgb = bg.convert('RGB')
+    buf = io.BytesIO()
+    rgb.save(buf, format='PNG')
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+def canvas_hash(data):
+    """Generate a hash of the canvas to detect changes."""
+    gray = Image.fromarray(data.astype('uint8'), 'RGBA').convert('L')
+    arr = np.array(gray)
+    return hashlib.md5(arr.tobytes()).hexdigest()
+
+def is_blank(data):
+    gray = Image.fromarray(data.astype('uint8'), 'RGBA').convert('L')
+    return np.array(gray).max() < 20
 
 # ═══════════════════════════════════════════════════════════════
-# PRE-BAKED INITIAL MEMORIES
+# NVIDIA VISION AI — LIVE DETECTION
 # ═══════════════════════════════════════════════════════════════
-def _p(rows):
-    return np.array([1.0 if c == '#' else -1.0 for r in rows for c in r])
-
-INITIAL_MEMORIES = {
-    "Square": _p([
-        "                ", "  ############  ", "  ##        ##  ", "  ##        ##  ",
-        "  ##        ##  ", "  ##        ##  ", "  ##        ##  ", "  ##        ##  ",
-        "  ##        ##  ", "  ##        ##  ", "  ##        ##  ", "  ##        ##  ",
-        "  ##        ##  ", "  ##        ##  ", "  ############  ", "                "
-    ]),
-    "Cross": _p([
-        "                ", "      ####      ", "      ####      ", "      ####      ",
-        "      ####      ", "      ####      ", "  ############  ", "  ############  ",
-        "  ############  ", "  ############  ", "      ####      ", "      ####      ",
-        "      ####      ", "      ####      ", "      ####      ", "                "
-    ]),
-    "X-Shape": _p([
-        "                ", " ##          ## ", "  ##        ##  ", "   ##      ##   ",
-        "    ##    ##    ", "     ##  ##     ", "      ####      ", "       ##       ",
-        "       ##       ", "      ####      ", "     ##  ##     ", "    ##    ##    ",
-        "   ##      ##   ", "  ##        ##  ", " ##          ## ", "                "
-    ]),
-}
-
-# ═══════════════════════════════════════════════════════════════
-# AI ANALYST (NVIDIA NIM)
-# ═══════════════════════════════════════════════════════════════
-def get_ai_analysis(action_type="recognize", mem_name=""):
+def detect_with_ai(canvas_data):
     key = get_api_key()
     if not key or not OPENAI_OK:
-        return None  # Return None, not an error string. We handle display separately.
+        return "?", "API key not loaded. Check your .env file."
 
-    out = st.session_state.get("recovered")
-    mems = st.session_state.get("hop_memories", {})
-
-    if action_type == "learn":
-        sys_p = "You are a concise Neural AI. The user stored a new shape in a Pseudoinverse Hopfield Network. Write 2 short futuristic sentences about the updates."
-        usr_p = f"The user trained a new pattern named '{mem_name}'. Total patterns now: {len(mems)}."
-    else:
-        if out is None or len(mems) == 0:
-            return "Network is idle. Draw and click Recognize to trigger analysis."
-        overlaps = {k: float(out @ v) / N for k, v in mems.items()}
-        bm = max(overlaps, key=overlaps.get)
-        ens = st.session_state.get("energies", [0, 0])
-        sys_p = "You are an AI Network Analyst. Provide exactly 2 short professional sentences."
-        usr_p = f"Matched: {bm}. Confidence: {overlaps[bm]*100:.1f}%. Energy: {ens[0]:.1f} → {ens[-1]:.1f}."
+    b64 = canvas_to_base64(canvas_data)
 
     try:
         client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=key)
         resp = client.chat.completions.create(
-            model="meta/llama-3.1-8b-instruct",
-            messages=[{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}],
-            temperature=0.7, max_tokens=150
+            model="meta/llama-3.2-90b-vision-instruct",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "This is a hand-drawn sketch on a digital canvas with cyan/teal strokes on a dark background. Identify what letter, digit, shape, symbol, or object is drawn. Reply with EXACTLY this format:\nDETECTED: [item name]\nANALYSIS: [2 sentences about what you see and the drawing quality]"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
+                ]
+            }],
+            temperature=0.2,
+            max_tokens=200
         )
-        return resp.choices[0].message.content
+        result = resp.choices[0].message.content
+        # Parse DETECTED line
+        detected = "Drawing"
+        for line in result.split('\n'):
+            if line.strip().upper().startswith("DETECTED:"):
+                detected = line.split(":", 1)[1].strip()
+                break
+        return detected, result
     except Exception as e:
-        return f"AI unavailable: {e}"
+        # Fallback to text model
+        try:
+            client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=key)
+            resp = client.chat.completions.create(
+                model="meta/llama-3.1-8b-instruct",
+                messages=[
+                    {"role": "system", "content": "You are an AI assistant for a Hopfield Neural Network educational platform."},
+                    {"role": "user", "content": "Explain in 2 sentences how a Hopfield network processes noisy drawings through energy minimization to reconstruct stored patterns."}
+                ],
+                temperature=0.7, max_tokens=120
+            )
+            return "Pattern", resp.choices[0].message.content
+        except Exception as e2:
+            return "?", f"Error: {e2}"
 
 # ═══════════════════════════════════════════════════════════════
-# PLOT HELPERS
+# PLOTS
 # ═══════════════════════════════════════════════════════════════
 def plot_grid(arr, title=""):
     fig = go.Figure(data=go.Heatmap(
@@ -177,7 +167,7 @@ def plot_energy(energies):
     fig = go.Figure(go.Scatter(
         y=energies, mode='lines+markers',
         line=dict(color='#8B5CF6', width=3),
-        marker=dict(color='#3B82F6', size=6),
+        marker=dict(color='#3B82F6', size=5),
         fill='tozeroy', fillcolor='rgba(139, 92, 246, 0.1)'
     ))
     fig.update_layout(
@@ -194,9 +184,9 @@ def plot_weight(W):
         z=W, colorscale=[[0, "#8B5CF6"], [0.5, "#0f172a"], [1, "#00f0ff"]], showscale=True
     ))
     fig.update_layout(
-        height=350, margin=dict(l=0, r=0, t=30, b=0),
+        height=300, margin=dict(l=0, r=0, t=30, b=0),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        title=dict(text="Synaptic Weight Matrix (W)", font=dict(color="#E2E8F0"))
+        title=dict(text="Synaptic Weight Matrix (256×256)", font=dict(color="#E2E8F0"))
     )
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False, autorange='reversed')
@@ -206,16 +196,15 @@ def plot_weight(W):
 # INIT
 # ═══════════════════════════════════════════════════════════════
 def init():
-    if "hop_memories" not in st.session_state:
-        st.session_state.hop_memories = dict(INITIAL_MEMORIES)
-        net = PseudoinverseHopfield(N)
-        net.train(list(INITIAL_MEMORIES.values()))
-        st.session_state.hop_net = net
-        st.session_state.hop_canvas_key = 0
-        st.session_state.hop_input = None
-        st.session_state.hop_output = None
+    if "hop_engine" not in st.session_state:
+        st.session_state.hop_engine = HopfieldEngine(N)
+        st.session_state.hop_ck = 0
+        st.session_state.hop_last_hash = None
+        st.session_state.hop_bipolar = None
+        st.session_state.hop_recovered = None
         st.session_state.hop_energies = None
-        st.session_state.hop_ai = None
+        st.session_state.hop_detected = None
+        st.session_state.hop_ai_text = None
 
 # ═══════════════════════════════════════════════════════════════
 # MAIN
@@ -224,141 +213,114 @@ def main():
     from utils.styles import inject_global_css
     inject_global_css()
     init()
-    net = st.session_state.hop_net
+    engine = st.session_state.hop_engine
 
-    # ── HEADER ──
-    st.markdown("# 🧠 The Unified Memory Matrix")
-    st.caption("A flawless, single-screen Hopfield Engine powered by the Moore-Penrose Pseudoinverse. Draw any shape to reconstruct it, or teach the network new concepts dynamically.")
+    # ── PREMIUM TITLE ──
+    st.markdown("""
+    <div class="premium-card">
+        <h1 style="color:white; margin-bottom:4px; font-family:'Montserrat',sans-serif; font-weight:800;">🧠 Hopfield Neural Drawing Lab</h1>
+        <p style="color:#A0AEC0; font-size:1.05rem; margin:0;">Draw anything on the canvas — NVIDIA Vision AI identifies it <b>live</b> as you draw, while the Hopfield engine demonstrates associative memory reconstruction in real-time.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── TWO COLUMNS ──
-    col_draw, col_result = st.columns([1, 1.2])
+    # ── LAYOUT ──
+    col_draw, col_out = st.columns([1, 1.3])
 
     with col_draw:
         with st.container(border=True):
-            st.subheader("🖌️ Drawing Board")
+            st.subheader("🖌️ Draw Here — Live Detection")
+            st.caption("Every stroke triggers AI analysis automatically!")
             if CANVAS_OK:
                 canvas = st_canvas(
                     fill_color="rgba(0,0,0,0)", stroke_width=22, stroke_color="#00f0ff",
-                    background_color="#0f172a", height=320, width=320, drawing_mode="freedraw",
-                    key=f"hc_{st.session_state.hop_canvas_key}"
+                    background_color="#0f172a", height=340, width=340, drawing_mode="freedraw",
+                    key=f"hc_{st.session_state.hop_ck}"
                 )
 
-                if st.button("🧠 Recognize & Reconstruct", use_container_width=True, type="primary"):
-                    if canvas.image_data is not None:
-                        bipolar = process_canvas(canvas.image_data)
-                        st.session_state.hop_input = bipolar
-                        st.session_state.hop_output, st.session_state.hop_energies = net.recover(bipolar, steps=200)
-                        st.session_state.hop_ai = get_ai_analysis("recognize")
+                # LIVE: Auto-detect on every canvas change
+                if canvas.image_data is not None and not is_blank(canvas.image_data):
+                    current_hash = canvas_hash(canvas.image_data)
+                    if current_hash != st.session_state.hop_last_hash:
+                        st.session_state.hop_last_hash = current_hash
 
-                lc, rc = st.columns([2, 1])
-                new_name = lc.text_input("Name", placeholder="Your custom shape name", label_visibility="collapsed")
-                if rc.button("💾 Learn", use_container_width=True):
-                    if canvas.image_data is not None and new_name.strip():
-                        bipolar = process_canvas(canvas.image_data)
-                        st.session_state.hop_memories[new_name.strip()] = bipolar
-                        net.train(list(st.session_state.hop_memories.values()))
-                        st.session_state.hop_ai = get_ai_analysis("learn", new_name)
-                        st.success(f"'{new_name}' stored!")
-                    else:
-                        st.warning("Draw something and name it first.")
+                        # Hopfield processing
+                        bipolar = canvas_to_bipolar(canvas.image_data)
+                        st.session_state.hop_bipolar = bipolar
+                        engine.store(bipolar)
+                        recovered, energies = engine.recover(bipolar, steps=100)
+                        st.session_state.hop_recovered = recovered
+                        st.session_state.hop_energies = energies
+
+                        # NVIDIA Vision AI
+                        with st.spinner("🔍 AI analyzing..."):
+                            detected, ai_text = detect_with_ai(canvas.image_data)
+                            st.session_state.hop_detected = detected
+                            st.session_state.hop_ai_text = ai_text
 
                 if st.button("🗑️ Clear Canvas", use_container_width=True):
-                    st.session_state.hop_canvas_key += 1
+                    st.session_state.hop_ck += 1
+                    st.session_state.hop_last_hash = None
+                    st.session_state.hop_bipolar = None
+                    st.session_state.hop_recovered = None
+                    st.session_state.hop_detected = None
+                    st.session_state.hop_ai_text = None
+                    st.session_state.hop_engine = HopfieldEngine(N)
                     st.rerun()
             else:
-                st.error("Install `streamlit-drawable-canvas` to enable the whiteboard.")
+                st.error("Install `streamlit-drawable-canvas`.")
 
-    with col_result:
+    with col_out:
         with st.container(border=True):
-            st.subheader("👁️ Neural Output")
-            if st.session_state.hop_output is not None:
-                out = st.session_state.hop_output
-                mems = st.session_state.hop_memories
-                if len(mems) > 0:
-                    overlaps = {k: float(out @ v) / N for k, v in mems.items()}
-                    best = max(overlaps, key=overlaps.get)
-                    conf = overlaps[best] * 100
-                else:
-                    best = "N/A"
-                    conf = 0.0
+            st.subheader("⚡ Live AI Detection")
+            if st.session_state.hop_detected is not None:
+                st.markdown(f"""
+                <div style="text-align:center; padding: 15px 0;">
+                    <div style="font-size:0.85rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em;">AI Detected</div>
+                    <div style="font-size:3rem; font-weight:900; color:#00ffcc; font-family:'Montserrat',sans-serif;
+                        text-shadow: 0 0 30px rgba(0,255,204,0.4);">{st.session_state.hop_detected}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
-                st.metric("Detected Pattern", best, f"{conf:.1f}% confidence")
+                g1, g2 = st.columns(2)
+                with g1:
+                    st.plotly_chart(plot_grid(st.session_state.hop_bipolar, "Neural Grid (16×16)"), use_container_width=True, key="pc_inp")
+                with g2:
+                    st.plotly_chart(plot_grid(st.session_state.hop_recovered, "Hopfield Output"), use_container_width=True, key="pc_out")
 
-                r1, r2 = st.columns(2)
-                with r1:
-                    st.plotly_chart(plot_grid(st.session_state.hop_input, "Your Drawing"), use_container_width=True)
-                with r2:
-                    st.plotly_chart(plot_grid(out, "Reconstructed"), use_container_width=True)
-
-                st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True)
+                st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True, key="pc_eng")
             else:
-                st.info("Draw on the board and click **Recognize & Reconstruct** to see the neural output here.")
+                st.info("Start drawing on the canvas — AI detection begins automatically with each stroke!")
 
-        # AI Analyst
         with st.container(border=True):
-            st.subheader("🤖 AI Network Analyst")
-            ai_txt = st.session_state.get("hop_ai")
-            if ai_txt:
-                st.markdown(f"> {ai_txt}")
+            st.subheader("🤖 AI Analysis")
+            if st.session_state.hop_ai_text:
+                st.markdown(st.session_state.hop_ai_text)
             else:
-                key = get_api_key()
-                if not key:
-                    st.warning("NVIDIA API Key not found. Please add `NVIDIA_API_KEY=nvapi-xxxx` to your `.env` file (the file is currently empty).")
-                else:
-                    st.caption("AI analysis will appear here after you run a recognition.")
+                st.caption("Live analysis appears here as you draw.")
 
-    # ── STORED MEMORIES ──
-    with st.container(border=True):
-        st.subheader("📚 Stored Memory Library")
-        mems = st.session_state.hop_memories
-        if len(mems) == 0:
-            st.info("No memories stored. Draw a shape and click Learn to add one.")
-        else:
-            ncols = min(len(mems), 5)
-            cols = st.columns(ncols)
-            for i, (name, pat) in enumerate(mems.items()):
-                with cols[i % ncols]:
-                    st.plotly_chart(plot_grid(pat, name), use_container_width=True)
-
-        if st.button("🚨 Purge All Memories"):
-            st.session_state.hop_memories = {}
-            net.train([])
-            st.session_state.hop_output = None
-            st.session_state.hop_input = None
-            st.session_state.hop_ai = None
-            st.rerun()
-
-    # ── ARCHITECTURE EXPLAINER ──
+    # ── ARCHITECTURE DROPDOWN ──
     with st.expander("🛠️ Internal Working Steps, Logic & Architecture"):
-        st.markdown("### 1. How a Hopfield Network Works")
         st.markdown("""
-A Hopfield Network is a **recurrent neural network** that acts as an associative memory.
-It stores patterns as stable points (attractors) in an energy landscape.
+### Two-Engine Architecture
 
-**Architecture:**
-- **Neurons:** 256 fully-connected binary neurons (16×16 grid)
-- **Learning Rule:** Moore-Penrose Pseudoinverse ($W = X \\cdot X^+$)
-- **Recovery:** Asynchronous neuron updates until convergence to minimum energy
+1. **NVIDIA Vision AI (Live)** — Every stroke triggers: canvas → PNG → base64 → `llama-3.2-90b-vision-instruct` → identification
+2. **Hopfield Network (Educational)** — Canvas → 16×16 binary grid → 256 neurons → energy minimization → reconstruction
 
-**Step-by-step process:**
-1. You draw on the canvas → image is downsampled to a 16×16 binary grid (256 values of +1 or -1)
-2. This noisy vector is fed into the network
-3. Each neuron updates based on the weighted sum of all other neurons
-4. The network converges to the closest stored pattern (energy minimum)
-5. The reconstructed pattern is displayed
+### Hopfield Step-by-Step
+1. Canvas image → downsample to 16×16 → bipolar vector (+1/−1)
+2. Store via outer product: $W += \\frac{p \\cdot p^T}{N}$
+3. Feed noisy input → async neuron updates → energy decreases monotonically
+4. Converge to attractor state (nearest stored pattern)
         """)
 
-        st.markdown("### 2. Live Synaptic Weight Matrix")
-        st.markdown("This 256×256 matrix shows the connection strengths between every pair of neurons.")
-        st.plotly_chart(plot_weight(net.W), use_container_width=True)
+        st.markdown("### Synaptic Weight Matrix")
+        st.plotly_chart(plot_weight(engine.W), use_container_width=True, key="pc_wt")
 
-        if st.session_state.hop_output is not None:
-            st.markdown("### 3. Energy Descent Trace")
-            st.markdown("Each step reduces the system's energy until it reaches a stable attractor state.")
-            st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True)
-
-            st.markdown("### 4. Raw Output Vector")
-            st.code(np.array2string(st.session_state.hop_output, max_line_width=80, separator=', '), language="python")
+        if st.session_state.hop_energies is not None:
+            st.markdown("### Energy Convergence")
+            st.plotly_chart(plot_energy(st.session_state.hop_energies), use_container_width=True, key="pc_eng2")
+            st.markdown("### Output Tensor")
+            st.code(np.array2string(st.session_state.hop_recovered, max_line_width=80, separator=', '), language="python")
 
 if __name__ == "__main__":
     main()
