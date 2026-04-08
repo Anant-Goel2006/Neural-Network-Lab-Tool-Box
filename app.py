@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import streamlit.components.v1 as components
 
 st.set_page_config(
@@ -49,7 +50,7 @@ def sidebar_brand():
 def home_page():
     inject_global_css()
 
-    hero_img_path = r"assets\banners\neurolab_netflix_style_hero_1774323980383.png"
+    hero_img_path = os.path.join("assets", "banners", "neurolab_netflix_style_hero_1774323980383.png")
     hero_base64 = get_image_base64(hero_img_path)
     
     st.markdown(f"""
@@ -151,37 +152,37 @@ def home_page():
         ("🟢", "The Perceptron", "Binary Classifier",
          "Train a single neuron to find the optimal decision boundary in real-time.",
          p_pct, ["Live Training","6 Gates","Confusion Matrix","Weight Trajectory"], "#10B981", 
-         r"assets\banners\perceptron_module_banner_1774322293698.png"),
+         os.path.join("assets", "banners", "perceptron_module_banner_1774322293698.png")),
 
         ("➡️", "Forward Propagation", "Signal Flow Engine",
          "Trace neural signals through custom architectures with live activation heatmaps.",
          p_fwd, ["6 Activations","Layer Heatmap","Custom Arch","Weight Editor"], "#06B6D4",
-         r"assets\banners\forward_prop_module_banner_1774322313582.png"),
+         os.path.join("assets", "banners", "forward_prop_module_banner_1774322313582.png")),
 
         ("⬅️", "Backward Propagation", "Gradient Engine",
          "Visualize the chain rule and gradient flow to understand neural learning.",
          p_bwd, ["Chain Rule Viz","Gradient Heatmap","Weight Diff","Live Gauges"], "#8B5CF6",
-         r"assets\banners\backward_prop_module_banner_1774322334899.png"),
+         os.path.join("assets", "banners", "backward_prop_module_banner_1774322334899.png")),
 
         ("🧠", "Hopfield Network", "Associative Memory",
          "Explore content-addressable memory and energy minimization in a recurrent neural architecture.",
          p_hop, ["Associative Memory","Energy Landscape","Pattern Recovery","Hebbian Learning"], "#3B82F6",
-         r"assets\banners\hopfield_module_banner_1775024868657.png"),
+         os.path.join("assets", "banners", "hopfield_module_banner_1775024868657.png")),
 
         ("📷", "OpenCV Detection", "Vision Lab",
          "Advanced computer vision for face logging, vehicle counting, and gesture analytics.",
          p_cv, ["YOLO Vehicles","Live Analytics","Face Scanner","CSV Export"], "#F59E0B",
-         r"assets\banners\opencv_module_banner_1774322354099.png"),
+         os.path.join("assets", "banners", "opencv_module_banner_1774322354099.png")),
 
         ("💬", "Sentiment Analysis", "Deep Sentiment Engine",
          "Deep language processing to detect 8 distinct emotions in real-time text.",
          p_sa, ["8 Emotions","LSTM Core","Mixed Sentiments","Batch Mode"], "#EC4899",
-         r"assets\banners\sentiment_analysis_banner_1774322370417.png"),
+         os.path.join("assets", "banners", "sentiment_analysis_banner_1774322370417.png")),
 
         ("🚀", "LSTM Hub", "Next-Gen Sequence Lab",
          "A refined powerhouse of LSTM modules including Dynamic Word Prediction, Sentiment HUD, and Creative Story Engines.",
          p_hub, ["Word Prediction","Sentiment HUD","Creative Gen","Architecture Viz"], "#8B5CF6",
-         r"assets\banners\lstm_module_banner_1774322380000_1774328471585.png"),
+         os.path.join("assets", "banners", "lstm_module_banner_1774322380000_1774328471585.png")),
 
     ]
 

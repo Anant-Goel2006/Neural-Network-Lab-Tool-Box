@@ -12,7 +12,7 @@ def inject_global_css():
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono&display=swap');
 
         .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"], .main, [data-testid="stBlockContainer"], [data-testid="stVerticalBlock"], .block-container, section {
-            background-color: transparent !important; 
+            background-color: #0A0E14 !important; 
             color: #E2E8F0;
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;

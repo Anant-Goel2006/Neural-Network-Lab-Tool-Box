@@ -1,9 +1,11 @@
 __pycache__/
 *.pyc
 .gemini/
-.streamlit/
+.env
 NeuralNetworkLab/
 tmp_mp_test.py
 NeuralNetworkLab_exclude.txt
 yolov8n.pt
+*.pth
 Sentiment_Analysis_RNN/
+import.log

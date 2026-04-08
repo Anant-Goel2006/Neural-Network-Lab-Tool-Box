@@ -17,3 +17,7 @@ torchvision
 segmentation-models-pytorch
 albumentations
 scipy
+streamlit-drawable-canvas
+openai
+python-dotenv
+Pillow
