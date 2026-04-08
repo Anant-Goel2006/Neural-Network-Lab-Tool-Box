@@ -2,10 +2,11 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.styles import gradient_header, section_header, render_log
 from utils.nlp_engine import generate_fwd_insight
 from utils.nn_helpers import (ACTS, LOSSES, make_weights, forward_pass,
     draw_network, P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, LAYER_COLS, plotly_layout)
+from utils.chatbot import render_chatbot, push_tutor_insight
 
 MAX_NODES = 6; MAX_LAYERS = 7
 
@@ -75,6 +76,9 @@ def forward_propagation_page():
         3. **Output:** The final layer produces `ŷ`, which is compared against the target `y` using a Loss Function.
         """)
 
+    # Init session state
+    if "fp_done" not in st.session_state: st.session_state.fp_done = False
+
     st.divider()
     section_header("Network Architecture Builder", "Define your neural network topology")
     with st.container(border=True):
@@ -82,7 +86,7 @@ def forward_propagation_page():
         n_in  = c1.slider("Input features", 1, 20, 3)
         n_hid = c2.slider("Hidden layers", 1, 6, 2)
         same  = c3.checkbox("Uniform hidden width", True)
-        
+
         hid_sz = []
         if same:
             w = st.slider("Neurons per hidden layer", 1, 20, 4)
@@ -91,16 +95,16 @@ def forward_propagation_page():
             nc = st.columns(min(n_hid, 5))
             for l in range(n_hid):
                 hid_sz.append(nc[l%5].slider(f"H{l+1}", 1, 20, 3, key=f"fp_hl_{l}"))
-        
+
         sizes = [n_in] + hid_sz + [1]
         labels = ["Input"] + [f"H{i+1}" for i in range(n_hid)] + ["Output"]
-        
+
         # Architecture badge
         arch = " → ".join([f"**{lb}**({sz})" for lb, sz in zip(labels, sizes)])
         st.markdown(arch)
 
     if len(sizes) <= MAX_LAYERS:
-        st.plotly_chart(draw_network(sizes, labels), width="stretch", theme=None)
+        st.plotly_chart(draw_network(sizes, labels), use_container_width=True)
 
     st.divider()
     section_header("Inputs & Target", "Set input values and target output")
@@ -120,7 +124,7 @@ def forward_propagation_page():
         st.caption(f"f(z) = `{ACTS[act_all]['eq']}`")
         h_acts = [act_all] * n_hid
         with st.expander("📈 Activation curve"):
-            st.plotly_chart(_act_curve_fig(act_all), width="stretch", theme=None)
+            st.plotly_chart(_act_curve_fig(act_all), use_container_width=True)
     else:
         h_acts = []
         ac = st.columns(min(n_hid, 5))
@@ -148,7 +152,7 @@ def forward_propagation_page():
                     index=[f"n{j+1}" for j in range(W.shape[0])])
                 df["bias"] = b_w.flatten()
                 st.caption(f"**{lbl}** W{W.shape}")
-                st.dataframe(df.round(4), width="stretch")
+                st.dataframe(df.round(4), use_container_width=True)
     else:
         wm = []; sz = n_in
         for li, h in enumerate(hid_sz):
@@ -177,13 +181,13 @@ def forward_propagation_page():
     st.divider()
     bc, rc = st.columns([4,1])
     with rc:
-        if st.button("Reset", width="stretch"):
+        if st.button("Reset", use_container_width=True):
             for k in [k for k in st.session_state if k.startswith("fp_")]: del st.session_state[k]
             st.rerun()
     log_ph = st.expander("📋 Computation Log", expanded=False).empty()
 
     with bc:
-        run_btn = st.button("▶ Run Forward Pass", type="primary", width="stretch")
+        run_btn = st.button("▶ Run Forward Pass", type="primary", use_container_width=True)
 
     if run_btn:
         Zs, As = forward_pass(X, weights, h_acts, o_act)
@@ -209,30 +213,31 @@ def forward_propagation_page():
         render_log(log_ph, log)
         st.session_state.update(dict(fp_Zs=Zs, fp_As=As, fp_loss=loss, fp_y_pred=y_pred,
             fp_sizes=sizes, fp_labels=labels, fp_Xv=Xv, fp_n_in=n_in, fp_hid=hid_sz,
-            fp_y_true=y_true, fp_loss_fn=loss_fn, fp_h_acts=h_acts, fp_done=True))
+            fp_y_true=y_true, fp_loss_fn=loss_fn, fp_h_acts=h_acts, fp_o_act=o_act, fp_done=True))
 
     if not st.session_state.get("fp_done", False): return
 
     Zs = st.session_state.fp_Zs; As = st.session_state.fp_As
     loss = st.session_state.fp_loss; y_pred = st.session_state.fp_y_pred
     s_sizes = st.session_state.fp_sizes; s_lbl = st.session_state.fp_labels
+    o_act_s = st.session_state.get("fp_o_act", o_act)
 
     st.divider()
     section_header("Results Dashboard", "Output, loss gauge, network diagram, and layer-by-layer activations")
 
-    gradient_header("Signal Transmission", "Calculating Network Output", "📡")
-    
-    with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+    # AI Analysis
+    with st.spinner("🤖 Requesting real-time AI analysis..."):
         from utils.ai_helper import get_ai_explanation
-        prompt = f"A neural network performed a Forward Propagation pass. The final output prediction was {y_pred:.6f} and target was {st.session_state.fp_y_true:.4f}, resulting in a loss of {loss:.6f} using {st.session_state.fp_loss_fn}. The output layer activation was {st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else 'Linear'}. Explain what this result means and whether the network is close to convergence, in 2-3 short sentences."
+        prompt = f"Act as an expert AI tutor explaining step by step how this neural network performed a forward propagation pass. The final output prediction was {y_pred:.6f} and target was {st.session_state.fp_y_true:.4f}, resulting in a loss of {loss:.6f} using {st.session_state.fp_loss_fn}. Explain clearly for a complete beginner: what are weights, what is an activation function, and how does data flow layer by layer. Break down every calculation step. Deliver it in an engaging, step-by-step tutorial format."
         ai_text = get_ai_explanation(prompt)
 
     if ai_text:
-        render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Forward Prop Analyst", "#00ffcc")
+        push_tutor_insight(ai_text, "AI Tutor // Forward Prop Analyst")
     else:
         insight = generate_fwd_insight(st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear", st.session_state.fp_loss_fn, loss)
-        render_nlp_insight(insight, "Synaptic Flow // Differential Analysis", "#FACC15")
+        push_tutor_insight(insight, "Synaptic Flow // Differential Analysis")
 
+    # Premium result cards
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
         <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #EF4444;">
@@ -254,17 +259,15 @@ def forward_propagation_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # Gauges restored
+    # Gauges
     g1, g2 = st.columns(2)
     from utils.styles import speedometer
-    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#3B82F6", height=250), width="stretch", theme=None, key="fp_g1")
-    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#EF4444", height=250), width="stretch", theme=None, key="fp_g2")
-
-    # Gauges removed for cleaner layout as requested.
+    g1.plotly_chart(speedometer(y_pred, 2.0, "Prediction ŷ", color="#3B82F6", height=250), use_container_width=True, key="fp_g1")
+    g2.plotly_chart(speedometer(loss, 1.0, "Loss Score", color="#EF4444", height=250), use_container_width=True, key="fp_g2")
 
     st.divider()
     section_header("Verify Result", "Compare Prediction vs Ground Truth")
-    
+
     diff = abs(y_pred - st.session_state.fp_y_true)
     status = "SUCCESS" if diff < 0.05 else "ADJUSTING"
     st.markdown(f"""
@@ -284,18 +287,18 @@ def forward_propagation_page():
         [As[i+1].flatten().tolist() for i in range(len(s_sizes)-2)] + [[y_pred]]
     if len(s_sizes) <= MAX_LAYERS:
         st.plotly_chart(draw_network(s_sizes, s_lbl, vals=diag_vals),
-            width="stretch")
+            use_container_width=True)
 
     # Activation Heatmap
     heat = _activation_heatmap(As, s_lbl)
-    if heat: st.plotly_chart(heat, width="stretch", theme=None)
+    if heat: st.plotly_chart(heat, use_container_width=True)
 
     # Layer tabs
     tabs = st.tabs([f"L{i} — {l}" for i, l in enumerate(s_lbl[1:], 1)] + ["📊 Loss Analysis"])
     for li, tab in enumerate(tabs[:-1]):
         with tab:
             Z = Zs[li]; Act = As[li+1]; is_o = li == len(Zs)-1
-            act_name = o_act if is_o else st.session_state.fp_h_acts[li]
+            act_name = o_act_s if is_o else st.session_state.fp_h_acts[li]
             st.markdown(f"""<div style="font-family:'Inter',sans-serif;font-size:11px;
                 color:{MUTED};margin-bottom:12px;">Z = W·A_prev + b  →  A = {act_name}(Z)</div>""",
                 unsafe_allow_html=True)
@@ -320,4 +323,7 @@ def forward_propagation_page():
         fig_b.update_layout(barmode="group",
             title=dict(text="Prediction vs Target", font=dict(color=TEXT, family="Inter", size=16)),
             **plotly_layout())
-        c1.plotly_chart(fig_b, width="stretch", theme=None)
+        c1.plotly_chart(fig_b, use_container_width=True)
+
+    # Interactive Chatbot
+    render_chatbot("Forward Propagation and Layer-by-Layer Signal Transmission")

@@ -260,6 +260,70 @@ def inject_global_css():
         .more-info-button:hover {
             background: rgba(100, 116, 139, 0.6);
         }
+        /* ──── SECONDARY HORIZONTAL NAVBAR ──── */
+        .sub-navbar {
+            display: flex;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(12px);
+            padding: 10px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 30px;
+            justify-content: center;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sub-nav-item {
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: #94A3B8;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+        .sub-nav-item:hover {
+            color: #F8FAFC;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sub-nav-active {
+            color: #FFFFFF !important;
+            background: #3B82F6 !important;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* ──── PREMIUM FLOATING TUTOR CHATBOT ──── */
+        .tutor-container {
+            border: 1px solid rgba(59, 130, 246, 0.2) !important;
+            border-radius: 12px !important;
+            background: rgba(15, 23, 42, 0.8) !important;
+            backdrop-filter: blur(20px) !important;
+        }
+
+        .tutor-message-bot {
+            background: rgba(59, 130, 246, 0.1) !important;
+            border-left: 3px solid #3B82F6 !important;
+            padding: 15px !important;
+            border-radius: 0 12px 12px 0 !important;
+        }
+
+        .tutor-header {
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
         </style>
     """, unsafe_allow_html=True)
     
@@ -494,8 +558,10 @@ def render_log(placeholder, logs):
     """, unsafe_allow_html=True)
 
 def render_nlp_insight(text, label, clr="#3B82F6"):
+    import uuid
+    from utils.voice import render_voice_button
     st.markdown(f"""
-        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {clr}; padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; border-radius: 8px;">
+        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid {clr}; padding: 24px; margin-bottom: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; border-radius: 8px;">
             <div style="font-family:'Montserrat', sans-serif; font-size:18px; color:#F8FAFC; font-weight: 600; margin-bottom:10px; word-wrap: break-word;">
                 {label}
             </div>
@@ -504,6 +570,7 @@ def render_nlp_insight(text, label, clr="#3B82F6"):
             </div>
         </div>
     """, unsafe_allow_html=True)
+    render_voice_button(text, key_suffix=str(uuid.uuid4())[:8])
 def get_image_base64(path):
     """Encodes an image to base64 for embedding in HTML/CSS."""
     if not os.path.exists(path):

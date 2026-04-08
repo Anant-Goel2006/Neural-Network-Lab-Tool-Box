@@ -4,10 +4,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header, render_log, render_nlp_insight
+from utils.styles import gradient_header, section_header, render_log
 from utils.nlp_engine import generate_bwd_insight
 from utils.nn_helpers import (ACTS, LOSSES, make_weights, forward_pass, backward_pass,
     draw_network, P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, plotly_layout)
+from utils.chatbot import render_chatbot, push_tutor_insight
 
 def _wkey(n, h): return f"bp_w_{n}_{'_'.join(str(x) for x in h)}"
 def _get_w(n, h):
@@ -70,7 +71,7 @@ def backward_propagation_page():
     weights = make_weights(n_in, hid_sz) # Fresh random init
 
     st.divider()
-    if st.button("🚀 Start Live Backprop Training", type="primary", width="stretch"):
+    if st.button("🚀 Start Live Backprop Training", type="primary", use_container_width=True):
         master_dashboard = st.empty()
         
         losses = []
@@ -85,8 +86,6 @@ def backward_propagation_page():
             
             # Backward Pass
             grads = backward_pass(weights, As, y_true, h_acts, o_act, loss_fn)
-            
-            # Gradient logging
             mean_grad = np.mean([np.mean(np.abs(g["dLdW"])) for g in grads if g])
             
             # Weight Update
@@ -101,26 +100,19 @@ def backward_propagation_page():
             y_preds.append(y_pred)
             grad_mags.append(mean_grad)
             
+            max_display_loss = 1.0
+            display_acc = max(0, 1 - (loss / max_display_loss))
+
             with master_dashboard.container():
                 mx1, mx2, mx3, mx4 = st.columns(4)
                 mx1.metric("Epoch", f"{ep}/{max_ep}"); mx2.metric("Loss", f"{loss:.6f}")
-                # Calculate a simple 'accuracy' for display purposes, e.g., inverse of loss or proximity to target
-                # This is a placeholder and might need a more robust definition depending on the loss function
-                # For MSE, a simple inverse or 1 - normalized_loss could be used.
-                # For demonstration, let's use a simple proximity measure.
-                # If y_true is 1.0, and y_pred is 0.9, error is 0.1. Accuracy could be 1 - 0.1 = 0.9.
-                # Max possible error for a single output is usually bounded (e.g., 1.0 for binary classification with BCE, or larger for MSE).
-                # Let's assume a max possible loss of 1.0 for a rough 'accuracy' gauge.
-                # This is a heuristic for visualization, not a true accuracy metric.
-                max_display_loss = 1.0 # Adjust based on expected loss range
-                display_acc = max(0, 1 - (loss / max_display_loss)) # Simple inverse of normalized loss
                 mx3.metric("Prediction ŷ", f"{y_pred:.6f}"); mx4.metric("Avg Grad", f"{mean_grad:.6f}")
-                
-                # Restore Gauges
+
+                # Speedometer gauges
                 gA, gB = st.columns(2)
                 from utils.styles import speedometer
-                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#EF4444", height=200), width="stretch", theme=None, key=f"bp_gL_{ep}")
-                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#3B82F6", height=200), width="stretch", theme=None, key=f"bp_gA_{ep}")
+                gA.plotly_chart(speedometer(loss, max_display_loss, "Current Loss", color="#EF4444", height=200), use_container_width=True, key=f"bp_gL_{ep}")
+                gB.plotly_chart(speedometer(mean_grad, 1.0, "Avg Gradient", color="#3B82F6", height=200), use_container_width=True, key=f"bp_gA_{ep}")
                 
                 # Double graph: Network Architecture (Live Vals) + Trajectories
                 diag_vals = [Xv] + [As[i+1].flatten().tolist() for i in range(len(sizes)-2)] + [[y_pred]]
@@ -138,29 +130,31 @@ def backward_propagation_page():
                 fig2.update_yaxes(showgrid=True, gridcolor="#DDD", secondary_y=False)
                 
                 cA, cB = st.columns(2)
-                cA.plotly_chart(fig1, width="stretch", theme=None, key=f"bp_net_live_{ep}")
-                cB.plotly_chart(fig2, width="stretch", theme=None, key=f"bp_line_live_{ep}")
+                cA.plotly_chart(fig1, use_container_width=True, key=f"bp_net_live_{ep}")
+                cB.plotly_chart(fig2, use_container_width=True, key=f"bp_line_live_{ep}")
 
             if delay > 0: time.sleep(delay)
             if loss < 1e-5:
                 break
                 
-        # Calculate final accuracy for the display card
-        final_max_display_loss = 1.0 # Re-define as it was local to the loop
+        # Final accuracy
+        final_max_display_loss = 1.0
         acc = max(0, 1 - (loss / final_max_display_loss))
 
         with master_dashboard.container():
-            with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+            # AI Analysis
+            with st.spinner("🤖 Requesting real-time AI analysis..."):
                 from utils.ai_helper import get_ai_explanation
-                prompt = f"A neural network with {n_hid} hidden layers trained for {ep} epochs using {loss_fn} loss and learning rate {lr}. The final error/loss is {loss:.6f} and the target output was {y_true:.2f}. The average gradient magnitude is {mean_grad:.6f}. Explain in 2-3 sentences what this loss decay and gradient magnitude mean regarding how well this backward pass optimized the network weights."
+                prompt = f"Act as an expert AI tutor explaining step by step how this network trained using backpropagation. It had {n_hid} hidden layers, trained for {ep} epochs using {loss_fn} loss and learning rate {lr}. The final error/loss is {loss:.6f} and the target output was {y_true:.2f}. The average gradient magnitude is {mean_grad:.6f}. Explain clearly for a complete beginner: what is the chain rule, what are gradients, and how do weights update. Break down every calculation step. Deliver it in an engaging, step-by-step tutorial format."
                 ai_text = get_ai_explanation(prompt)
-            
+
             if ai_text:
-                render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Backward Prop Analyst", "#00ffcc")
+                push_tutor_insight(ai_text, "AI Tutor // Backward Prop Analyst")
             else:
-                insight = generate_bwd_insight(optimizer="Gradient Descent Kinetics", lr=lr, total_epochs=ep)
-                render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#FACC15")
-            
+                insight = generate_bwd_insight(ep, max_ep, loss, mean_grad)
+                push_tutor_insight(insight, "Gradient Descent Log // NLP Neural Engine")
+
+            # Convergence Scan hero card
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")
             st.markdown(f"""
@@ -174,6 +168,8 @@ def backward_propagation_page():
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Premium result cards
             st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:20px; margin: 40px 0; flex-wrap:wrap;">
                 <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #EF4444;">
@@ -190,12 +186,13 @@ def backward_propagation_page():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
-            cA, cB = st.columns(2)
-            cA.plotly_chart(fig1, width="stretch", theme=None, key="bp_net_final")
-            cB.plotly_chart(fig2, width="stretch", theme=None, key="bp_line_final")
 
-        # ── RESTORED POST-TRAINING MAPS ──
+            # Final diagrams
+            cA, cB = st.columns(2)
+            cA.plotly_chart(fig1, use_container_width=True, key="bp_net_final")
+            cB.plotly_chart(fig2, use_container_width=True, key="bp_line_final")
+
+        # ── POST-TRAINING ANALYTICS ──
         st.divider()
         section_header("Post-Training Analytics", "Detailed inspection of intermediate gradients & activations")
         
@@ -203,7 +200,7 @@ def backward_propagation_page():
         
         with t1:
             df_g = pd.DataFrame({"Layer": labels[1:], "Avg |dL/dW|": grad_mags[-abs(n_hid)-1:] if len(grad_mags)>n_hid else grad_mags})
-            st.dataframe(df_g, hide_index=True, width="stretch")
+            st.dataframe(df_g, hide_index=True, use_container_width=True)
             st.info("If gradients fall below 0.1, the network may suffer from the Vanishing Gradient problem.")
         
         with t2:
@@ -213,4 +210,7 @@ def backward_propagation_page():
                 df_w = pd.DataFrame(W)
                 df_w["Bias"] = b.flatten()
                 st.caption(f"**{lbl}**")
-                st.dataframe(df_w, width="stretch")
+                st.dataframe(df_w, use_container_width=True)
+
+    from utils.chatbot import render_chatbot
+    render_chatbot("Backward Propagation and Gradient Descent")

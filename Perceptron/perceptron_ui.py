@@ -7,6 +7,8 @@ from plotly.subplots import make_subplots
 from utils.styles import section_header, render_log, render_nlp_insight, gradient_header
 from utils.nlp_engine import generate_perceptron_insight
 from utils.nn_helpers import P, C, G, A, R, TEXT, MUTED, GRID, PLOTLY_BASE, plotly_layout
+from utils.voice import render_voice_button
+from utils.chatbot import render_chatbot
 
 GATES = {
     "AND":  {"data":[(0,0,0),(0,1,0),(1,0,0),(1,1,1)],"sep":True, "icon":"⊗"},
@@ -19,8 +21,8 @@ GATES = {
 
 def _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep):
     # 1x2 Subplots: [Decision Boundary] | [Loss Curve]
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Decision Boundary", "Live Loss Curve"))
-    
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("2D Decision Boundary", "Live Loss Curve"))
+
     # Boundary
     for cls, col, sym in [(0, R, "circle"), (1, G, "diamond")]:
         m = y == cls
@@ -29,19 +31,19 @@ def _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep):
                 name=f"Class {cls}",
                 marker=dict(size=14, color=col, line=dict(width=2, color="#000"), symbol=sym)),
                 row=1, col=1)
-    
+
     if abs(w[1]) > 1e-9:
         xs = np.linspace(X[:,0].min()-0.5, X[:,0].max()+0.5, 300)
         ys = -(w[0]*xs+b)/w[1]
         fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines", name="Boundary",
             line=dict(color="#A78BFA", width=3, dash="dash")), row=1, col=1)
-    
+
     # Loss Curve
     ep_x = list(range(1, len(losses)+1))
     fig.add_trace(go.Scatter(x=ep_x, y=losses, mode="lines", fill="tozeroy",
         name="Total Error", line=dict(color="#06B6D4", width=3),
         fillcolor="rgba(6,182,212,0.15)"), row=1, col=2)
-    
+
     fig.update_layout(
         title_text=f"Live Convergence Dashboard — Epoch {ep}/{max_ep} | Accuracy: {acc:.1f}%",
         showlegend=True,
@@ -54,8 +56,8 @@ def _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep):
 def perceptron_page():
     from utils.styles import inject_global_css
     inject_global_css()
-    gradient_header("The Perceptron", "Binary Linear Classifier · Stable Live Visualization", "🧠")
-    
+    gradient_header("The Perceptron", "Binary Linear Classifier · Stable 2D Visualization", "🧠")
+
     with st.expander("📚 Theory & Mathematical Explanation", expanded=False):
         st.markdown("""
         **The Perceptron Learning Rule:**
@@ -93,14 +95,14 @@ def perceptron_page():
         max_ep = h2.slider("Max Epochs", 10, 500, 100)
         delay = h3.slider("Animation Delay (s)", 0.0, 0.5, 0.05, 0.05)
 
-    if st.button("🚀 Start Live Training", type="primary", width="stretch"):
+    if st.button("🚀 Start Live Training", type="primary", use_container_width=True):
         master_dashboard = st.empty()
-        
+
         w = np.random.uniform(-0.5, 0.5, 2)
         b = np.random.uniform(-0.5, 0.5)
         losses = []
         w_traj = []
-        
+
         for ep in range(1, max_ep+1):
             err = 0
             for xi, yi in zip(X, y):
@@ -111,29 +113,30 @@ def perceptron_page():
                 if e != 0:
                     w += lr * e * xi
                     b += lr * e
-            
+
             losses.append(err)
             w_traj.append([w[0], w[1], b])
             corr = int(np.sum((X@w+b>=0).astype(int)==y))
             acc = corr / len(y) * 100
-            # --- Rendering strictly inside one container to absolutely prevent native overlapping ---
+
+            # --- Live dashboard rendering ---
             with master_dashboard.container():
                 mx1, mx2, mx3, mx4 = st.columns(4)
                 mx1.metric("Epoch", f"{ep}/{max_ep}")
                 mx2.metric("Loss", f"{err:.1f}")
                 mx3.metric("Accuracy", f"{acc:.1f}%")
                 mx4.metric("Weights", f"w1:{w[0]:.2f} w2:{w[1]:.2f} b:{b:.2f}")
-                
+
                 from utils.styles import speedometer
-                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), width="stretch", theme=None, key=f"pct_gauge_{ep}")
-                
+                st.plotly_chart(speedometer(acc, 100, "Accuracy %", color="#005BEA", height=220), use_container_width=True, key=f"pct_gauge_{ep}")
+
                 fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-                st.plotly_chart(fig, width="stretch", theme=None, key=f"pct_live_{ep}")
-            
+                st.plotly_chart(fig, use_container_width=True, key=f"pct_live_{ep}")
+
             if delay > 0: time.sleep(delay)
             if err == 0:
                 break
-                
+
         # --- MANUAL PREDICTOR ---
         st.divider()
         section_header("Verify Result", "Test custom inputs on your trained model")
@@ -141,10 +144,10 @@ def perceptron_page():
             c1, c2 = st.columns(2)
             ix1 = c1.number_input("Input X1", value=0.0)
             ix2 = c2.number_input("Input X2", value=1.0)
-            
-            z = w[0]*ix1 + w[1]*ix2 + b
-            y_pred_m = 1 if z >= 0 else 0
-            
+
+            z_m = w[0]*ix1 + w[1]*ix2 + b
+            y_pred_m = 1 if z_m >= 0 else 0
+
             st.markdown(f"""
             <div class="premium-card fade-in" style="text-align:center; border-top: 4px solid {G if y_pred_m==1 else R};">
                 <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing:2px; text-transform: uppercase; font-weight: 600;">Neural Prediction Result</div>
@@ -157,20 +160,20 @@ def perceptron_page():
 
         with master_dashboard.container():
             st.success(f"Training finalized at Epoch {ep} with Accuracy {acc:.1f}%.")
-            gradient_header("Perceptron Processor", "Basic Linear Classification", "📉")
-            reg_name = st.sidebar.text_input("Analysis Target Name", "Perceptron_Alpha", key="p_name")
-            
-            with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+
+            # AI Analysis
+            with st.spinner("🤖 Requesting real-time AI analysis..."):
                 from utils.ai_helper import get_ai_explanation
-                prompt = f"A single-layer perceptron was trained on the {gate} logic gate dataset using learning rate {lr} and max epochs {max_ep}. It stopped at epoch {ep} and ended with total error {err} and accuracy {acc}%. Briefly explain in 2-3 sentences why it achieved this performance. Mention if {gate} is linearly separable and how that affects convergence."
+                prompt = f"Act as an expert AI tutor explaining step by step how this perceptron trained on the {gate} logic gate dataset using learning rate {lr} and max epochs {max_ep}. It stopped at epoch {ep} and ended with total error {err} and accuracy {acc}%. Explain clearly: what are weights, what is bias, why we multiply and add. Break down every calculation for a complete beginner with no prior knowledge. Deliver it in an engaging, step-by-step tutorial format."
                 ai_text = get_ai_explanation(prompt)
-            
+
             if ai_text:
-                render_nlp_insight(ai_text, "🤖 NVIDIA Llama-3 AI Tutor // Perceptron Analyst", "#00ffcc")
+                push_tutor_insight(ai_text, "AI Tutor // Perceptron Analyst")
             else:
                 insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
-                render_nlp_insight(insight, "Synaptic Mission Intel // Analyzing Patterns", "#FACC15")
-            
+                push_tutor_insight(insight, "Synaptic Mission Intel // Analyzing Patterns")
+
+            # Premium result cards
             st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
                 <div class="premium-card fade-in" style="flex:1; min-width:180px; padding:20px; text-align:center; border-top: 3px solid #60A5FA;">
@@ -193,24 +196,25 @@ def perceptron_page():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
-            st.plotly_chart(fig, width="stretch", theme=None, key="pct_final_res")
 
-        # ── RESTORED POST-TRAINING ANALYTICS ──
+            fig = _live_dashboard_fig(X, y, w, b, losses, acc, ep, max_ep)
+            st.plotly_chart(fig, use_container_width=True, key="pct_final_res")
+
+        # ── POST-TRAINING ANALYTICS ──
         st.divider()
         section_header("Post-Training Analytics", "Detailed inspection of the trained perceptron")
-        
+
         t1, t2, t3 = st.tabs(["🔢 Confusion Matrix", "📈 Weight Trajectory", "📊 Distributions"])
-        
+
         with t1:
             preds = (X @ w + b >= 0).astype(int)
             tp = int(np.sum((preds==1)&(y==1))); fp = int(np.sum((preds==1)&(y==0)))
             fn = int(np.sum((preds==0)&(y==1))); tn = int(np.sum((preds==0)&(y==0)))
             cmat = pd.DataFrame([[tp, fp], [fn, tn]], columns=["Pred 1", "Pred 0"], index=["Actual 1", "Actual 0"])
-            st.dataframe(cmat, width="stretch")
+            st.dataframe(cmat, use_container_width=True)
             prec = tp/(tp+fp) if (tp+fp) > 0 else 0; rec = tp/(tp+fn) if (tp+fn) > 0 else 0
             st.info(f"**Precision:** {prec:.2f} &nbsp;&nbsp;|&nbsp;&nbsp; **Recall:** {rec:.2f}")
-            
+
         with t2:
             df_w = pd.DataFrame(w_traj, columns=["w1", "w2", "bias"])
             fig_w = go.Figure()
@@ -218,9 +222,11 @@ def perceptron_page():
             fig_w.add_trace(go.Scatter(y=df_w["w2"], name="w2"))
             fig_w.add_trace(go.Scatter(y=df_w["bias"], name="bias", line=dict(dash="dot")))
             fig_w.update_layout(title="Weights across Epochs", height=300, margin=dict(t=40,b=20,l=20,r=20))
-            st.plotly_chart(fig_w, width="stretch", theme=None, key="pct_weights_traj")
-            
+            st.plotly_chart(fig_w, use_container_width=True, key="pct_weights_traj")
+
         with t3:
-            z = X @ w + b
-            df_dist = pd.DataFrame({"z_score": z, "Actual Class": y})
-            st.dataframe(df_dist, width="stretch", hide_index=True)
+            z_vals = X @ w + b
+            df_dist = pd.DataFrame({"z_score": z_vals, "Actual Class": y})
+            st.dataframe(df_dist, use_container_width=True, hide_index=True)
+
+    render_chatbot("the Perceptron, Linear Separability, and Binary Classification")

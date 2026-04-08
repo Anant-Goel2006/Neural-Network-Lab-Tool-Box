@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 import datetime
-from utils.styles import section_header, render_nlp_insight, gradient_header
+from utils.styles import section_header, gradient_header
 from utils.nlp_engine import generate_cv_insight
 import cv2
 
@@ -58,7 +58,7 @@ def process_video_realtime(video_file, callback_fn):
 # ═════════════════════════════════════════════════════════════════════════════
 def _attendance_module():
     section_header("Face Log & Attendance", "Match Faces · Export CSV")
-    render_nlp_insight(generate_cv_insight("attendance"), "Optical NLP // Live Tracking", "#f59e0b")
+    # render_nlp_insight removed - now in chatbot
     if "cv_attendance" not in st.session_state: st.session_state.cv_attendance=[]
 
     c1,c2=st.columns([1,1])
@@ -137,7 +137,6 @@ def _attendance_module():
 # ═════════════════════════════════════════════════════════════════════════════
 def _face_scan_module():
     section_header("Face Scanner", "Multi-Cascade · Eyes & Smiles")
-    render_nlp_insight(generate_cv_insight("face"), "Optical NLP // Live Tracking", "#38bdf8")
     
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_fs_src")
     
@@ -200,7 +199,6 @@ def _face_scan_module():
 # ═════════════════════════════════════════════════════════════════════════════
 def _vehicle_module():
     section_header("Vehicle Detection", "YOLOv8 Real-Time Counting")
-    render_nlp_insight(generate_cv_insight("vehicle"), "Optical NLP // Live Tracking", "#f59e0b")
     
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_vd_src")
     
@@ -280,7 +278,6 @@ def _vehicle_module():
 # ═════════════════════════════════════════════════════════════════════════════
 def _sign_module():
     section_header("Traffic Sign Detection", "CNN Classifier · 43 Classes")
-    render_nlp_insight(generate_cv_insight("sign"), "Optical NLP // Pattern Recognition", "#E11D48")
     
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_sd_src")
     
@@ -442,7 +439,6 @@ def create_palm_overlay(image, mask):
 # ═════════════════════════════════════════════════════════════════════════════
 def _palm_module():
     section_header("Palm Reading Extraction", "Kinematic Analysis")
-    render_nlp_insight(generate_cv_insight("palm"), "Optical NLP // Gesture Parsing", "#a855f7")
     src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_palm_src")
     
     try:
@@ -552,17 +548,34 @@ def opencv_detection_page():
 
     mod = st.session_state.get("cv_module", None)
 
-    # ── Active Module Rendering (At the Top to avoid scrolling) ───────────
+    # ── Active Module Rendering ───────────────────────────────────────────
     if mod:
+        if st.button("⬅️ Back to Gallery", key="back_cv"):
+            st.session_state.cv_module = None; st.rerun()
+            
         if mod == "attendance": _attendance_module()
         elif mod == "face_scan": _face_scan_module()
         elif mod == "vehicle": _vehicle_module()
         elif mod == "sign": _sign_module()
         elif mod == "palm": _palm_module()
+        
+        # --- AI TUTOR INTEGRATION ---
         st.divider()
+        from utils.chatbot import render_chatbot, push_tutor_insight
+        
+        insight_key = f"cv_insight_{mod}"
+        if insight_key not in st.session_state:
+            from utils.ai_helper import get_ai_explanation
+            prompt = f"The user is exploring the {mod} computer vision module. Give a 2-sentence expert tip on how this specific technology works in real-time."
+            ai_text = get_ai_explanation(prompt)
+            if ai_text:
+                push_tutor_insight(ai_text, f"AI Tutor // {mod.title()} Tips")
+                st.session_state[insight_key] = True
 
-    # ── Module Selector List ────────────────────────────────────────────────
-    # ── Netflix-style Sub-Module Selector ──────────────────────────────────
+        render_chatbot(f"the {mod} computer vision module")
+        return
+
+    # ── Module Selector List (RESORED GALLERY STYLE) ────────────────────────
     MODULES = [
         ("📋","Attendance","Face log · Export CSV","attendance","#3B82F6", ["Real-time Face Detection", "User Registration", "CSV Attendance Export"]),
         ("🔍","Face Scanner","Eyes · Smile · ROI","face_scan","#06B6D4", ["Multi-Cascade detection", "Ocular tracking", "Mood/Smile recognition"]),
@@ -571,7 +584,6 @@ def opencv_detection_page():
         ("🖐️","Palm Reading","Hands · Gestures","palm","#8B5CF6", ["CNN Segmentation", "Feature Extraction", "Career Analysis"]),
     ]
 
-    # ── Vertical List for Sub-Modules ──────────────────────────────
     MODULE_BANNERS = {
         "attendance": os.path.join("assets", "banners", "attendance_banner_1774323273637.png"),
         "face_scan": os.path.join("assets", "banners", "face_scanner_banner_1774323291585.png"),
@@ -608,19 +620,6 @@ def opencv_detection_page():
             
             st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
 
-    # --- NVIDIA AI DEEP ANALYSIS ---
-    st.divider()
-    with st.expander("🤖 Neural Vision Consultant", expanded=True):
-        sc1, sc2 = st.columns([1, 4])
-        sc1.markdown("<h1 style='text-align:center;'>🧠</h1>", unsafe_allow_html=True)
-        with sc2:
-            st.markdown("### AI Vision Analysis // NVIDIA Llama-3")
-            with st.spinner("🤖 Consulting deep neural patterns..."):
-                from utils.ai_helper import get_ai_explanation
-                prompt = "The user is exploring a Computer Vision Hub containing Attendance Tracking, Gesture Control, and Pose Estimation. Briefly explain (2-3 sentences) how Convolutional Neural Networks (CNNs) differ from Recurrent Neural Networks (RNNs) in the context of single-frame object detection."
-                ai_text = get_ai_explanation(prompt)
-            if ai_text:
-                st.markdown(f"> {ai_text}")
-            else:
-                st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
-
+    # --- CHATBOT TUTOR ---
+    from utils.chatbot import render_chatbot
+    render_chatbot("Computer Vision Analytics Hub")

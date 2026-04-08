@@ -6,8 +6,9 @@ import time
 import os
 import pickle
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header, render_nlp_insight
+from utils.styles import gradient_header, section_header
 from utils.nn_helpers import PLOTLY_BASE, plotly_layout, TEXT, C, P, G, A, R, GRID, MUTED
+from utils.chatbot import push_tutor_insight
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import logging
@@ -273,7 +274,7 @@ def sentiment_analysis_page():
                     ai_text = get_ai_explanation(prompt)
                 
                 if ai_text:
-                    render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst", "#00ffcc")
+                    push_tutor_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst")
                 else:
                     st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
 

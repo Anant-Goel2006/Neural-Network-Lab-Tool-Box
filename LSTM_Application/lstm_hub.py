@@ -104,17 +104,7 @@ def _mod_next_word():
                 pred_word = i2w[pred_idx]
                 st.markdown(f"""<div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 40px; border-radius: 16px; text-align: center; margin-top: 10px;"><div style="font-size: 14px; color: #60A5FA; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Predicted Word</div><div style="font-size: 52px; font-weight: 900; color: white; filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));">{pred_word.upper()}</div><div style="color: #10B981; font-weight: 700; font-size: 18px;">{probs[pred_idx]*100:.1f}% Confidence</div></div>""", unsafe_allow_html=True)
                 st.session_state.last_pred_word = pred_word
-                
-                # --- NVIDIA AI DEEP ANALYSIS ---
-                st.divider()
-                with st.spinner("🤖 Requesting sequence context analysis..."):
-                    from utils.ai_helper import get_ai_explanation
-                    from utils.styles import render_nlp_insight
-                    prompt = f"An LSTM model predicted '{pred_word.upper()}' as the next word for the sequence '{user_input}'. Briefly explain (2 sentences) how the hidden state memory allows it to link terms like 'France' and 'Live' to predict a country name like 'India'."
-                    ai_text = get_ai_explanation(prompt)
-                if ai_text:
-                    render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sequence Analyst", "#00ffcc")
-                
+            
             display_word = st.session_state.get("last_pred_word", pred_word_init)
             
             with col2:
@@ -206,18 +196,8 @@ def _mod_sentiment():
             marker=dict(color=["#22C55E", "#EF4444", "#3B82F6"]),
             text=[f"{p*100:.1f}%" for p in preds], textposition="outside"
         ))
-        fig.update_layout(template="plotly_dark", height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_layout(template="plotly_dark", height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.1)")
         st.plotly_chart(fig, use_container_width=True)
-
-        # --- NVIDIA AI DEEP ANALYSIS ---
-        st.divider()
-        with st.spinner("🤖 Analyzing sentiment nuances..."):
-            from utils.ai_helper import get_ai_explanation
-            from utils.styles import render_nlp_insight
-            prompt = f"Analyze this text: '{txt}'. The model scored it as {preds[0]*100:.1f}% Positive, {preds[1]*100:.1f}% Negative. Briefly explain the emotional tone and linguistic triggers found in 2-3 sentences."
-            ai_text = get_ai_explanation(prompt)
-        if ai_text:
-            render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst", "#00ffcc")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODULE 3 — CREATIVE TEXT GENERATOR  ✍️
@@ -325,7 +305,7 @@ def _mod_textgen():
                 st.markdown(f"""
                 <div style="background:rgba(255,255,255,0.03);border:1px solid {clr}44;border-radius:14px;padding:20px;margin-bottom:12px;">
                   <div style="font-size:12px;color:{clr};font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">{label}</div>
-                  <div style="font-size:1.05em;line-height:1.8;font-family:'JetBrains Mono',monospace;">{seed_html} {gen_html}</div>
+                  <div style="font-size:1.05em;line-height:1.8;font-family:\'JetBrains Mono\',monospace;">{seed_html} {gen_html}</div>
                   <div style="margin-top:12px;font-size:11px;color:#64748B;">Temperature: {temp} · {len(gen_words)} words generated</div>
                 </div>""", unsafe_allow_html=True)
  
@@ -338,18 +318,6 @@ def _mod_textgen():
                         yaxis=dict(visible=False), title=dict(text="Step Confidence", font=dict(size=11, color="#64748B"), x=0))
                     col.plotly_chart(fig_sp, use_container_width=True)
 
-        # --- NVIDIA AI DEEP ANALYSIS ---
-        st.divider()
-        with st.spinner("🤖 Analyzing creative output..."):
-            from utils.ai_helper import get_ai_explanation
-            from utils.styles import render_nlp_insight
-            # Grab one of the generated strings for analysis
-            target_out = " ".join(results[0][0])
-            prompt = f"A generative LSTM model created this text: '{target_out}'. Briefly explain the difference between 'Conservative' and 'Creative' generation in terms of probability sampling (Softmax Temperature) in 2 short sentences."
-            ai_text = get_ai_explanation(prompt)
-        if ai_text:
-            render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Creative Director", "#00ffcc")
- 
     st.markdown("""
     <div style="background: rgba(59, 130, 246, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #3B82F6; margin-top:20px;">
         💡 <b>Temperature Wars</b> makes the creativity/predictability tradeoff tangible in a single side-by-side view. Low temp (0.3) picks the "mathematically safest" words, while high temp (1.8) exploration leads to wild and dreamy narratives.
@@ -369,6 +337,21 @@ def lstm_hub_page():
         if mod == "next_word": _mod_next_word()
         elif mod == "sentiment": _mod_sentiment()
         elif mod == "textgen": _mod_textgen()
+        
+        # --- AI TUTOR INTEGRATION ---
+        st.divider()
+        from utils.chatbot import render_chatbot, push_tutor_insight
+        
+        insight_key = f"lstm_insight_t_{mod}" # Using unique key to trigger afresh
+        if insight_key not in st.session_state:
+            from utils.ai_helper import get_ai_explanation
+            prompt = f"The user is exploring the {mod} LSTM module. Give a 2-sentence expert tip on gated memory."
+            ai_text = get_ai_explanation(prompt)
+            if ai_text:
+                push_tutor_insight(ai_text, f"AI Tutor // {mod.title()} Tips")
+                st.session_state[insight_key] = True
+
+        render_chatbot(f"LSTM {mod} sequence processing")
         return
 
     gradient_header("LSTM Application Hub", "Next-Gen Sequence Analytics Suite", "🧠")
@@ -384,6 +367,9 @@ def lstm_hub_page():
             with col1: st.markdown(f"<h1 style='text-align:center;'>{icon}</h1>", unsafe_allow_html=True)
             with col2: st.markdown(f"**{title}**"); st.caption(desc)
             with col3:
-                if st.button(f"Launch {title}", key=f"launch_{key}", use_container_width=True):
+                if st.button(f"Launch {title}", key=f"launch_l_{key}", use_container_width=True):
                     st.session_state.lstm_active_mod = key; st.rerun()
             st.divider()
+
+if __name__ == "__main__":
+    lstm_hub_page()
