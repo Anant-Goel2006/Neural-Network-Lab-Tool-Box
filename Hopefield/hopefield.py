@@ -459,7 +459,7 @@ def init():
         st.session_state.pseudohop = net
         st.session_state.canvas_key = 0
 
-def app():
+def main():
     from utils.styles import inject_global_css
     inject_global_css()
     st.markdown(CSS, unsafe_allow_html=True)
@@ -568,4 +568,4 @@ def app():
     st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    app()
+    main()
