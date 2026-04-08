@@ -80,21 +80,12 @@ def canvas_to_bipolar(data):
     return np.where(np.array(small) > 15, 1.0, -1.0).flatten()
 
 def canvas_to_base64(data):
-    """Convert canvas to clean black-on-white PNG for best AI recognition."""
     img = Image.fromarray(data.astype('uint8'), 'RGBA')
-    gray = img.convert('L')
-    arr = np.array(gray)
-    # Threshold: anything drawn becomes black, background becomes white
-    bw = np.where(arr > 20, 0, 255).astype('uint8')
-    # Make it thicker with a slight blur then re-threshold
-    bw_img = Image.fromarray(bw, 'L').filter(ImageFilter.BoxBlur(2))
-    bw_arr = np.array(bw_img)
-    final = np.where(bw_arr < 200, 0, 255).astype('uint8')
-    clean = Image.fromarray(final, 'L').convert('RGB')
-    # Scale up to 256x256 for better AI visibility
-    clean = clean.resize((256, 256), Image.Resampling.LANCZOS)
+    bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
+    bg.paste(img, mask=img.split()[3])
+    rgb = bg.convert('RGB')
     buf = io.BytesIO()
-    clean.save(buf, format='PNG')
+    rgb.save(buf, format='PNG')
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 def canvas_hash(data):
@@ -124,23 +115,20 @@ def detect_with_ai(canvas_data):
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Look at this hand-drawn black ink sketch on white paper. What single letter, number, or shape is drawn? Answer in this exact format on two lines:\nNAME: (one word only, like A or Circle or 7)\nNOTE: (one short sentence about the drawing)"},
+                    {"type": "text", "text": "This is a hand-drawn sketch on a digital canvas with cyan/teal strokes on a dark background. Identify what letter, digit, shape, symbol, or object is drawn. Reply with EXACTLY this format:\nDETECTED: [item name]\nANALYSIS: [2 sentences about what you see and the drawing quality]"},
                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}
                 ]
             }],
-            temperature=0.1,
-            max_tokens=100
+            temperature=0.2,
+            max_tokens=200
         )
-        result = resp.choices[0].message.content.strip()
+        result = resp.choices[0].message.content
+        # Parse DETECTED line
         detected = "Drawing"
         for line in result.split('\n'):
-            ln = line.strip()
-            if ln.upper().startswith("NAME:"):
-                detected = ln.split(":", 1)[1].strip().strip('"\' ')
+            if line.strip().upper().startswith("DETECTED:"):
+                detected = line.split(":", 1)[1].strip()
                 break
-        # If the model didn't follow format, use the first word
-        if detected == "Drawing" and result:
-            detected = result.split()[0].strip(".,!:;\"'*#")
         return detected, result
     except Exception as e:
         # Fallback to text model
@@ -236,7 +224,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # ── LAYOUT ──
-    col_draw, col_out = st.columns([1, 1.3])
+    col_draw, col_out = st.columns([1.2, 1])
 
     with col_draw:
         with st.container(border=True):
@@ -245,7 +233,7 @@ def main():
             if CANVAS_OK:
                 canvas = st_canvas(
                     fill_color="rgba(0,0,0,0)", stroke_width=22, stroke_color="#00f0ff",
-                    background_color="#0f172a", height=340, width=340, drawing_mode="freedraw",
+                    background_color="#0f172a", height=500, width=500, drawing_mode="freedraw",
                     key=f"hc_{st.session_state.hop_ck}"
                 )
 
@@ -305,7 +293,6 @@ def main():
         with st.container(border=True):
             st.subheader("🤖 AI Analysis")
             if st.session_state.hop_ai_text:
-                # Render in a controlled font size to prevent oversized headers
                 safe_text = st.session_state.hop_ai_text.replace('#', '').strip()
                 st.markdown(f'<div style="font-size:0.9rem; line-height:1.6; color:#E2E8F0;">{safe_text}</div>', unsafe_allow_html=True)
             else:
