@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from functools import lru_cache
 
 import cv2
@@ -7,7 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from utils.ai_helper import get_ai_explanation
 from utils.chatbot import push_tutor_insight, render_chatbot
@@ -18,7 +19,6 @@ from utils.learning_ui import (
     render_ai_coach_panel,
     render_learning_journey,
     render_step_grid,
-    render_visualization_mode,
     scatter3d_story,
 )
 from utils.nn_helpers import A, C, G, R, plotly_layout
@@ -41,10 +41,31 @@ CLASSIFIER_K = 9
 CHARACTER_LABELS = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 CHARACTER_LABELS += list("abcdefghijklmnopqrstuvwxyz")
 SHAPE_LABELS = ["Circle", "Triangle", "Square", "Rectangle", "Diamond", "Star", "Plus", "Minus", "Slash", "Backslash", "Arrow"]
-CLASSIFIER_FONTS = [cv2.FONT_HERSHEY_SIMPLEX, cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_COMPLEX]
+CLASSIFIER_FONTS = [
+    cv2.FONT_HERSHEY_SIMPLEX,
+    cv2.FONT_HERSHEY_DUPLEX,
+    cv2.FONT_HERSHEY_COMPLEX,
+    cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+]
 CLASSIFIER_ANGLES = (-12, 0, 12)
 CLASSIFIER_SCALES = (0.94, 1.0, 1.08)
 CLASSIFIER_SHIFTS = [(-2, -2), (0, 0), (2, 2), (-2, 2), (2, -2)]
+TEXT_SHEARS = (-0.14, 0.14)
+PREFERRED_TTF_FONTS = [
+    "arial.ttf",
+    "arialbd.ttf",
+    "calibri.ttf",
+    "calibrib.ttf",
+    "cambria.ttc",
+    "consola.ttf",
+    "comic.ttf",
+    "georgia.ttf",
+    "times.ttf",
+    "trebuc.ttf",
+    "verdana.ttf",
+    "segoeui.ttf",
+    "gabriola.ttf",
+]
 
 
 class HopfieldEngine:
@@ -83,8 +104,17 @@ def _clean_canvas_image(data, out_size=192):
     rgba = Image.fromarray(data.astype("uint8"), "RGBA")
     gray = rgba.convert("L")
     arr = np.array(gray)
-    bw = np.where(arr > 50, 0, 255).astype("uint8")
-    filtered = Image.fromarray(bw, "L").filter(ImageFilter.BoxBlur(1))
+
+    border = np.concatenate([arr[0, :], arr[-1, :], arr[:, 0], arr[:, -1]])
+    background_is_light = float(np.mean(border)) >= 127.0
+
+    _, binary = cv2.threshold(arr, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if not background_is_light:
+        binary = 255 - binary
+
+    # Remove tiny specks while keeping handwritten strokes readable.
+    binary = cv2.medianBlur(binary, 3)
+    filtered = Image.fromarray(binary, "L").filter(ImageFilter.BoxBlur(1))
     final = np.where(np.array(filtered) < 220, 0, 255).astype("uint8")
     return Image.fromarray(final, "L").resize((out_size, out_size), _resample())
 
@@ -371,6 +401,47 @@ def _render_text_prototype(label, font, thickness, size=DETECTOR_SIDE):
     return canvas
 
 
+@lru_cache(maxsize=1)
+def _available_ttf_font_paths():
+    font_dir = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+    paths = []
+    for name in PREFERRED_TTF_FONTS:
+        path = os.path.join(font_dir, name)
+        if os.path.exists(path):
+            paths.append(path)
+    return tuple(paths[:7])
+
+
+def _render_ttf_text_prototype(label, font_path, size=DETECTOR_SIDE):
+    canvas = Image.new("L", (size, size), 0)
+    drawer = ImageDraw.Draw(canvas)
+    font = None
+    bbox = None
+    for font_size in range(int(size * 0.82), int(size * 0.34), -4):
+        try:
+            candidate = ImageFont.truetype(font_path, font_size)
+        except OSError:
+            continue
+        candidate_bbox = drawer.textbbox((0, 0), label, font=candidate)
+        text_w = candidate_bbox[2] - candidate_bbox[0]
+        text_h = candidate_bbox[3] - candidate_bbox[1]
+        if text_w <= size * 0.76 and text_h <= size * 0.74:
+            font = candidate
+            bbox = candidate_bbox
+            break
+
+    if font is None:
+        font = ImageFont.load_default()
+        bbox = drawer.textbbox((0, 0), label, font=font)
+
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+    x = int(round((size - text_w) / 2.0 - bbox[0]))
+    y = int(round((size - text_h) / 2.0 - bbox[1]))
+    drawer.text((x, y), label, fill=255, font=font)
+    return np.array(canvas, dtype=np.uint8)
+
+
 def _classifier_mask(mask):
     mask = np.array(mask, dtype=np.uint8)
     if mask.ndim != 2:
@@ -379,18 +450,34 @@ def _classifier_mask(mask):
     return (norm > 0).astype(np.uint8) * 255
 
 
-def _augment_training_mask(base_mask):
+def _shear_mask(mask, shear):
+    offset = -shear * DETECTOR_SIDE * 0.5
+    matrix = np.array([[1.0, shear, offset], [0.0, 1.0, 0.0]], dtype=np.float32)
+    return cv2.warpAffine(mask, matrix, (DETECTOR_SIDE, DETECTOR_SIDE), flags=cv2.INTER_LINEAR, borderValue=0)
+
+
+def _augment_training_mask(base_mask, text_like=False):
     base = np.array(base_mask, dtype=np.uint8)
     samples = []
     center = (DETECTOR_SIDE / 2, DETECTOR_SIDE / 2)
-    for angle in CLASSIFIER_ANGLES:
-        for scale in CLASSIFIER_SCALES:
-            for shift_x, shift_y in CLASSIFIER_SHIFTS:
-                matrix = cv2.getRotationMatrix2D(center, angle, scale)
-                matrix[0, 2] += shift_x
-                matrix[1, 2] += shift_y
-                warped = cv2.warpAffine(base, matrix, (DETECTOR_SIDE, DETECTOR_SIDE), flags=cv2.INTER_LINEAR, borderValue=0)
-                samples.append(_classifier_mask(warped))
+
+    base_variants = [base]
+    if text_like:
+        for shear in TEXT_SHEARS:
+            base_variants.append(_shear_mask(base, shear))
+        kernel = np.ones((2, 2), dtype=np.uint8)
+        base_variants.append(cv2.dilate(base, kernel, iterations=1))
+        base_variants.append(cv2.erode(base, kernel, iterations=1))
+
+    for variant in base_variants:
+        for angle in CLASSIFIER_ANGLES:
+            for scale in CLASSIFIER_SCALES:
+                for shift_x, shift_y in CLASSIFIER_SHIFTS:
+                    matrix = cv2.getRotationMatrix2D(center, angle, scale)
+                    matrix[0, 2] += shift_x
+                    matrix[1, 2] += shift_y
+                    warped = cv2.warpAffine(variant, matrix, (DETECTOR_SIDE, DETECTOR_SIDE), flags=cv2.INTER_LINEAR, borderValue=0)
+                    samples.append(_classifier_mask(warped))
     return samples
 
 
@@ -409,9 +496,14 @@ def _character_classifier_bank():
         for font in CLASSIFIER_FONTS:
             for thickness in [2, 3, 5]:
                 base_mask = _render_text_prototype(label, font, thickness)
-                for sample in _augment_training_mask(base_mask):
+                for sample in _augment_training_mask(base_mask, text_like=True):
                     samples.append(hog.compute(sample).flatten())
                     targets.append(label_to_idx[label])
+        for font_path in _available_ttf_font_paths():
+            base_mask = _render_ttf_text_prototype(label, font_path)
+            for sample in _augment_training_mask(base_mask, text_like=True):
+                samples.append(hog.compute(sample).flatten())
+                targets.append(label_to_idx[label])
 
     train_x = np.array(samples, dtype=np.float32)
     train_y = np.array(targets, dtype=np.int32)
@@ -589,11 +681,81 @@ def _projection_character_boxes(raw_mask):
     return boxes
 
 
+def _connected_word_boxes(raw_mask):
+    binary = (np.array(raw_mask, dtype=np.uint8) > 0).astype(np.uint8)
+    ys, xs = np.where(binary > 0)
+    if len(xs) == 0:
+        return []
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    sub = binary[y0 : y1 + 1, x0 : x1 + 1]
+    if sub.shape[1] < 18 or (sub.shape[1] / max(sub.shape[0], 1)) < 1.35:
+        return []
+
+    work = cv2.erode(sub, np.ones((2, 2), dtype=np.uint8), iterations=1)
+    proj = work.sum(axis=0).astype(np.float32)
+    if proj.max() <= 0:
+        return []
+
+    smooth_kernel = np.array([1, 2, 3, 2, 1], dtype=np.float32)
+    smooth = np.convolve(proj, smooth_kernel / smooth_kernel.sum(), mode="same")
+    threshold = max(1.0, float(smooth.max()) * 0.30)
+    valleys = np.where(smooth <= threshold)[0].tolist()
+    if not valleys:
+        return []
+
+    cuts = []
+    run = [valleys[0]]
+    for idx in valleys[1:]:
+        if idx == run[-1] + 1:
+            run.append(idx)
+        else:
+            center = int(round(sum(run) / len(run)))
+            if 4 <= center <= len(smooth) - 5:
+                cuts.append(center)
+            run = [idx]
+    center = int(round(sum(run) / len(run)))
+    if 4 <= center <= len(smooth) - 5:
+        cuts.append(center)
+
+    if not cuts:
+        return []
+
+    segments = []
+    start = 0
+    for cut in cuts:
+        if cut - start >= 4:
+            segments.append((start, cut - 1))
+        start = cut + 1
+    if len(smooth) - start >= 4:
+        segments.append((start, len(smooth) - 1))
+
+    if len(segments) < 2:
+        return []
+
+    boxes = []
+    for seg_x0, seg_x1 in segments:
+        seg = sub[:, seg_x0 : seg_x1 + 1]
+        seg_ys, seg_xs = np.where(seg > 0)
+        if len(seg_xs) == 0:
+            continue
+        boxes.append(
+            {
+                "x": x0 + seg_x0 + int(seg_xs.min()),
+                "y": y0 + int(seg_ys.min()),
+                "w": int(seg_xs.max() - seg_xs.min() + 1),
+                "h": int(seg_ys.max() - seg_ys.min() + 1),
+            }
+        )
+    return boxes if len(boxes) >= 2 else []
+
+
 def _split_box_on_valley(raw_mask, box):
     binary = (np.array(raw_mask, dtype=np.uint8) > 0).astype(np.uint8)
     sub = binary[:, box["x"] : box["x"] + box["w"]]
     work = cv2.erode(sub, np.ones((2, 2), dtype=np.uint8), iterations=1)
-    proj = work.sum(axis=0).astype(float)
+    proj = work.sum(axis=0).astype(np.float32)
     if len(proj) < 12 or proj.max() <= 0:
         return [box]
 
@@ -602,13 +764,39 @@ def _split_box_on_valley(raw_mask, box):
     if left >= right:
         return [box]
 
-    valley_threshold = max(1.0, proj.max() * 0.40)
-    valley_indices = [idx for idx in range(left, right + 1) if proj[idx] <= valley_threshold]
+    smooth_kernel = np.array([1, 2, 3, 2, 1], dtype=np.float32)
+    smooth = np.convolve(proj, smooth_kernel / smooth_kernel.sum(), mode="same")
+    valley_threshold = max(1.0, float(smooth.max()) * 0.72)
+    valley_indices = [
+        idx
+        for idx in range(left, right + 1)
+        if smooth[idx] <= valley_threshold and smooth[idx] <= smooth[idx - 1] and smooth[idx] <= smooth[idx + 1]
+    ]
     if not valley_indices:
-        return [box]
+        minimum = int(np.argmin(smooth[left : right + 1])) + left
+        if smooth[minimum] > max(1.0, float(smooth.max()) * 0.82):
+            return [box]
+        valley_indices = [minimum]
 
-    center = valley_indices[len(valley_indices) // 2]
-    segments = [(0, center - 1), (center + 1, len(proj) - 1)]
+    cuts = []
+    run = [valley_indices[0]]
+    for idx in valley_indices[1:]:
+        if idx == run[-1] + 1:
+            run.append(idx)
+        else:
+            cuts.append(int(round(sum(run) / len(run))))
+            run = [idx]
+    cuts.append(int(round(sum(run) / len(run))))
+
+    segments = []
+    start = 0
+    for cut in cuts:
+        if cut - start >= 3:
+            segments.append((start, cut - 1))
+        start = cut + 1
+    if len(proj) - start >= 3:
+        segments.append((start, len(proj) - 1))
+
     boxes_out = []
     for seg_x0, seg_x1 in segments:
         if seg_x1 - seg_x0 < 2:
@@ -635,15 +823,26 @@ def _refine_character_boxes(raw_mask, boxes):
     for box in boxes:
         aspect = box["w"] / max(box["h"], 1)
         if median_width > 0 and aspect >= 0.9 and box["w"] >= median_width * 1.25:
-            refined.extend(_split_box_on_valley(raw_mask, box))
+            split_boxes = _split_box_on_valley(raw_mask, box)
+            if len(split_boxes) > 1:
+                for split_box in split_boxes:
+                    split_aspect = split_box["w"] / max(split_box["h"], 1)
+                    if split_aspect >= 0.95 and split_box["w"] >= median_width * 1.05:
+                        refined.extend(_split_box_on_valley(raw_mask, split_box))
+                    else:
+                        refined.append(split_box)
+            else:
+                refined.extend(split_boxes)
         else:
             refined.append(box)
     refined.sort(key=lambda item: item["x"])
     return refined
 
 
-def _character_candidates(raw_mask):
+def _character_candidates(raw_mask, allow_connected=False):
     boxes = _extract_character_boxes(raw_mask)
+    if len(boxes) < 2 and allow_connected:
+        boxes = _connected_word_boxes(raw_mask)
     if len(boxes) < 2:
         boxes = _projection_character_boxes(raw_mask)
     boxes = _refine_character_boxes(raw_mask, boxes)
@@ -706,7 +905,7 @@ def _detect_locally(clean_img, prefer_text=False):
         empty = {"name": "Blank", "category": "Sketch", "confidence": 0, "note": "The detector did not find enough stroke pixels to classify.", "raw": "{}", "top_matches": []}
         return empty
 
-    text_detection = _character_candidates(raw_mask)
+    text_detection = _character_candidates(raw_mask, allow_connected=prefer_text)
     if text_detection:
         return text_detection
 
@@ -715,10 +914,17 @@ def _detect_locally(clean_img, prefer_text=False):
     shape_ranked = _rank_shape_matches(classifier_mask)
     ranked = char_ranked
     if prefer_text:
-        if shape_ranked and shape_ranked[0]["score"] > char_ranked[0]["score"] + 0.18:
+        if shape_ranked and char_ranked[0]["score"] < 0.18 and shape_ranked[0]["score"] > char_ranked[0]["score"] + 0.28:
             ranked = shape_ranked
-    elif shape_ranked and shape_ranked[0]["score"] > char_ranked[0]["score"] + 0.08:
-        ranked = shape_ranked
+    elif shape_ranked:
+        shape_gap = shape_ranked[0]["score"] - char_ranked[0]["score"]
+        best_char_label = char_ranked[0]["label"]
+        if shape_gap > 0.22 or (
+            shape_ranked[0]["score"] > 0.88
+            and len(best_char_label) == 1
+            and best_char_label.islower()
+        ):
+            ranked = shape_ranked
 
     top_matches = [
         {
@@ -858,6 +1064,8 @@ def main():
         [
             "The visible label comes from a local text-and-shape detector trained on letters, digits, and common symbols.",
             "Turn on Text Mode when you want the detector to favor letters and words over symbols and geometric shapes.",
+            "Text Mode also switches the board into a paper-like writing surface with a thinner pen, which usually helps letter recognition.",
+            "For the strongest text results, write one clear letter at a time or leave a small gap between letters.",
             "The 16 by 16 matrix is a compact neural representation of your strokes.",
             "The Hopfield weight matrix now reflects the current sketch itself, so the matrix view always matches what you drew.",
             "Analysis runs on demand when you click the button, which keeps the page much faster.",
@@ -868,22 +1076,41 @@ def main():
     )
 
     section_header("1. Draw And Analyze", "Sketch freely, then run detection only when you want the result")
-    top1, top2, top3 = st.columns([1.15, 0.85, 1.0])
-    with top1:
-        view_mode = render_visualization_mode("hop", accent=C, subject="the sketch detector and Hopfield matrix lab")
-    with top2:
-        text_mode = st.toggle("Text Mode", value=False, key="hop_text_mode")
-        st.caption("Use this when you are drawing letters or short words so the detector prioritizes text reading.")
-    with top3:
-        explain_with_ai = st.checkbox("Generate optional AI coach explanation", value=False, key="hop_explain_ai")
-        st.caption("Recognition runs locally. Turn this on only if you want an extra explanation panel.")
+    mode_help = {
+        "Friendly Dashboard": "Compact analytics and the cleanest core views.",
+        "Immersive Coach": "Guided explanations stay visible while you inspect the result.",
+        "3D Visualization Explorer": "Unlocks the 3D state and weight views.",
+    }
+    with st.container(border=True):
+        c1, c2, c3 = st.columns([1.35, 0.95, 1.0])
+        with c1:
+            st.caption("VISUALIZATION MODE")
+            view_mode = st.radio(
+                "Visualization mode",
+                list(mode_help.keys()),
+                horizontal=True,
+                key="viz_mode_hop_compact",
+                label_visibility="collapsed",
+            )
+            st.caption(mode_help[view_mode])
+        with c2:
+            st.caption("RECOGNITION FOCUS")
+            text_mode = st.toggle("Text Mode", value=False, key="hop_text_mode")
+            st.caption("Prefer letters and short words with slight spacing.")
+        with c3:
+            st.caption("AI EXPLANATION")
+            explain_with_ai = st.checkbox("Enable Coach Panel", value=False, key="hop_explain_ai")
+            st.caption("Recognition stays local either way.")
+
+    if text_mode:
+        st.caption("Text Mode uses a paper-style canvas and thinner pen strokes. Slight spacing between letters helps the local reader.")
 
     if CANVAS_OK:
         canvas = st_canvas(
             fill_color="rgba(0,0,0,0)",
-            stroke_width=14 if text_mode else 20,
-            stroke_color="#00f0ff",
-            background_color="#0f172a",
+            stroke_width=8 if text_mode else 20,
+            stroke_color="#111827" if text_mode else "#00f0ff",
+            background_color="#F8FAFC" if text_mode else "#0f172a",
             height=360,
             width=900,
             drawing_mode="freedraw",
@@ -995,7 +1222,12 @@ def main():
         st.caption("DETECTION RESULT")
         st.markdown(f"### {result['detected_name']}")
         st.write(result["detected_note"])
-        st.caption("Detector: Local HOG + k-NN sketch classifier")
+        detector_label = (
+            "Detector: Local text segmentation + HOG k-NN glyph matcher"
+            if result["detected_category"] == "Text"
+            else "Detector: Local HOG + k-NN sketch classifier"
+        )
+        st.caption(detector_label)
         st.caption(f"Mode used: {'Text Mode' if result.get('text_mode') else 'Auto Mode'}")
         with st.expander("Raw detector response", expanded=False):
             st.code(result["detected_raw"])
