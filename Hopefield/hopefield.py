@@ -116,7 +116,17 @@ def _clean_canvas_image(data, out_size=192):
     binary = cv2.medianBlur(binary, 3)
     filtered = Image.fromarray(binary, "L").filter(ImageFilter.BoxBlur(1))
     final = np.where(np.array(filtered) < 220, 0, 255).astype("uint8")
-    return Image.fromarray(final, "L").resize((out_size, out_size), _resample())
+    cleaned = Image.fromarray(final, "L")
+    width, height = cleaned.size
+    scale = min(out_size / max(width, 1), out_size / max(height, 1))
+    new_w = max(1, int(round(width * scale)))
+    new_h = max(1, int(round(height * scale)))
+    resized = cleaned.resize((new_w, new_h), _resample())
+    canvas = Image.new("L", (out_size, out_size), 255)
+    x_off = (out_size - new_w) // 2
+    y_off = (out_size - new_h) // 2
+    canvas.paste(resized, (x_off, y_off))
+    return canvas
 
 
 def _image_to_bipolar(img):
