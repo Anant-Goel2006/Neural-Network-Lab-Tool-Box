@@ -265,5 +265,17 @@ def sentiment_analysis_page():
                 )
                 st.plotly_chart(fig, width="stretch", theme=None)
 
+                # --- NVIDIA AI DEEP ANALYSIS ---
+                st.divider()
+                with st.spinner("🤖 Requesting deep linguistic analysis from NVIDIA Llama-3..."):
+                    from utils.ai_helper import get_ai_explanation
+                    prompt = f"Analyze the sentiment and linguistic nuance of this sentence: '{text_input}'. The LSTM model classified it as '{c_name}' with {conf*100:.1f}% confidence. Provide a 2-3 sentence analysis on why this sentiment applies, noting any sarcasm, intensifiers, or pivot words like 'but'."
+                    ai_text = get_ai_explanation(prompt)
+                
+                if ai_text:
+                    render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst", "#00ffcc")
+                else:
+                    st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
+
             except Exception as e:
                 st.error(f"Error during LSTM execution: {str(e)}")

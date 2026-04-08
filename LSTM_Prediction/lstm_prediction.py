@@ -171,6 +171,17 @@ def lstm_prediction_page():
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # --- NVIDIA AI DEEP ANALYSIS ---
+                with st.spinner("🤖 Requesting sequence context analysis from NVIDIA Llama-3..."):
+                    from utils.ai_helper import get_ai_explanation
+                    prompt = f"An LSTM model processed the sequence '{user_input_pred}' and predicted the next word as '{pred_word.upper()}'. Explain why an LSTM is particularly suited for this kind of temporal dependency compared to a standard Feed-Forward network, and what the hidden state represents in this specific context."
+                    ai_text = get_ai_explanation(prompt)
+                
+                if ai_text:
+                    render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // LSTM Architect", "#00ffcc")
+                else:
+                    st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
+
                 with st.expander("🤔 What does 'Next Word' mean?", expanded=True):
                     st.markdown(f"""
                     <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; border-left: 3px solid #FACC15;">

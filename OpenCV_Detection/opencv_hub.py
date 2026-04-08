@@ -608,3 +608,19 @@ def opencv_detection_page():
             
             st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;'>", unsafe_allow_html=True)
 
+    # --- NVIDIA AI DEEP ANALYSIS ---
+    st.divider()
+    with st.expander("🤖 Neural Vision Consultant", expanded=True):
+        sc1, sc2 = st.columns([1, 4])
+        sc1.markdown("<h1 style='text-align:center;'>🧠</h1>", unsafe_allow_html=True)
+        with sc2:
+            st.markdown("### AI Vision Analysis // NVIDIA Llama-3")
+            with st.spinner("🤖 Consulting deep neural patterns..."):
+                from utils.ai_helper import get_ai_explanation
+                prompt = "The user is exploring a Computer Vision Hub containing Attendance Tracking, Gesture Control, and Pose Estimation. Briefly explain (2-3 sentences) how Convolutional Neural Networks (CNNs) differ from Recurrent Neural Networks (RNNs) in the context of single-frame object detection."
+                ai_text = get_ai_explanation(prompt)
+            if ai_text:
+                st.markdown(f"> {ai_text}")
+            else:
+                st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
+

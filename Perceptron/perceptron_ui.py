@@ -159,8 +159,17 @@ def perceptron_page():
             st.success(f"Training finalized at Epoch {ep} with Accuracy {acc:.1f}%.")
             gradient_header("Perceptron Processor", "Basic Linear Classification", "📉")
             reg_name = st.sidebar.text_input("Analysis Target Name", "Perceptron_Alpha", key="p_name")
-            insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
-            render_nlp_insight(insight, "Synaptic Mission Intel // Analyzing Patterns", "#FACC15")
+            
+            with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+                from utils.ai_helper import get_ai_explanation
+                prompt = f"A single-layer perceptron was trained on the {gate} logic gate dataset using learning rate {lr} and max epochs {max_ep}. It stopped at epoch {ep} and ended with total error {err} and accuracy {acc}%. Briefly explain in 2-3 sentences why it achieved this performance. Mention if {gate} is linearly separable and how that affects convergence."
+                ai_text = get_ai_explanation(prompt)
+            
+            if ai_text:
+                render_nlp_insight(ai_text, "🤖 NVIDIA Llama-3 AI Tutor // Perceptron Analyst", "#00ffcc")
+            else:
+                insight = generate_perceptron_insight(ep, acc/100, err, acc == 100.0)
+                render_nlp_insight(insight, "Synaptic Mission Intel // Analyzing Patterns", "#FACC15")
             
             st.markdown(f"""
             <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">

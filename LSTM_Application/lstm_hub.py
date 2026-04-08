@@ -105,6 +105,16 @@ def _mod_next_word():
                 st.markdown(f"""<div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 40px; border-radius: 16px; text-align: center; margin-top: 10px;"><div style="font-size: 14px; color: #60A5FA; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Predicted Word</div><div style="font-size: 52px; font-weight: 900; color: white; filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));">{pred_word.upper()}</div><div style="color: #10B981; font-weight: 700; font-size: 18px;">{probs[pred_idx]*100:.1f}% Confidence</div></div>""", unsafe_allow_html=True)
                 st.session_state.last_pred_word = pred_word
                 
+                # --- NVIDIA AI DEEP ANALYSIS ---
+                st.divider()
+                with st.spinner("🤖 Requesting sequence context analysis..."):
+                    from utils.ai_helper import get_ai_explanation
+                    from utils.styles import render_nlp_insight
+                    prompt = f"An LSTM model predicted '{pred_word.upper()}' as the next word for the sequence '{user_input}'. Briefly explain (2 sentences) how the hidden state memory allows it to link terms like 'France' and 'Live' to predict a country name like 'India'."
+                    ai_text = get_ai_explanation(prompt)
+                if ai_text:
+                    render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sequence Analyst", "#00ffcc")
+                
             display_word = st.session_state.get("last_pred_word", pred_word_init)
             
             with col2:
@@ -198,6 +208,16 @@ def _mod_sentiment():
         ))
         fig.update_layout(template="plotly_dark", height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True)
+
+        # --- NVIDIA AI DEEP ANALYSIS ---
+        st.divider()
+        with st.spinner("🤖 Analyzing sentiment nuances..."):
+            from utils.ai_helper import get_ai_explanation
+            from utils.styles import render_nlp_insight
+            prompt = f"Analyze this text: '{txt}'. The model scored it as {preds[0]*100:.1f}% Positive, {preds[1]*100:.1f}% Negative. Briefly explain the emotional tone and linguistic triggers found in 2-3 sentences."
+            ai_text = get_ai_explanation(prompt)
+        if ai_text:
+            render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst", "#00ffcc")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODULE 3 — CREATIVE TEXT GENERATOR  ✍️
@@ -317,6 +337,18 @@ def _mod_textgen():
                         margin=dict(l=0, r=0, t=10, b=0), xaxis=dict(color="#475569", tickangle=-30, tickfont=dict(size=10)),
                         yaxis=dict(visible=False), title=dict(text="Step Confidence", font=dict(size=11, color="#64748B"), x=0))
                     col.plotly_chart(fig_sp, use_container_width=True)
+
+        # --- NVIDIA AI DEEP ANALYSIS ---
+        st.divider()
+        with st.spinner("🤖 Analyzing creative output..."):
+            from utils.ai_helper import get_ai_explanation
+            from utils.styles import render_nlp_insight
+            # Grab one of the generated strings for analysis
+            target_out = " ".join(results[0][0])
+            prompt = f"A generative LSTM model created this text: '{target_out}'. Briefly explain the difference between 'Conservative' and 'Creative' generation in terms of probability sampling (Softmax Temperature) in 2 short sentences."
+            ai_text = get_ai_explanation(prompt)
+        if ai_text:
+            render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Creative Director", "#00ffcc")
  
     st.markdown("""
     <div style="background: rgba(59, 130, 246, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #3B82F6; margin-top:20px;">

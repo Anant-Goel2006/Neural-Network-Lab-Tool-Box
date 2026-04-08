@@ -150,8 +150,16 @@ def backward_propagation_page():
         acc = max(0, 1 - (loss / final_max_display_loss))
 
         with master_dashboard.container():
-            insight = generate_bwd_insight(optimizer="Gradient Descent Kinetics", lr=lr, total_epochs=ep)
-            render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#FACC15")
+            with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+                from utils.ai_helper import get_ai_explanation
+                prompt = f"A neural network with {n_hid} hidden layers trained for {ep} epochs using {loss_fn} loss and learning rate {lr}. The final error/loss is {loss:.6f} and the target output was {y_true:.2f}. The average gradient magnitude is {mean_grad:.6f}. Explain in 2-3 sentences what this loss decay and gradient magnitude mean regarding how well this backward pass optimized the network weights."
+                ai_text = get_ai_explanation(prompt)
+            
+            if ai_text:
+                render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Backward Prop Analyst", "#00ffcc")
+            else:
+                insight = generate_bwd_insight(optimizer="Gradient Descent Kinetics", lr=lr, total_epochs=ep)
+                render_nlp_insight(insight, "Gradient Descent Log // NLP Neural Engine", "#FACC15")
             
             st.divider()
             section_header("Verify Result", "Final Prediction Quality")

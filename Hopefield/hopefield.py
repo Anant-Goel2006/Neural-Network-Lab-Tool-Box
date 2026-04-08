@@ -1,15 +1,27 @@
-"""
-🧠 Live AI-Powered Hopfield Drawing Lab
-Detects what you draw in real-time using NVIDIA Vision AI.
-Auto-triggers on every canvas stroke. Full-width layout.
-"""
-import streamlit as st
-import numpy as np
-import plotly.graph_objects as go
+import os, io, base64, hashlib
 try:
     from PIL import Image, ImageFilter, ImageDraw, ImageFont
 except ImportError:
     from PIL import Image, ImageFilter
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
+    load_dotenv()
+except Exception:
+    pass
+
+try:
+    from openai import OpenAI
+    OPENAI_OK = True
+except ImportError:
+    OPENAI_OK = False
+
+try:
+    from streamlit_drawable_canvas import st_canvas
+    CANVAS_OK = True
+except ImportError:
+    CANVAS_OK = False
 
 # ═══════════════════════════════════════════════════════════════
 G = 16
@@ -27,39 +39,16 @@ def get_api_key():
     return None
 
 # ═══════════════════════════════════════════════════════════════
-# PRE-TRAINED MEMORY LIBRARY
-# ═══════════════════════════════════════════════════════════════
-def make_pattern(char):
-    img = Image.new('L', (G, G), color=0)
-    try:
-        d = ImageDraw.Draw(img)
-        d.text((2, 0), char, fill=255)
-    except Exception:
-        pass
-    return np.where(np.array(img) > 100, 1.0, -1.0).flatten()
-
-MEMORY_DICT = {
-    "Letter A": make_pattern("A"),
-    "Letter B": make_pattern("B"),
-    "Letter C": make_pattern("C"),
-    "Cross (X)": make_pattern("X"),
-    "Circle (O)": make_pattern("O")
-}
-
-# ═══════════════════════════════════════════════════════════════
 # HOPFIELD ENGINE
 # ═══════════════════════════════════════════════════════════════
 class HopfieldEngine:
     def __init__(self, size=256):
         self.N = size
         self.W = np.zeros((size, size))
-        self.train_library()
 
-    def train_library(self):
-        # Train on pre-defined library using Hebbian learning
-        for name, pattern in MEMORY_DICT.items():
-            p = pattern.reshape(-1, 1)
-            self.W += (p @ p.T) / self.N
+    def store(self, pattern):
+        p = pattern.reshape(-1, 1)
+        self.W += (p @ p.T) / self.N
         np.fill_diagonal(self.W, 0)
 
     def energy(self, s):
@@ -76,20 +65,7 @@ class HopfieldEngine:
                 energies.append(e)
             if np.array_equal(curr, np.where(self.W @ curr >= 0, 1.0, -1.0)):
                 break
-        
-        # Match recovered pattern to closest memory mathematically
-        best_match = "Unknown"
-        best_score = -1
-        for name, pattern in MEMORY_DICT.items():
-            score = np.mean(curr == pattern)
-            if score > best_score:
-                best_score = score
-                best_match = name
-        
-        if best_score < 0.7:
-            best_match = "Unrecognized"
-            
-        return curr, energies, best_match
+        return curr, energies
 
 # ═══════════════════════════════════════════════════════════════
 # IMAGE PROCESSING
@@ -247,7 +223,7 @@ def main():
 
     st.markdown("""
     <div class="premium-card">
-        <h1 style="color:white; margin-bottom:4px; font-family:'Montserrat',sans-serif; font-weight:800;">🧠 Full-Span Hopfield Neural Array</h1>
+        <h1 style="color:white; margin-bottom:4px; font-family:'Montserrat',sans-serif; font-weight:800;">🧠 Hopfield Network</h1>
         <p style="color:#A0AEC0; font-size:1.05rem; margin:0;">Massive live canvas. Draw anything — AI detects it instantly below.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -271,11 +247,10 @@ def main():
 
                     bipolar = canvas_to_bipolar(canvas.image_data)
                     st.session_state.hop_bipolar = bipolar
-                    # We don't store the user's drawing anymore (that destroys the pre-trained memories)
-                    recovered, energies, math_match = engine.recover(bipolar, steps=100)
+                    engine.store(bipolar)
+                    recovered, energies = engine.recover(bipolar, steps=100)
                     st.session_state.hop_recovered = recovered
                     st.session_state.hop_energies = energies
-                    st.session_state.hop_math_match = math_match
 
                     with st.spinner("🔍 Scanning neural structure..."):
                         detected, ai_text = detect_with_ai(canvas.image_data)
@@ -298,8 +273,6 @@ def main():
             <div style="text-align:center; padding: 20px 0;">
                 <div style="font-size:0.85rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.15em; margin-bottom:10px;">⚡ AI Vision API Output</div>
                 <div style="font-size:3.5rem; font-weight:800; color:#00ffcc; line-height:1.1; font-family:'Montserrat',sans-serif; text-shadow: 0 0 20px rgba(0,255,204,0.3);">{st.session_state.hop_detected}</div>
-                <div style="font-size:0.85rem; color:#8B5CF6; text-transform:uppercase; letter-spacing:0.15em; margin-top:20px; margin-bottom:5px;">🧠 Local Hopfield Mathematical Output</div>
-                <div style="font-size:1.8rem; font-weight:700; color:#c4b5fd; font-family:'Montserrat',sans-serif;">{st.session_state.get('hop_math_match', 'Unknown')}</div>
             </div>
             """, unsafe_allow_html=True)
             

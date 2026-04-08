@@ -220,9 +220,18 @@ def forward_propagation_page():
     st.divider()
     section_header("Results Dashboard", "Output, loss gauge, network diagram, and layer-by-layer activations")
 
-    insight = generate_fwd_insight(st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear", st.session_state.fp_loss_fn, loss)
     gradient_header("Signal Transmission", "Calculating Network Output", "📡")
-    render_nlp_insight(insight, "Synaptic Flow // Differential Analysis", "#FACC15")
+    
+    with st.spinner("🤖 Requesting real-time AI analysis from NVIDIA Llama-3..."):
+        from utils.ai_helper import get_ai_explanation
+        prompt = f"A neural network performed a Forward Propagation pass. The final output prediction was {y_pred:.6f} and target was {st.session_state.fp_y_true:.4f}, resulting in a loss of {loss:.6f} using {st.session_state.fp_loss_fn}. The output layer activation was {st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else 'Linear'}. Explain what this result means and whether the network is close to convergence, in 2-3 short sentences."
+        ai_text = get_ai_explanation(prompt)
+
+    if ai_text:
+        render_nlp_insight(ai_text, "🤖 NVIDIA AI Tutor // Forward Prop Analyst", "#00ffcc")
+    else:
+        insight = generate_fwd_insight(st.session_state.fp_h_acts[-1] if st.session_state.fp_h_acts else "Linear", st.session_state.fp_loss_fn, loss)
+        render_nlp_insight(insight, "Synaptic Flow // Differential Analysis", "#FACC15")
 
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom: 40px; flex-wrap:wrap;">
