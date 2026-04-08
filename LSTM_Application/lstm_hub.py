@@ -332,6 +332,22 @@ def lstm_hub_page():
     mod = st.session_state.get("lstm_active_mod", None)
     
     if mod:
+        # ── AUTOMATIC SIDEBAR SCROLL ──
+        # Ensures that "Training Data" is visible when a module is launched
+        scroll_key = f"lstm_scrolled_{mod}"
+        if scroll_key not in st.session_state:
+            components.html(f"""
+                <script>
+                    setTimeout(() => {{
+                        const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+                        if (sidebar) {{
+                            sidebar.scrollTo({{ top: 380, behavior: 'smooth' }});
+                        }}
+                    }}, 800);
+                </script>
+            """, height=0)
+            st.session_state[scroll_key] = True
+
         if st.button("⬅️ Back to Gallery"):
             st.session_state.lstm_active_mod = None; st.rerun()
         if mod == "next_word": _mod_next_word()

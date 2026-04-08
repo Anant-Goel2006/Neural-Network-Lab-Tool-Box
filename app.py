@@ -264,6 +264,10 @@ try:
     if st.session_state.last_visited_page != pg.title:
         st.session_state.lstm_active_mod = None
         st.session_state.last_visited_page = pg.title
+        # Clear LSTM scroll flags
+        keys_to_clear = [k for k in st.session_state.keys() if k.startswith("lstm_scrolled_")]
+        for k in keys_to_clear:
+            del st.session_state[k]
 
     pg.run()
 except Exception as e:

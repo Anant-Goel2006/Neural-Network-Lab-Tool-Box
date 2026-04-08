@@ -1,79 +1,117 @@
-# 🧠 Neural Network Lab: The Justice Suite ⚖️
+# 🧠 NEUROLAB: The Ultimate Neural Network Experience
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/)
-![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=streamlit)](https://neurolab.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://neurolab.streamlit.app/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-Welcome to the **Neural Network Lab**, a premium, high-performance simulation suite designed to make Deep Learning intuitive and visually stunning. This "Justice Suite" edition features a bold, DC Comics-inspired aesthetic and advanced real-time visualization engines.
+![NeuroLab Hero Banner](assets/banners/neurolab_netflix_style_hero_1774323980383.png)
+
+## 🌌 Overview
+
+Welcome to **NeuroLab**, a premium, high-performance simulation suite designed to make Deep Learning intuitive, visual, and stunning. Built with a cinematic "Netflix-style" interface, NeuroLab transforms complex mathematical architectures into an interactive playground.
 
 ---
 
-## 🚀 Features
+## 🚀 Live Access
+Experience NeuroLab in your browser right now:
+👉 **[Launch Live Demo](https://neurolab.streamlit.app/)**
+
+---
+
+## ✨ Platform Highlights
+
+| 🎨 Cinematic UI | 🔍 Real-Time Insights | 🛠️ Custom Architectures |
+| :--- | :--- | :--- |
+| Glassmorphic layouts with high-performance animations and a premium dark mode. | Live activation heatmaps, gradient traces, and weight trajectory tracking. | Build and test per-layer configurations for MLP, LSTM, and Hopfield networks. |
+
+---
+
+## 🏛️ Core Modules
+
+NeuroLab features seven dedicated environments for mastering Artificial Intelligence.
 
 ### 🟢 1. The Perceptron
-Explore the foundations of neural logic. Watch a single-layer perceptron learn binary gates (AND, OR, NAND, etc.) in real-time with a live convergence dashboard.
+*The Foundation of Learning*
+- Watch a single neuron learn binary logic gates in real-time.
+- Interactive decision boundary visualization.
+- Instant confusion matrix generation.
 
 ### ➡️ 2. Forward Propagation
-Visualize how data flows through a multi-layer network. Includes live activation heatmaps and dynamic layer-by-layer verification.
+*The Signal Flow*
+- Visualizing data transformation through multi-layer networks.
+- Live activation heatmaps (Sigmoid, ReLU, Tanh, etc.).
+- Real-time weight and bias manipulation.
 
 ### ⬅️ 3. Backward Propagation
-Master the heart of learning. Adjust weights manually or trigger automated backprop to watch the network converge on complex loss landscapes.
+*The Heart of Optimization*
+- Master the Chain Rule through visual gradient flow.
+- Automated weight convergence dashboard.
+- Loss landscape exploration.
 
-### 👁️ 4. OpenCV Detection Hub
-A powerhouse of computer vision modules, now with **Real-Time Video Upload** support:
-- **Face & Attendance**: Identification and logging.
-- **Vehicle & Sign Detection**: Powered by YOLOv8.
-- **Palm Reading**: Hand landmark tracking via MediaPipe.
-- **Background Removal**: Instant studio-quality segmentation.
+### 🧠 4. Hopfield Network
+*Associative Memory*
+- Explore recurrent neural architectures and energy landscapes.
+- Pattern recovery and Hebbian learning simulations.
+- Content-addressable memory visualization.
 
-### 💬 5. Sentiment Analysis (RNN)
-Train a **Long Short-Term Memory (LSTM)** network from scratch. Watch the training curves live as the model learns to categorize text into Positive, Negative, or Mixed sentiments.
+### 📷 5. OpenCV Detection Hub
+*Computer Vision Powerhouse*
+- **YOLOv8 Intelligence**: Real-time vehicle counting and sign detection.
+- **Biometric Hub**: Face scanning and automated attendance logging.
+- **Gesture Control**: Hand landmark tracking via MediaPipe.
+
+### 💬 6. Sentiment Analysis
+*Text Intelligence*
+- Deep language processing using LSTM cores.
+- 8-emotion detection with confidence distribution.
+- Mixed-sentiment tactical HUD.
+
+### 🚀 7. LSTM Application Hub
+*Sequence Synthesis*
+- **Next-Word Prediction**: Forecasting logic in real-time.
+- **Creative Story Gen**: AI-driven narrative synthesis.
+- **Temperature Control**: Tweak creativity vs. predictability settings.
 
 ---
 
-## 🎨 Aesthetic: The Justice Suite
-Designed for visual excellence, the lab uses a curated **Superman Red** and **Batman Blue** palette, featuring:
-- **Bold 6px Shadows**: Tactile, comic-book inspired UI elements.
-- **Glassmorphic Layouts**: Modern, clean, and premium feel.
-- **Impact Typography**: High-contrast headers for a cinematic experience.
+## 🛠️ Local Setup
 
----
+Get NeuroLab running on your machine:
 
-## 🛠️ Installation
-
-1. **Clone the Repository**:
+1. **Clone the Project**:
    ```bash
    git clone https://github.com/Anant-Goel2006/Neural-Network-Lab-Tool-Box.git
    cd Neural-Network-Lab-Tool-Box
    ```
 
-2. **Setup Environment**:
-   *Recommended: Python 3.11 or 3.12*
+2. **Install Dependencies**:
+   *Recommended: Python 3.11+*
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the Lab**:
+3. **Run the Application**:
    ```bash
    streamlit run app.py
    ```
 
 ---
 
-## 🐍 Python 3.13 Compatibility Note
-This suite is optimized for the latest Python environments. For the **Palm Reading (MediaPipe)** module on Windows + Python 3.13, the app implements a **Graceful Failure** mode with clear guidance, as official 3.13 wheels for MediaPipe are still in development.
+## 🧪 Technology Stack
+
+NeuroLab leverages the best of Open Source AI:
+- **Engine**: TensorFlow / Keras
+- **Vision**: OpenCV & MediaPipe
+- **Analytics**: NumPy & Pandas
+- **UI**: Streamlit & Vanilla CSS
+- **Visuals**: Plotly & Matplotlib
 
 ---
 
-## 🧰 Tech Stack
-- **Frontend**: [Streamlit](https://streamlit.io/)
-- **Visuals**: [Plotly](https://plotly.com/python/), [Vanilla CSS](https://developer.mozilla.org/en-US/docs/Web/CSS)
-- **Engines**: [TensorFlow](https://wwww.tensorflow.org/), [OpenCV](https://opencv.org/), [MediaPipe](https://mediapipe.dev/)
-- **Models**: [YOLOv8](https://ultralytics.com/)
+## 📜 License & Credits
 
----
+Distributed under the **MIT License**. Created with 💖 for the AI community.
 
-## 📜 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-Developed with ❤️ by the **Neural Lab Team**. 🦸‍♂️🚀
+**Developed by the NeuroLab Team** 🚀
+Bringing the future of AI to your fingertips.
