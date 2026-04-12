@@ -842,3 +842,5 @@ def forward_propagation_page():
         tutor_label="SIGNAL ENGINEER ➡️",
         placeholder="Ask about forward propagation or signal flow...",
     )
+if __name__ == "__main__":
+    forward_propagation_page()

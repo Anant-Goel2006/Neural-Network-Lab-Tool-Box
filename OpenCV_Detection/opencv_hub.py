@@ -349,21 +349,23 @@ def _face_scan_module():
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 3 — VEHICLES (YOLO MOCK / CASCADE)
 # ═════════════════════════════════════════════════════════════════════════════
+@st.cache_resource(show_spinner=False)
+def load_yolo_model():
+    """Shared global cache for the YOLO detector."""
+    try:
+        from ultralytics import YOLO
+        return YOLO('yolov8n.pt')
+    except Exception as e:
+        st.error(f"Failed to load YOLO: {e}")
+        return None
+
 def _vehicle_module():
     section_header("Vehicle Detection", "YOLOv8 Real-Time Counting")
     
     src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_vd_src")
     
-    # Cache model to avoid re-downloading
-    if 'yolo_model' not in st.session_state:
-        try:
-            from ultralytics import YOLO
-            with st.spinner("Loading YOLOv8n (Weights)..."):
-                st.session_state.yolo_model = YOLO('yolov8n.pt')
-        except Exception as e:
-            st.error(f"Failed to load YOLO: {e}")
-            return
-    model = st.session_state.yolo_model
+    model = load_yolo_model()
+    if model is None: return
 
     def _vd_cb(img):
         results = model(img, verbose=False, imgsz=640)[0]
@@ -393,16 +395,8 @@ def _vehicle_module():
         if v: process_video_realtime(v, _vd_cb)
     else:
         st.info("Live YOLOv8 Inference Running...")
-        try:
-            from ultralytics import YOLO
-            # Cache model to avoid re-downloading
-            if 'yolo_model' not in st.session_state:
-                with st.spinner("Downloading YOLOv8n (Weights)..."):
-                    st.session_state.yolo_model = YOLO('yolov8n.pt')
-            model = st.session_state.yolo_model
-        except Exception as e:
-            st.error(f"YOLO Error: {e}")
-            return
+        model = load_yolo_model()
+        if model is None: return
 
         def vehicle_callback(frame: av.VideoFrame) -> av.VideoFrame:
             try:
@@ -746,6 +740,21 @@ def _render_palm_report(overlay, features, report):
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 5 — PALM READING (CNN Segmentation)
 # ═════════════════════════════════════════════════════════════════════════════
+@st.cache_resource(show_spinner=False)
+def load_palm_model(device):
+    """Shared global cache for the Palm Segmentation model."""
+    try:
+        import segmentation_models_pytorch as smp
+        import torch
+        model = smp.Unet(encoder_name="resnet18", encoder_weights=None, in_channels=3, classes=4)
+        model.load_state_dict(torch.load("palm_model.pth", map_location=device))
+        model.to(device)
+        model.eval()
+        return model
+    except Exception as exc:
+        st.error(f"Failed to load Palm Model from 'palm_model.pth': {exc}")
+        return None
+
 def _palm_module():
     section_header(
         "Palm Reading Extraction",
@@ -758,29 +767,14 @@ def _palm_module():
     observations = DEFAULT_OBSERVATIONS
 
     try:
-        import albumentations as A
-        import segmentation_models_pytorch as smp
         import torch
-        from albumentations.pytorch import ToTensorV2
     except ImportError:
-        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch, segmentation_models_pytorch, albumentations).")
+        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch).")
         return
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    if "palm_model" not in st.session_state:
-        try:
-            with st.spinner("Loading Palm Segmentation Model..."):
-                model = smp.Unet(encoder_name="resnet18", encoder_weights=None, in_channels=3, classes=4)
-                model.load_state_dict(torch.load("palm_model.pth", map_location=device))
-                model.to(device)
-                model.eval()
-                st.session_state.palm_model = model
-        except Exception as exc:
-            st.error(f"Failed to load Palm Model from 'palm_model.pth': {exc}")
-            return
-
-    model = st.session_state.palm_model
+    model = load_palm_model(device)
+    if model is None: return
     preprocessing = A.Compose(
         [
             A.Resize(256, 256),

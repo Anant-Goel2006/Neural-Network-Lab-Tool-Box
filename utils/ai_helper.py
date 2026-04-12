@@ -75,17 +75,43 @@ def _provider_names():
     return list(AI_PROVIDERS.keys())
 
 
-def get_selected_provider():
+def get_api_key(provider=None, with_source=False):
+    """
+    Retrieves the API key for a given provider.
+    Priority: environment variables > streamlit secrets > session overrides.
+    """
     _load_env_files()
-    provider = _safe_session_state_get("ai_provider")
-    if provider in AI_PROVIDERS:
-        return provider
+    provider = provider or get_selected_provider()
+    provider_cfg = AI_PROVIDERS.get(provider, AI_PROVIDERS[DEFAULT_PROVIDER])
 
-    env_provider = os.getenv("AI_PROVIDER", "").strip()
-    if env_provider in AI_PROVIDERS:
-        return env_provider
+    # 1. Check environment variables
+    for env_key in provider_cfg["env_keys"]:
+        env_value = os.getenv(env_key, "").strip()
+        if env_value:
+            return (env_value, f"environment:{env_key}") if with_source else env_value
 
-    return DEFAULT_PROVIDER
+    # 2. Check Streamlit secrets
+    for secret_key in provider_cfg["secret_keys"]:
+        secret_value = _safe_secrets_get(secret_key)
+        if isinstance(secret_value, str) and secret_value.strip():
+            cleaned = secret_value.strip()
+            return (cleaned, f"streamlit-secrets:{secret_key}") if with_source else cleaned
+
+    # 3. Check generic 'ai' secret block
+    ai_secret = _safe_secrets_get("ai")
+    if isinstance(ai_secret, dict):
+        for candidate in (provider.lower(), f"{provider.lower()}_api_key", "api_key", "key"):
+            secret_value = ai_secret.get(candidate)
+            if isinstance(secret_value, str) and secret_value.strip():
+                cleaned = secret_value.strip()
+                return (cleaned, f"streamlit-secrets:ai.{candidate}") if with_source else cleaned
+
+    # 4. Check session override (Fallback only)
+    session_key = (_safe_session_state_get("ai_api_key_override") or "").strip()
+    if session_key:
+        return (session_key, "session-override") if with_source else session_key
+
+    return (None, "missing") if with_source else None
 
 
 def get_selected_model(provider=None, explicit_model=None):
@@ -93,54 +119,21 @@ def get_selected_model(provider=None, explicit_model=None):
     if explicit_model:
         return explicit_model
 
-    session_model = (_safe_session_state_get("ai_model_override") or "").strip()
-    if session_model:
-        return session_model
-
+    # Priority 1: Environment variable
     env_model = os.getenv("AI_MODEL", "").strip()
     if env_model:
         return env_model
 
+    # Priority 2: Session override
+    session_model = (_safe_session_state_get("ai_model_override") or "").strip()
+    if session_model:
+        return session_model
+
     return AI_PROVIDERS.get(provider, AI_PROVIDERS[DEFAULT_PROVIDER])["default_model"]
 
 
-def get_api_key(provider=None, with_source=False):
-    _load_env_files()
-    provider = provider or get_selected_provider()
-    provider_cfg = AI_PROVIDERS.get(provider, AI_PROVIDERS[DEFAULT_PROVIDER])
-
-    session_key = (_safe_session_state_get("ai_api_key_override") or "").strip()
-    if session_key:
-        return (session_key, "session") if with_source else session_key
-
-    for env_key in provider_cfg["env_keys"]:
-        env_value = os.getenv(env_key, "").strip()
-        if env_value:
-            return (env_value, f"environment:{env_key}") if with_source else env_value
-
-    for secret_key in provider_cfg["secret_keys"]:
-        secret_value = _safe_secrets_get(secret_key)
-        if isinstance(secret_value, str) and secret_value.strip():
-            cleaned = secret_value.strip()
-            return (cleaned, f"streamlit-secrets:{secret_key}") if with_source else cleaned
-
-    ai_secret = _safe_secrets_get("ai")
-    if isinstance(ai_secret, dict):
-        for candidate in (
-            provider.lower(),
-            f"{provider.lower()}_api_key",
-            "api_key",
-            "key",
-        ):
-            secret_value = ai_secret.get(candidate)
-            if isinstance(secret_value, str) and secret_value.strip():
-                cleaned = secret_value.strip()
-                return (cleaned, f"streamlit-secrets:ai.{candidate}") if with_source else cleaned
-
-    return (None, "missing") if with_source else None
-
-
 def get_ai_status(provider=None, explicit_model=None):
+    """Returns a status dictionary for the current AI configuration."""
     provider = provider or get_selected_provider()
     api_key, source = get_api_key(provider=provider, with_source=True)
     model = get_selected_model(provider=provider, explicit_model=explicit_model)
@@ -155,46 +148,29 @@ def get_ai_status(provider=None, explicit_model=None):
     }
 
 
-def render_ai_settings_panel():
+def get_selected_provider():
+    """
+    Automatically selects an AI provider based on available API keys.
+    Prioritizes NVIDIA, then OpenAI. Checks session overrides, then environment, then secrets.
+    """
     _load_env_files()
-
-    if "ai_provider" not in st.session_state:
-        st.session_state.ai_provider = get_selected_provider()
-    if "ai_model_override" not in st.session_state:
-        st.session_state.ai_model_override = ""
-    if "ai_api_key_override" not in st.session_state:
-        st.session_state.ai_api_key_override = ""
-
-    with st.sidebar.expander("AI Settings", expanded=False):
-        provider = st.selectbox("Provider", _provider_names(), key="ai_provider")
-        st.text_input(
-            "Model Override",
-            key="ai_model_override",
-            placeholder=AI_PROVIDERS[provider]["default_model"],
-            help="Leave blank to use the provider default model.",
-        )
-        st.text_input(
-            "Session API Key",
-            key="ai_api_key_override",
-            type="password",
-            placeholder="Paste a key for this Streamlit session only",
-            help="The session key stays in memory and is never written back to disk.",
-        )
-
-        status = get_ai_status(provider=provider)
-        if status["available"]:
-            st.success(f"{provider} ready via {status['source']}")
-            st.caption(f"Active model: `{status['model']}`")
-        else:
-            if not status["openai_sdk_ready"]:
-                st.error("The `openai` Python package is missing.")
-            else:
-                st.info(
-                    "No API key found yet. The app checks `.env`, `st.secrets`, and the session field above."
-                )
-
-        if status["last_error"]:
-            st.caption(f"Last AI error: {status['last_error']}")
+    
+    # 1. Check which keys are actually available
+    nvidia_key = get_api_key("NVIDIA")
+    openai_key = get_api_key("OpenAI")
+    
+    # 2. Return the first one that has a valid key
+    if nvidia_key:
+        return "NVIDIA"
+    if openai_key:
+        return "OpenAI"
+    
+    # 3. Fallback to default or environment-defined
+    env_provider = os.getenv("AI_PROVIDER", "").strip()
+    if env_provider in AI_PROVIDERS:
+        return env_provider
+    
+    return DEFAULT_PROVIDER
 
 
 def _build_client(provider, api_key):

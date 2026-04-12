@@ -805,3 +805,5 @@ def backward_propagation_page():
         tutor_label="GRADIENT GUIDE ⬅️",
         placeholder="Ask about gradients, chain rule, or weight updates...",
     )
+if __name__ == "__main__":
+    backward_propagation_page()

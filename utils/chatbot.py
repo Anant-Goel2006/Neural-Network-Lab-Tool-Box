@@ -56,7 +56,7 @@ def _default_local_reply(context_description, context_payload):
         )
     return (
         f"I can help explain {context_description}, but the live AI provider is not responding right now. "
-        "If you add a working API key in the sidebar, the tutor can answer in more detail."
+        "Please ensure your API key (NVIDIA or OpenAI) is correctly configured in your environment settings (e.g., .env or Streamlit secrets)."
     )
 
 

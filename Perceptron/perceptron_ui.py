@@ -936,3 +936,5 @@ def perceptron_page():
         tutor_label="PERCEPTRON COACH 🟢",
         placeholder="Ask about the perceptron, weights, or training...",
     )
+if __name__ == "__main__":
+    perceptron_page()

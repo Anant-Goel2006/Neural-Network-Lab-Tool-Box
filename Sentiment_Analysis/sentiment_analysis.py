@@ -328,7 +328,8 @@ def sentiment_analysis_page():
                 if ai_text:
                     push_tutor_insight(ai_text, "🤖 NVIDIA AI Tutor // Sentiment Analyst")
                 else:
-                    st.caption("AI Analysis unavailable. Check your NVIDIA API Key.")
+                    st.caption("AI Deep Analysis unavailable. Please verify that an API key (NVIDIA or OpenAI) is configured in your environment or Streamlit secrets.")
+
 
             except Exception as e:
                 st.error(f"Error during LSTM execution: {str(e)}")
@@ -350,3 +351,5 @@ def sentiment_analysis_page():
         tutor_label="EMOTION ANALYST 💬",
         placeholder="Ask about sentiment or emotions...",
     )
+if __name__ == "__main__":
+    sentiment_analysis_page()

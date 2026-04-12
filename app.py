@@ -1,7 +1,11 @@
 import streamlit as st
 import os
 import streamlit.components.v1 as components
+from utils.styles import sidebar_brand, inject_global_css, get_image_base64
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="NEUROLAB",
     page_icon="🧠",
@@ -9,45 +13,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-from Perceptron.perceptron_ui                         import perceptron_page
-from Forward_Propagation.forward_propagation          import forward_propagation_page
-from Backward_Propagation.backward_propagation        import backward_propagation_page
-from Sentiment_Analysis.sentiment_analysis            import sentiment_analysis_page
-from LSTM_Application.lstm_hub                     import lstm_hub_page
-from Hopefield.hopefield                             import main as hopfield_page
-from utils.ai_helper                                 import render_ai_settings_panel
-from utils.styles                                     import inject_global_css, get_image_base64
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PAGES
-# ─────────────────────────────────────────────────────────────────────────────
-p_pct  = st.Page(perceptron_page,          title="1. The Perceptron",       icon="🟢")
-p_fwd  = st.Page(forward_propagation_page, title="2. Forward Propagation",  icon="➡️")
-p_bwd  = st.Page(backward_propagation_page,title="3. Backward Propagation", icon="⬅️")
-p_hop  = st.Page(hopfield_page,            title="4. Hopfield Network",     icon="🧠")
-p_cv   = st.Page("OpenCV_Detection/page_gallery.py",    title="5. OpenCV Detection",     icon="📷")
-p_cv_att = st.Page("OpenCV_Detection/page_attendance.py", title="5.1 CV Attendance", icon="📋")
-p_cv_face = st.Page("OpenCV_Detection/page_face_scan.py", title="5.2 CV Face Scanner", icon="🔍")
-p_cv_vehicle = st.Page("OpenCV_Detection/page_vehicle.py", title="5.3 CV Vehicles", icon="🚗")
-p_cv_sign = st.Page("OpenCV_Detection/page_sign.py", title="5.4 CV Sign Detection", icon="🛑")
-p_cv_palm = st.Page("OpenCV_Detection/page_palm.py", title="5.5 CV Palm Reading", icon="🖐️")
-p_sa   = st.Page(sentiment_analysis_page,  title="6. Sentiment Analysis",   icon="💬")
-p_hub  = st.Page(lstm_hub_page,            title="7. LSTM Application Hub", icon="🚀")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR BRANDING
-# ─────────────────────────────────────────────────────────────────────────────
-def sidebar_brand():
-    st.sidebar.markdown("""
-    <div style="padding: 24px 20px; text-align:center; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-bottom: 2px solid #3B82F6; border-radius: 12px; margin-bottom: 30px; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; background: #3B82F6; opacity: 0.1; border-radius: 50%; filter: blur(25px);"></div>
-        <div style="font-size: 56px; margin-bottom: 12px; filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));">🧠</div>
-        <div style="font-family:'Montserrat', sans-serif; font-weight: 800; font-size:30px; color:#F8FAFC; letter-spacing: 2px; line-height:1; text-transform: uppercase;">NEUROLAB</div>
-        <div style="background: rgba(59, 130, 246, 0.1); color: #60A5FA; padding: 4px 12px; display: inline-block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 11px; margin-top: 12px; text-transform: uppercase; letter-spacing: 1.5px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.2);">
-            ULTIMATE EDITION
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+# ── SHARED UI ──
+inject_global_css()
+sidebar_brand()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DASHBOARD HOME PAGE
@@ -125,7 +93,6 @@ def home_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # Robust scrolling script injected via separate component to prevent rendering as text
     components.html("""
         <script>
             setTimeout(() => {
@@ -142,8 +109,6 @@ def home_page():
     """, height=0)
 
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Section Divider ─────────────────────────────────────────────────────
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:30px 0;">
         <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         <span style="font-size:14px;color:#94A3B8;letter-spacing:4px;
@@ -151,8 +116,6 @@ def home_page():
         <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
     </div>""", unsafe_allow_html=True)
 
-    # ── Module Cards ────────────────────────────────────────────────────────
-    # (Icon, Title, Subtitle, Description, Page, Tags, Color, ImagePath)
     CARDS = [
         ("🟢", "The Perceptron", "Binary Classifier",
          "Train a single neuron to find the optimal decision boundary in real-time.",
@@ -188,22 +151,15 @@ def home_page():
          "A refined powerhouse of LSTM modules including Dynamic Word Prediction, Sentiment HUD, and Creative Story Engines.",
          p_hub, ["Word Prediction","Sentiment HUD","Creative Gen","Architecture Viz"], "#8B5CF6",
          os.path.join("assets", "banners", "lstm_module_banner_1774322380000_1774328471585.png")),
-
     ]
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Vertical List ──────────────────────────────────────────────────────
     st.markdown('<div id="modules-list"></div>', unsafe_allow_html=True)
     st.markdown('<h3 style="font-family: \'Montserrat\', sans-serif; margin-bottom: 25px; color: white; font-weight: 700; border-bottom: 2px solid #3B82F6; display: inline-block; padding-bottom: 10px;">Modules</h3>', unsafe_allow_html=True)
     
     for i, (ic, title, sub, desc, page, tags, clr, img) in enumerate(CARDS):
         with st.container():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
-            
-            with e_col1:
-                st.image(img, width="stretch")
-            
+            with e_col1: st.image(img, width="stretch")
             with e_col2:
                 st.markdown(f"""
                 <div style="padding: 10px 0;">
@@ -212,15 +168,12 @@ def home_page():
                     <p style="color: #F8FAFC; font-size: 15px; line-height: 1.6; margin: 0;">{desc}</p>
                 </div>
                 """, unsafe_allow_html=True)
-            
             with e_col3:
                 st.markdown("<div style='height: 35px;'></div>", unsafe_allow_html=True)
                 if st.button(f"Launch {title}", key=f"launch_v_{i}", type="primary", use_container_width=True):
                     st.switch_page(page)
-            
             st.markdown("<hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 20px 0;'>", unsafe_allow_html=True)
 
-    # ── Tech Stack ──────────────────────────────────────────────────────────
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:40px 0 20px;">
         <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         <span style="font-size:14px;color:#94A3B8;letter-spacing:4px;
@@ -237,20 +190,28 @@ def home_page():
                   f'letter-spacing:1px; margin:4px; text-transform:uppercase; border-radius:4px;">{n}</span>' for n,c in STACK]) +
         '</div>', unsafe_allow_html=True)
 
-    st.markdown("""<div style="text-align:center;margin-top:50px;padding-bottom:30px;">
-        <div style="background: rgba(15, 23, 42, 0.4); display:inline-block; padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-            <span style="font-size:13px; color:#64748B; font-weight:500; font-family:'Inter', sans-serif; letter-spacing:1px;">
-                NeuroLab Ultimate Suite © 2026 · Stable Release v5.0
-            </span>
-        </div>
-    </div>""", unsafe_allow_html=True)
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFINE PAGES
+# ─────────────────────────────────────────────────────────────────────────────
+p_home = st.Page(home_page,                     title="Dashboard",               icon="🧠", default=True)
+p_pct  = st.Page("Perceptron/perceptron_ui.py", title="1. The Perceptron",       icon="🟢")
+p_fwd  = st.Page("Forward_Propagation/forward_propagation.py", title="2. Forward Propagation",  icon="➡️")
+p_bwd  = st.Page("Backward_Propagation/backward_propagation.py",title="3. Backward Propagation", icon="⬅️")
+p_hop  = st.Page("Hopefield/hopefield.py",      title="4. Hopfield Network",     icon="🧠")
 
+p_cv   = st.Page("OpenCV_Detection/page_gallery.py",    title="5. OpenCV Detection",     icon="📷")
+p_cv_att = st.Page("OpenCV_Detection/page_attendance.py", title="5.1 CV Attendance", icon="📋")
+p_cv_face = st.Page("OpenCV_Detection/page_face_scan.py", title="5.2 CV Face Scanner", icon="🔍")
+p_cv_vehicle = st.Page("OpenCV_Detection/page_vehicle.py", title="5.3 CV Vehicles", icon="🚗")
+p_cv_sign = st.Page("OpenCV_Detection/page_sign.py", title="5.4 CV Sign Detection", icon="🛑")
+p_cv_palm = st.Page("OpenCV_Detection/page_palm.py", title="5.5 CV Palm Reading", icon="🖐️")
+
+p_sa   = st.Page("Sentiment_Analysis/sentiment_analysis.py",  title="6. Sentiment Analysis",   icon="💬")
+p_hub  = st.Page("LSTM_Application/lstm_hub.py", title="7. LSTM Application Hub", icon="🚀")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# NAVIGATION — Split into two sidebar sections to avoid scrolling
+# NAVIGATION LOGIC
 # ─────────────────────────────────────────────────────────────────────────────
-p_home = st.Page(home_page, title="Dashboard", icon="🧠", default=True)
-
 pages = {
     "Home":              [p_home],
     "Neural Networks":   [p_pct, p_fwd, p_bwd, p_hop],
@@ -258,20 +219,16 @@ pages = {
     "Applied AI & LSTM": [p_sa, p_hub],
 }
 
-inject_global_css()
-sidebar_brand()
-render_ai_settings_panel()
 pg = st.navigation(pages)
-# Run the Page
+
+# ── LOGIC ──
 try:
-    # Reset LSTM active module if page changed to ensure Gallery always shows up first
     if "last_visited_page" not in st.session_state:
         st.session_state.last_visited_page = pg.title
     
     if st.session_state.last_visited_page != pg.title:
         st.session_state.lstm_active_mod = None
         st.session_state.last_visited_page = pg.title
-        # Clear LSTM scroll flags
         keys_to_clear = [k for k in st.session_state.keys() if k.startswith("lstm_scrolled_")]
         for k in keys_to_clear:
             del st.session_state[k]

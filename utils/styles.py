@@ -773,6 +773,29 @@ def render_nlp_insight(text, label, clr="#3B82F6"):
         </div>
     """, unsafe_allow_html=True)
     render_voice_button(text, key_suffix=str(uuid.uuid4())[:8])
+
+def sidebar_brand():
+    """Renders the standard premium sidebar branding for the NeuroLab platform."""
+    st.sidebar.markdown("""
+    <div style="padding: 24px 20px; text-align:center; background: rgba(15, 23, 42, 0.7); 
+                backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); 
+                border-bottom: 2px solid #3B82F6; border-radius: 12px; margin-bottom: 30px; 
+                position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; 
+                    background: #3B82F6; opacity: 0.1; border-radius: 50%; filter: blur(25px);"></div>
+        <div style="font-size: 56px; margin-bottom: 12px; 
+                    filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));">🧠</div>
+        <div style="font-family:'Montserrat', sans-serif; font-weight: 800; font-size:30px; 
+                    color:#F8FAFC; letter-spacing: 2px; line-height:1; text-transform: uppercase;">NEUROLAB</div>
+        <div style="background: rgba(59, 130, 246, 0.1); color: #60A5FA; padding: 4px 12px; 
+                    display: inline-block; font-family: 'Inter', sans-serif; font-weight: 600; 
+                    font-size: 11px; margin-top: 12px; text-transform: uppercase; 
+                    letter-spacing: 1.5px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.2);">
+            ULTIMATE EDITION
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+@st.cache_data(show_spinner=False)
 def get_image_base64(path):
     """Encodes an image to base64 for embedding in HTML/CSS."""
     if not os.path.exists(path):
