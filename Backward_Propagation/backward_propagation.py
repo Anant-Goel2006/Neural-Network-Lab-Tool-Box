@@ -20,7 +20,7 @@ from utils.learning_ui import (
 )
 from utils.nlp_engine import generate_bwd_insight
 from utils.nn_helpers import ACTS, LOSSES, C, G, A, R, backward_pass, draw_network, forward_pass, make_weights, plotly_layout
-from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer
+from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer, inject_module_theme, MODULE_THEMES
 from utils.voice import render_voice_button
 
 MAX_LAYERS = 7
@@ -186,6 +186,7 @@ def _gradient_3d_story(result):
 
 def backward_propagation_page():
     inject_global_css()
+    inject_module_theme("backward_prop")
     gradient_header(
         "Backward Propagation",
         "Live Chain Rule Lab · See error signals travel backward, gradients form, and weights update in real time",
@@ -324,7 +325,21 @@ def backward_propagation_page():
     if run_btn:
         if not input_ready:
             st.warning("Process a valid input row first.")
-            render_chatbot("backward propagation and gradient descent")
+            render_chatbot(
+        "backward propagation and gradient descent",
+        system_prompt=(
+            "You are a precise mathematician who loves the chain rule. "
+            "You explain backpropagation with concrete numerical examples, step-by-step derivations, "
+            "and clear notation. You make calculus feel approachable without dumbing it down."
+        ),
+        greeting=(
+            "⬅️ Gradient Guide here. Backpropagation is just the chain rule applied systematically. "
+            "Ask me about gradients, the chain rule, weight updates, vanishing gradients, or how to read the heatmaps."
+        ),
+        theme=MODULE_THEMES["backward_prop"],
+        tutor_label="GRADIENT GUIDE ⬅️",
+        placeholder="Ask about gradients, chain rule, or weight updates...",
+    )
             return
         np.random.seed(int(seed))
         weights = make_weights(n_in, hidden_sizes)
@@ -509,7 +524,21 @@ def backward_propagation_page():
 
     result = st.session_state.get("bp_result")
     if not result:
-        render_chatbot("backward propagation and gradient descent")
+        render_chatbot(
+        "backward propagation and gradient descent",
+        system_prompt=(
+            "You are a precise mathematician who loves the chain rule. "
+            "You explain backpropagation with concrete numerical examples, step-by-step derivations, "
+            "and clear notation. You make calculus feel approachable without dumbing it down."
+        ),
+        greeting=(
+            "⬅️ Gradient Guide here. Backpropagation is just the chain rule applied systematically. "
+            "Ask me about gradients, the chain rule, weight updates, vanishing gradients, or how to read the heatmaps."
+        ),
+        theme=MODULE_THEMES["backward_prop"],
+        tutor_label="GRADIENT GUIDE ⬅️",
+        placeholder="Ask about gradients, chain rule, or weight updates...",
+    )
         return
 
     result = _prepare_ai_explanation(result)
@@ -761,4 +790,18 @@ def backward_propagation_page():
                     df["Bias"] = b.flatten()
                     st.dataframe(df.round(5), use_container_width=True)
 
-    render_chatbot("backward propagation and gradient descent")
+    render_chatbot(
+        "backward propagation and gradient descent",
+        system_prompt=(
+            "You are a precise mathematician who loves the chain rule. "
+            "You explain backpropagation with concrete numerical examples, step-by-step derivations, "
+            "and clear notation. You make calculus feel approachable without dumbing it down."
+        ),
+        greeting=(
+            "⬅️ Gradient Guide here. Backpropagation is just the chain rule applied systematically. "
+            "Ask me about gradients, the chain rule, weight updates, vanishing gradients, or how to read the heatmaps."
+        ),
+        theme=MODULE_THEMES["backward_prop"],
+        tutor_label="GRADIENT GUIDE ⬅️",
+        placeholder="Ask about gradients, chain rule, or weight updates...",
+    )

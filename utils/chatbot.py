@@ -66,16 +66,26 @@ def render_chatbot(
     system_prompt=None,
     fallback_builder=None,
     greeting=None,
+    theme=None,
+    tutor_label="NEURAL AI TUTOR",
+    placeholder="Message your AI Tutor...",
 ):
     """
     Renders a premium AI Tutor Chatbot.
+    theme: optional Module_Theme dict (primary_color, gradient, etc.)
+    tutor_label: header label string
+    placeholder: chat input placeholder text
     """
     st.divider()
+
+    # Derive styling from theme
+    border_color = theme["primary_color"] if theme else "#3B82F6"
+    header_gradient = theme["gradient"] if theme else "linear-gradient(90deg, #3B82F6, #8B5CF6)"
 
     page_name = st.session_state.get("last_visited_page", "global")
     state_key = f"chat_history_{page_name}"
     default_greeting = greeting or (
-        f"Greeting! I am your Neural Tutor. I am here to guide you through {context_description}. "
+        f"Hello! I am your {tutor_label.title()}. I am here to guide you through {context_description}. "
         "What concept shall we explore first?"
     )
 
@@ -84,13 +94,23 @@ def render_chatbot(
             {
                 "role": "assistant",
                 "content": default_greeting,
-                "label": "AI Tutor Startup",
+                "label": f"{tutor_label} — Welcome",
                 "id": "init",
             }
         ]
 
     with st.container(border=True):
-        st.markdown('<div class="tutor-header">NEURAL AI TUTOR</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background: {header_gradient}; border-radius: 8px 8px 0 0;
+                        padding: 12px 18px; margin: -1px -1px 12px -1px;
+                        border-left: 4px solid {border_color};">
+                <div style="font-family:'Montserrat',sans-serif; font-weight:800;
+                            font-size:15px; color:#FFFFFF; letter-spacing:2px;
+                            text-transform:uppercase;">
+                    🤖 {tutor_label}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         st.caption(f"Context: {context_description}")
 
         chat_container = st.container(height=400)
@@ -106,7 +126,7 @@ def render_chatbot(
                             key_suffix=f"chat_{message.get('id', 'default')}",
                         )
 
-        if prompt := st.chat_input("Message your AI Tutor..."):
+        if prompt := st.chat_input(placeholder):
             st.session_state[state_key].append(
                 {"role": "user", "content": prompt, "id": str(uuid.uuid4())[:8]}
             )

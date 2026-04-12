@@ -6,7 +6,7 @@ import time
 import os
 import pickle
 from plotly.subplots import make_subplots
-from utils.styles import gradient_header, section_header
+from utils.styles import gradient_header, section_header, render_content_card, render_info_grid, MODULE_THEMES, inject_module_theme
 from utils.nn_helpers import PLOTLY_BASE, plotly_layout, TEXT, C, P, G, A, R, GRID, MUTED
 from utils.chatbot import push_tutor_insight
 
@@ -85,6 +85,7 @@ def _live_lstm_fig(losses, accs, ep, max_ep):
 def sentiment_analysis_page():
     from utils.styles import inject_global_css
     inject_global_css()
+    inject_module_theme("sentiment")
     gradient_header("RNN Sentiment Engine", "TensorFlow LSTM · Real-Time Training · 3-Class Categorization", "💬")
 
     if not TF_AVAILABLE:
@@ -195,6 +196,16 @@ def sentiment_analysis_page():
             text_input = st.text_area("Enter a review or sentence:", "The design is amazing but the battery life is terrible.")
         
         if st.button("🧠 Run LSTM Predictor", type="primary"):
+            # Short-input guard
+            if len(text_input.strip()) < 5:
+                render_content_card(
+                    "Enter More Text",
+                    "Please type at least a few words so the sentiment engine has enough context to analyze.",
+                    accent_color="#EC4899",
+                    icon="✍️",
+                )
+                return
+
             try:
                 model = load_model(MODEL_PATH)
                 with open(TOKENIZER_PATH, "rb") as f:
@@ -235,19 +246,60 @@ def sentiment_analysis_page():
                 classes = {0: ("Negative", "#EF4444", "😡"), 1: ("Positive", "#22C55E", "😊"), 2: ("Mixed", "#FACC15", "🤔")}
                 c_name, c_col, c_icon = classes[class_idx]
                 
-                # Premium Global HUD Styling
+                import uuid as _uuid
+                from utils.voice import render_voice_button
+
+                # ── Hero card for dominant emotion ───────────────────────────
+                hero_text = f"{c_icon} {c_name} — {conf*100:.1f}% confidence"
                 st.markdown(f"""
-                <div class="premium-card fade-in" style="text-align:center; border-top: 5px solid {c_col}; padding:60px 40px;">
-                    <div style="font-family:'Montserrat', sans-serif; font-size:16px; color:#94A3B8; letter-spacing: 3px; font-weight: 700; text-transform: uppercase;">Neural Context Analysis</div>
-                    <div style="font-size:72px; font-family:'Montserrat', sans-serif; font-weight: 800; color:#FFFFFF; margin: 30px 0; line-height:1; text-shadow: 0 0 30px rgba({int(c_col[1:3], 16)}, {int(c_col[3:5], 16)}, {int(c_col[5:7], 16)}, 0.4);">
-                        {c_icon} {conf*100:.1f}%
+                    <div style="background: rgba(15,23,42,0.65); backdrop-filter: blur(16px);
+                                border: 1px solid rgba(255,255,255,0.1);
+                                border-left: 6px solid {c_col};
+                                border-radius: 16px; padding: 32px 28px; margin-bottom: 20px;
+                                box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+                                text-align: center; position: relative; z-index: 2;">
+                        <div style="font-size: 56px; margin-bottom: 12px;">{c_icon}</div>
+                        <div style="font-family:'Montserrat',sans-serif; font-weight:900;
+                                    font-size:28px; color:#FFFFFF; margin-bottom:8px;">
+                            {c_name}
+                        </div>
+                        <div style="font-size:48px; font-weight:800; color:{c_col};
+                                    font-family:'Montserrat',sans-serif; line-height:1;
+                                    text-shadow: 0 0 30px {c_col}66;">
+                            {conf*100:.1f}%
+                        </div>
+                        <div style="margin-top:12px; background:rgba(255,255,255,0.05);
+                                    border-radius:999px; height:8px; overflow:hidden;">
+                            <div style="background:{c_col}; width:{conf*100:.1f}%; height:100%;
+                                        border-radius:999px; transition:width 0.6s ease;"></div>
+                        </div>
+                        <div style="margin-top:10px; color:#94A3B8; font-size:13px; font-weight:500;">
+                            Engine: TensorFlow LSTM · Neural Context Analysis
+                        </div>
                     </div>
-                    <div style="font-weight:700; font-family:'Inter', sans-serif; background:rgba(255,255,255,0.05); display:inline-block; padding:12px 24px; border-radius: 50px; border:1px solid rgba(255,255,255,0.1); color:{c_col}; text-transform:uppercase; letter-spacing: 2px; font-size:18px;">
-                        Sentiment: <span style="color:#FFFFFF;">{c_name}</span>
-                    </div>
-                    <div style="margin-top: 20px; color: #64748B; font-size: 13px; font-weight: 500;">Engine: TensorFlow LSTM Inference Node</div>
-                </div>
                 """, unsafe_allow_html=True)
+                render_voice_button(hero_text, key_suffix=f"sa_hero_{_uuid.uuid4().hex[:8]}")
+
+                # ── Secondary emotion cards ──────────────────────────────────
+                sec_cols = st.columns(3)
+                for idx, (cls_idx, (cls_name, cls_col, cls_icon)) in enumerate(classes.items()):
+                    with sec_cols[idx]:
+                        bar_w = preds[cls_idx] * 100
+                        st.markdown(f"""
+                            <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(255,255,255,0.08);
+                                        border-left:3px solid {cls_col}; border-radius:10px;
+                                        padding:16px; text-align:center; min-height:120px;">
+                                <div style="font-size:28px;">{cls_icon}</div>
+                                <div style="font-family:'Montserrat',sans-serif; font-weight:700;
+                                            font-size:14px; color:#F8FAFC; margin:6px 0;">{cls_name}</div>
+                                <div style="font-size:20px; font-weight:800; color:{cls_col};">{bar_w:.1f}%</div>
+                                <div style="background:rgba(255,255,255,0.05); border-radius:999px;
+                                            height:4px; margin-top:8px; overflow:hidden;">
+                                    <div style="background:{cls_col}; width:{bar_w:.1f}%; height:100%;
+                                                border-radius:999px;"></div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
                 
                 # Softmax Probabilities Bar Chart
                 fig = go.Figure(go.Bar(
@@ -280,3 +332,21 @@ def sentiment_analysis_page():
 
             except Exception as e:
                 st.error(f"Error during LSTM execution: {str(e)}")
+
+    # ── Themed Neural Tutor ──────────────────────────────────────────────────
+    from utils.chatbot import render_chatbot
+    render_chatbot(
+        "sentiment analysis, emotion detection, and LSTM language models",
+        system_prompt=(
+            "You are a warm linguist and psychologist who connects language to emotion. "
+            "You explain sentiment analysis with empathy and insight, drawing on both linguistics and psychology. "
+            "You help users understand why certain words carry emotional weight and how context shapes meaning."
+        ),
+        greeting=(
+            "💬 Emotion Analyst here. I can help you understand why the model classified your text the way it did, "
+            "explore the nuances of sentiment, or explain how LSTM networks process language. What would you like to explore?"
+        ),
+        theme=MODULE_THEMES["sentiment"],
+        tutor_label="EMOTION ANALYST 💬",
+        placeholder="Ask about sentiment or emotions...",
+    )

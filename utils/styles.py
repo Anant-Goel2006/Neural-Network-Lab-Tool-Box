@@ -5,6 +5,141 @@ import streamlit.components.v1 as components
 import base64
 import os
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MODULE THEMES
+# ─────────────────────────────────────────────────────────────────────────────
+MODULE_THEMES = {
+    "perceptron": {
+        "primary_color": "#10B981",
+        "secondary_color": "#059669",
+        "accent_color": "#34D399",
+        "icon": "🟢",
+        "gradient": "linear-gradient(135deg, #064E3B, #065F46)",
+        "font_style": "Inter",
+    },
+    "forward_prop": {
+        "primary_color": "#06B6D4",
+        "secondary_color": "#0891B2",
+        "accent_color": "#22D3EE",
+        "icon": "➡️",
+        "gradient": "linear-gradient(135deg, #0C4A6E, #075985)",
+        "font_style": "Inter",
+    },
+    "backward_prop": {
+        "primary_color": "#8B5CF6",
+        "secondary_color": "#7C3AED",
+        "accent_color": "#A78BFA",
+        "icon": "⬅️",
+        "gradient": "linear-gradient(135deg, #2E1065, #3B0764)",
+        "font_style": "Inter",
+    },
+    "hopfield": {
+        "primary_color": "#3B82F6",
+        "secondary_color": "#2563EB",
+        "accent_color": "#60A5FA",
+        "icon": "🧠",
+        "gradient": "linear-gradient(135deg, #1E3A5F, #1E40AF)",
+        "font_style": "Inter",
+    },
+    "opencv": {
+        "primary_color": "#F59E0B",
+        "secondary_color": "#D97706",
+        "accent_color": "#FCD34D",
+        "icon": "📷",
+        "gradient": "linear-gradient(135deg, #451A03, #78350F)",
+        "font_style": "Inter",
+    },
+    "sentiment": {
+        "primary_color": "#EC4899",
+        "secondary_color": "#DB2777",
+        "accent_color": "#F9A8D4",
+        "icon": "💬",
+        "gradient": "linear-gradient(135deg, #500724, #831843)",
+        "font_style": "Inter",
+    },
+    "lstm": {
+        "primary_color": "#7C3AED",
+        "secondary_color": "#6D28D9",
+        "accent_color": "#C4B5FD",
+        "icon": "🚀",
+        "gradient": "linear-gradient(135deg, #2E1065, #4C1D95)",
+        "font_style": "Inter",
+    },
+}
+
+
+def inject_module_theme(module_key: str) -> None:
+    """Injects per-module CSS variables and a header flash animation. Does NOT touch the canvas."""
+    theme = MODULE_THEMES.get(module_key, MODULE_THEMES["hopfield"])
+    st.markdown(f"""
+        <style>
+        :root {{
+            --module-primary: {theme['primary_color']};
+            --module-secondary: {theme['secondary_color']};
+            --module-accent: {theme['accent_color']};
+            --module-gradient: {theme['gradient']};
+        }}
+        @keyframes headerFlash {{
+            0%   {{ opacity: 0; transform: translateX(-8px); }}
+            100% {{ opacity: 1; transform: translateX(0); }}
+        }}
+        [data-testid="stMain"] > div:first-child {{
+            animation: headerFlash 0.35s ease-out;
+        }}
+        /* Module-specific accent on content cards */
+        .module-card-accent {{
+            border-left-color: {theme['primary_color']} !important;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+
+def render_content_card(title: str, body: str, accent_color: str = "#3B82F6", icon: str = "") -> None:
+    """Renders a glass-morphism content card with a colored left border."""
+    st.markdown(f"""
+        <div style="background: rgba(15,23,42,0.55); backdrop-filter: blur(14px) saturate(160%);
+                    -webkit-backdrop-filter: blur(14px) saturate(160%);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-left: 4px solid {accent_color};
+                    border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+                    position: relative; z-index: 2;">
+            <div style="font-family:'Montserrat',sans-serif; font-weight:700;
+                        font-size:16px; color:#F8FAFC; margin-bottom:10px;
+                        display:flex; align-items:center; gap:8px;">
+                <span style="font-size:18px;">{icon}</span>
+                <span>{title}</span>
+            </div>
+            <div style="font-size:14px; color:#CBD5E1; line-height:1.75;
+                        font-family:'Inter',sans-serif; word-wrap:break-word;">
+                {body}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+def render_info_grid(items: list) -> None:
+    """Renders a list of (label, value) tuples as a responsive CSS grid of metric tiles."""
+    if not items:
+        st.markdown('<div style="min-height:60px;"></div>', unsafe_allow_html=True)
+        return
+    tiles_html = "".join([
+        f'<div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08);'
+        f'border-radius:10px; padding:14px 18px; min-height:60px;">'
+        f'<div style="font-size:11px; color:#94A3B8; text-transform:uppercase;'
+        f'letter-spacing:1px; font-weight:600; margin-bottom:6px;">{label}</div>'
+        f'<div style="font-size:18px; color:#F8FAFC; font-weight:700;'
+        f'font-family:\'Montserrat\',sans-serif; word-wrap:break-word;">{value}</div></div>'
+        for label, value in items
+    ])
+    st.markdown(f"""
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+                    gap:12px; margin-bottom:20px; position:relative; z-index:2;">
+            {tiles_html}
+        </div>
+    """, unsafe_allow_html=True)
+
+
 def inject_global_css():
     st.markdown("""
         <style>
@@ -375,6 +510,20 @@ def inject_global_css():
             border: 1px solid rgba(148, 163, 184, 0.12) !important;
             border-radius: 14px !important;
             padding: 14px !important;
+        }
+
+        /* ──── PAGE ENTER TRANSITION ──── */
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        [data-testid="stMain"] {
+            animation: pageEnter 400ms ease-out;
+        }
+
+        /* ──── COLUMN MIN-HEIGHT (prevent collapsed empty columns) ──── */
+        [data-testid="column"] {
+            min-height: 60px;
         }
 
         </style>

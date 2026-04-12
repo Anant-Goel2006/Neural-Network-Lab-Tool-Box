@@ -31,7 +31,7 @@ from utils.nn_helpers import (
     make_weights,
     plotly_layout,
 )
-from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer
+from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer, inject_module_theme, MODULE_THEMES
 from utils.voice import render_voice_button
 
 MAX_NODES = 6
@@ -239,6 +239,7 @@ def _activation_3d_story(result):
 
 def forward_propagation_page():
     inject_global_css()
+    inject_module_theme("forward_prop")
     gradient_header(
         "Forward Propagation",
         "Animated Layer Walkthrough · Watch signals turn into features, features into activations, and activations into predictions",
@@ -473,7 +474,21 @@ def forward_propagation_page():
     if run_btn:
         if not input_ready:
             st.warning("Process a valid input row first.")
-            render_chatbot("forward propagation and layer-by-layer signal transmission")
+            render_chatbot(
+        "forward propagation and layer-by-layer signal transmission",
+        system_prompt=(
+            "You are a calm, methodical signal-processing engineer. "
+            "You explain forward propagation step by step, tracing how data flows through each layer. "
+            "You use precise technical language but always connect math to intuition."
+        ),
+        greeting=(
+            "➡️ Signal Engineer online. I trace how data flows through neural networks layer by layer. "
+            "Ask me about weighted sums, activation functions, loss computation, or how to read the layer heatmaps."
+        ),
+        theme=MODULE_THEMES["forward_prop"],
+        tutor_label="SIGNAL ENGINEER ➡️",
+        placeholder="Ask about forward propagation or signal flow...",
+    )
             return
         Zs, As = forward_pass(X, weights, h_acts, o_act)
         y_pred = float(As[-1][0, 0])
@@ -576,7 +591,21 @@ def forward_propagation_page():
 
     result = st.session_state.get("fp_result")
     if not result:
-        render_chatbot("forward propagation and layer-by-layer signal transmission")
+        render_chatbot(
+        "forward propagation and layer-by-layer signal transmission",
+        system_prompt=(
+            "You are a calm, methodical signal-processing engineer. "
+            "You explain forward propagation step by step, tracing how data flows through each layer. "
+            "You use precise technical language but always connect math to intuition."
+        ),
+        greeting=(
+            "➡️ Signal Engineer online. I trace how data flows through neural networks layer by layer. "
+            "Ask me about weighted sums, activation functions, loss computation, or how to read the layer heatmaps."
+        ),
+        theme=MODULE_THEMES["forward_prop"],
+        tutor_label="SIGNAL ENGINEER ➡️",
+        placeholder="Ask about forward propagation or signal flow...",
+    )
         return
 
     result = _prepare_ai_explanation(result)
@@ -798,4 +827,18 @@ def forward_propagation_page():
             st.dataframe(result["summary_df"].round(4), use_container_width=True, hide_index=True)
             st.caption("This summary shows how the signal distribution changes from layer to layer.")
 
-    render_chatbot("forward propagation and layer-by-layer signal transmission")
+    render_chatbot(
+        "forward propagation and layer-by-layer signal transmission",
+        system_prompt=(
+            "You are a calm, methodical signal-processing engineer. "
+            "You explain forward propagation step by step, tracing how data flows through each layer. "
+            "You use precise technical language but always connect math to intuition."
+        ),
+        greeting=(
+            "➡️ Signal Engineer online. I trace how data flows through neural networks layer by layer. "
+            "Ask me about weighted sums, activation functions, loss computation, or how to read the layer heatmaps."
+        ),
+        theme=MODULE_THEMES["forward_prop"],
+        tutor_label="SIGNAL ENGINEER ➡️",
+        placeholder="Ask about forward propagation or signal flow...",
+    )

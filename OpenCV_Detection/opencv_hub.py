@@ -14,7 +14,7 @@ from utils.palmistry_engine import (
     answer_palm_question,
     build_palm_report,
 )
-from utils.styles import section_header, gradient_header
+from utils.styles import section_header, gradient_header, render_content_card, render_info_grid, MODULE_THEMES, inject_module_theme
 
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 
@@ -605,50 +605,17 @@ def create_palm_overlay(image, mask):
     return overlay.astype(np.uint8)
 
 
-def _palm_observation_inputs():
-    with st.expander("Refine the palm reading", expanded=True):
-        c1, c2, c3 = st.columns(3)
-        dominant_hand = c1.selectbox(
-            "Dominant Hand",
-            ["Right", "Left", "Both / unsure"],
-            key="palm_obs_dominant_hand",
-        )
-        hand_shape = c2.selectbox(
-            "Hand Shape",
-            ["Auto / unsure", "Earth", "Air", "Fire", "Water"],
-            key="palm_obs_hand_shape",
-        )
-        line_depth = c3.selectbox(
-            "Line Depth",
-            ["Faint", "Medium", "Deep"],
-            key="palm_obs_line_depth",
-        )
-
-        c4, c5, c6 = st.columns(3)
-        major_breaks = c4.selectbox(
-            "Visible Breaks",
-            ["None", "A few", "Many"],
-            key="palm_obs_breaks",
-        )
-        fate_line = c5.selectbox(
-            "Fate/Career Line",
-            ["Not visible", "Faint", "Clear", "Strong"],
-            key="palm_obs_fate",
-        )
-        sun_line = c6.selectbox(
-            "Sun/Apollo Line",
-            ["Not visible", "Faint", "Clear"],
-            key="palm_obs_sun",
-        )
-
-    return {
-        "dominant_hand": dominant_hand,
-        "hand_shape": hand_shape,
-        "line_depth": line_depth,
-        "major_breaks": major_breaks,
-        "fate_line": fate_line,
-        "sun_line": sun_line,
-    }
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFAULT PALM OBSERVATIONS (replaces the removed expander form)
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_OBSERVATIONS = {
+    "dominant_hand": "Right",
+    "hand_shape": "Auto / unsure",
+    "line_depth": "Medium",
+    "major_breaks": "A few",
+    "fate_line": "Faint",
+    "sun_line": "Faint",
+}
 
 
 def _draw_live_palm_summary(image, report):
@@ -678,21 +645,44 @@ def _draw_live_palm_summary(image, report):
 
 
 def _render_palm_report(overlay, features, report):
+    from utils.voice import render_voice_button
+    import uuid
+
+    # ── Image + key metrics ──────────────────────────────────────────────────
     c1, c2 = st.columns([1.05, 0.95])
     with c1:
         st.image(
             cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB),
-            width="stretch",
+            use_container_width=True,
             caption="Line segmentation overlay (Life: red, Head: green, Heart: blue)",
         )
     with c2:
-        st.success("Palm analysis ready")
-        st.metric("Dominant Line", report["dominant_line"])
-        st.metric("Detection Quality", f"{report['detection_quality']:.0%}")
-        st.metric("Career Shift Indicator", report["career_shift_indicator"])
-        st.metric("Hand Shape", report["hand_shape_label"])
-        st.write(report["summary"])
+        dq = report.get("detection_quality", 1.0)
+        if dq < 0.55:
+            render_content_card(
+                "⚠️ Scan Quality Low",
+                "The palm lines are not fully visible. For a clearer reading: use brighter lighting, "
+                "flatten your palm against the camera, and crop tightly so the hand fills the frame.",
+                accent_color="#F59E0B",
+                icon="⚠️",
+            )
+        render_info_grid([
+            ("Dominant Line", report["dominant_line"]),
+            ("Detection Quality", f"{dq:.0%}"),
+            ("Career Shift", report["career_shift_indicator"]),
+            ("Hand Shape", report["hand_shape_label"]),
+        ])
+        render_content_card(
+            "Reading Summary",
+            report["summary"],
+            accent_color="#8B5CF6",
+            icon="🔮",
+        )
+        render_voice_button(report["summary"], key_suffix=f"palm_summary_{uuid.uuid4().hex[:8]}")
 
+    st.divider()
+
+    # ── Tabs ─────────────────────────────────────────────────────────────────
     line_strength_df = pd.DataFrame(
         {
             "line": list(report["line_strengths"].keys()),
@@ -700,28 +690,38 @@ def _render_palm_report(overlay, features, report):
         }
     ).set_index("line")
 
-    overview_tab, feature_tab, detail_tab = st.tabs(["Reading", "Feature Dashboard", "Extracted Features"])
+    overview_tab, feature_tab, detail_tab = st.tabs(["✨ Reading", "📊 Feature Dashboard", "🔬 Extracted Features"])
+
     with overview_tab:
         st.markdown("#### Major Line Reading")
+        line_icons = {"Life": "❤️", "Head": "🧠", "Heart": "💙"}
+        line_colors = {"Life": "#10B981", "Head": "#06B6D4", "Heart": "#EC4899"}
         for item in report["line_readings"]:
-            st.markdown(f"**{item['line']} Line**")
-            st.write(item["detail"])
-            st.caption(f"Primary focus: {item['emphasis']}")
+            render_content_card(
+                f"{item['line']} Line",
+                f"{item['detail']}<br><span style='color:#94A3B8; font-size:12px;'>Focus: {item['emphasis']}</span>",
+                accent_color=line_colors.get(item["line"], "#3B82F6"),
+                icon=line_icons.get(item["line"], "〰️"),
+            )
 
         st.markdown("#### Interpretation Themes")
-        st.write(report["themes"]["mindset"])
-        st.write(report["themes"]["relationships"])
-        st.write(report["themes"]["energy"])
-        st.write(report["themes"]["career"])
-        st.write(report["themes"]["visibility"])
+        theme_cards = [
+            ("🧠", "Mindset", "mindset", "#06B6D4"),
+            ("❤️", "Relationships", "relationships", "#EC4899"),
+            ("⚡", "Energy", "energy", "#F59E0B"),
+            ("💼", "Career", "career", "#10B981"),
+            ("✨", "Visibility", "visibility", "#8B5CF6"),
+        ]
+        for icon, title, key, color in theme_cards:
+            render_content_card(title, report["themes"][key], accent_color=color, icon=icon)
 
-        st.markdown("#### Pattern Notes")
-        for note in report["shared_notes"]:
-            st.markdown(f"- {note}")
+        # Pattern Notes
+        notes_html = "".join([f"<div style='margin-bottom:6px;'>• {note}</div>" for note in report["shared_notes"]])
+        render_content_card("Pattern Notes", notes_html, accent_color="#8B5CF6", icon="📝")
 
-        st.markdown("#### Guidance")
-        for item in report["guidance"]:
-            st.markdown(f"- {item}")
+        # Guidance
+        guidance_html = "".join([f"<div style='margin-bottom:6px;'>🧭 {item}</div>" for item in report["guidance"]])
+        render_content_card("Guidance", guidance_html, accent_color="#06B6D4", icon="🧭")
 
     with feature_tab:
         st.caption("Detected line balance")
@@ -755,7 +755,7 @@ def _palm_module():
         "Use `Camera Snapshot` if live WebRTC gives STUN trouble. The palm tutor will use the latest saved scan for personalized questions."
     )
     src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
-    observations = _palm_observation_inputs()
+    observations = DEFAULT_OBSERVATIONS
 
     try:
         import albumentations as A
@@ -925,7 +925,7 @@ def _render_cv_tutor(module_key, topic_label):
         )
         ai_text = get_ai_explanation(prompt)
         if ai_text:
-            push_tutor_insight(ai_text, f"AI Tutor // {topic_label.title()} Tips")
+            push_tutor_insight(ai_text, f"Vision Analyst // {topic_label.title()} Tips")
             st.session_state[insight_key] = True
 
     if module_key == "palm" and st.session_state.get("palm_latest_report"):
@@ -934,19 +934,35 @@ def _render_cv_tutor(module_key, topic_label):
             "palm reading analysis for the latest scanned hand",
             context_payload=palm_report.get("chat_context"),
             system_prompt=(
-                "You are a careful palm-reading guide working from the detected line report. "
-                "Use traditional palmistry language, but always frame the reading as interpretive rather than certain fate. "
-                "Ground every answer in the supplied scan summary."
+                "You are a mystical yet grounded palmistry guide. You interpret palm lines as a rich tradition "
+                "of self-reflection, not as fixed fate. Use evocative, poetic language while always grounding "
+                "your answers in the actual scan data provided. Frame every reading as interpretive tradition."
             ),
             fallback_builder=lambda question: answer_palm_question(question, palm_report),
             greeting=(
-                "I have the latest palm scan loaded. Ask about career, relationships, temperament, decision-making, "
-                "or scan quality and I will answer from the current reading."
+                "🖐️ I have your palm scan ready. The lines speak of patterns, not certainties. "
+                "Ask me about your career path, relationships, mindset, or the energy your hand reveals."
             ),
+            theme=MODULE_THEMES["opencv"],
+            tutor_label="PALMISTRY GUIDE 🖐️",
+            placeholder="Ask about your palm reading...",
         )
         return
 
-    render_chatbot(topic_label)
+    render_chatbot(
+        topic_label,
+        system_prompt=(
+            "You are a sharp, direct computer vision engineer. You explain OpenCV concepts with precision, "
+            "use technical vocabulary confidently, and always connect theory to what the user sees in the output."
+        ),
+        greeting=(
+            f"👁️ Vision Analyst online. I'm here to help you understand what the {topic_label} is detecting "
+            "and why. Ask me about the algorithms, the output, or how to improve results."
+        ),
+        theme=MODULE_THEMES["opencv"],
+        tutor_label="VISION ANALYST 📷",
+        placeholder="Ask about the detection results...",
+    )
 
 
 def _render_cv_gallery():
@@ -987,15 +1003,30 @@ def _render_cv_gallery():
 
     from utils.chatbot import render_chatbot
 
-    render_chatbot("Computer Vision Analytics Hub")
+    render_chatbot(
+        "Computer Vision Analytics Hub",
+        system_prompt=(
+            "You are a sharp, direct computer vision engineer. You explain OpenCV concepts with precision "
+            "and always connect theory to what the user sees in the output."
+        ),
+        greeting="👁️ Vision Analyst online. Select a module above to begin, or ask me anything about computer vision.",
+        theme=MODULE_THEMES["opencv"],
+        tutor_label="VISION ANALYST 📷",
+        placeholder="Ask about computer vision...",
+    )
 
 
 def _render_cv_module_page(module_key):
     module = CV_MODULE_MAP[module_key]
+    inject_module_theme("opencv")
     _render_cv_shell(module["page_title"], module["page_subtitle"], module["icon"])
     _render_cv_jump_bar(module_key)
-    st.caption("OpenCV Lab")
-    st.write("This tool now lives on its own page, so the workspace stays focused on the selected vision workflow.")
+    render_content_card(
+        module["page_title"],
+        module["page_subtitle"],
+        accent_color="#F59E0B",
+        icon=module["icon"],
+    )
     _cv_module_renderer(module_key)()
     st.divider()
     _render_cv_tutor(module_key, f"{module['title']} computer vision module")

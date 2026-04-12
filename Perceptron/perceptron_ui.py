@@ -21,7 +21,7 @@ from utils.learning_ui import (
 )
 from utils.nlp_engine import generate_perceptron_insight
 from utils.nn_helpers import C, G, A, R, plotly_layout
-from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer
+from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer, inject_module_theme, MODULE_THEMES
 from utils.voice import render_voice_button
 
 GATES = {
@@ -295,6 +295,7 @@ def _weight_3d_story(result):
 
 def perceptron_page():
     inject_global_css()
+    inject_module_theme("perceptron")
     gradient_header(
         "The Perceptron",
         "Live Forward + Backward Learning Studio · Learn every prediction, error, and weight update as it happens",
@@ -418,7 +419,22 @@ def perceptron_page():
     if run_training:
         if len(raw) == 0:
             st.warning("Load a valid dataset first.")
-            render_chatbot("the Perceptron, linear separability, and binary classification")
+            render_chatbot(
+        "the Perceptron, linear separability, and binary classification",
+        system_prompt=(
+            "You are an enthusiastic neuroscience professor who loves biological analogies. "
+            "You explain perceptrons by comparing them to real neurons, synapses, and decision-making in the brain. "
+            "You are energetic, encouraging, and make every concept feel alive and intuitive."
+        ),
+        greeting=(
+            "🟢 Perceptron Coach here! Think of me as your neuroscience professor. "
+            "The perceptron is the simplest artificial neuron — ask me about weights, bias, the decision boundary, "
+            "or why XOR is so tricky for a single neuron."
+        ),
+        theme=MODULE_THEMES["perceptron"],
+        tutor_label="PERCEPTRON COACH 🟢",
+        placeholder="Ask about the perceptron, weights, or training...",
+    )
             return
         np.random.seed(int(seed))
         dashboard = st.empty()
@@ -600,7 +616,22 @@ def perceptron_page():
 
     result = st.session_state.get("pc_result")
     if not result:
-        render_chatbot("the Perceptron, linear separability, and binary classification")
+        render_chatbot(
+        "the Perceptron, linear separability, and binary classification",
+        system_prompt=(
+            "You are an enthusiastic neuroscience professor who loves biological analogies. "
+            "You explain perceptrons by comparing them to real neurons, synapses, and decision-making in the brain. "
+            "You are energetic, encouraging, and make every concept feel alive and intuitive."
+        ),
+        greeting=(
+            "🟢 Perceptron Coach here! Think of me as your neuroscience professor. "
+            "The perceptron is the simplest artificial neuron — ask me about weights, bias, the decision boundary, "
+            "or why XOR is so tricky for a single neuron."
+        ),
+        theme=MODULE_THEMES["perceptron"],
+        tutor_label="PERCEPTRON COACH 🟢",
+        placeholder="Ask about the perceptron, weights, or training...",
+    )
         return
 
     st.info(
@@ -889,4 +920,19 @@ def perceptron_page():
                 key="pct_meta_story",
             )
 
-    render_chatbot("the Perceptron, linear separability, and binary classification")
+    render_chatbot(
+        "the Perceptron, linear separability, and binary classification",
+        system_prompt=(
+            "You are an enthusiastic neuroscience professor who loves biological analogies. "
+            "You explain perceptrons by comparing them to real neurons, synapses, and decision-making in the brain. "
+            "You are energetic, encouraging, and make every concept feel alive and intuitive."
+        ),
+        greeting=(
+            "🟢 Perceptron Coach here! Think of me as your neuroscience professor. "
+            "The perceptron is the simplest artificial neuron — ask me about weights, bias, the decision boundary, "
+            "or why XOR is so tricky for a single neuron."
+        ),
+        theme=MODULE_THEMES["perceptron"],
+        tutor_label="PERCEPTRON COACH 🟢",
+        placeholder="Ask about the perceptron, weights, or training...",
+    )

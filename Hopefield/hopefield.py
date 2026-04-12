@@ -22,7 +22,7 @@ from utils.learning_ui import (
     scatter3d_story,
 )
 from utils.nn_helpers import A, C, G, R, plotly_layout
-from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer
+from utils.styles import gradient_header, inject_global_css, render_log, section_header, speedometer, inject_module_theme, MODULE_THEMES
 from utils.voice import render_voice_button
 
 try:
@@ -1043,6 +1043,7 @@ def _clear_canvas():
 
 def main():
     inject_global_css()
+    inject_module_theme("hopfield")
     _init_state()
 
     gradient_header(
@@ -1128,7 +1129,22 @@ def main():
         )
     else:
         st.error("Missing `streamlit-drawable-canvas`, so the drawing board is unavailable.")
-        render_chatbot("free-form sketch detection and Hopfield matrix visualization")
+        render_chatbot(
+        "free-form sketch detection and Hopfield matrix visualization",
+        system_prompt=(
+            "You are a philosophical memory researcher who draws deep analogies between Hopfield networks "
+            "and human memory. You explain associative memory, energy landscapes, and pattern recovery "
+            "through the lens of how the brain stores and retrieves memories."
+        ),
+        greeting=(
+            "🧠 Memory Researcher here. Hopfield networks are fascinating models of associative memory — "
+            "like how a smell can trigger a complete memory. Ask me about energy minimization, "
+            "pattern storage, noise tolerance, or how this relates to human recollection."
+        ),
+        theme=MODULE_THEMES["hopfield"],
+        tutor_label="MEMORY RESEARCHER 🧠",
+        placeholder="Ask about associative memory or Hopfield networks...",
+    )
         return
 
     action_cols = st.columns([1, 1, 4])
@@ -1164,7 +1180,22 @@ def main():
 
     result = st.session_state.get("hop_result")
     if not result:
-        render_chatbot("free-form sketch detection and Hopfield matrix visualization")
+        render_chatbot(
+        "free-form sketch detection and Hopfield matrix visualization",
+        system_prompt=(
+            "You are a philosophical memory researcher who draws deep analogies between Hopfield networks "
+            "and human memory. You explain associative memory, energy landscapes, and pattern recovery "
+            "through the lens of how the brain stores and retrieves memories."
+        ),
+        greeting=(
+            "🧠 Memory Researcher here. Hopfield networks are fascinating models of associative memory — "
+            "like how a smell can trigger a complete memory. Ask me about energy minimization, "
+            "pattern storage, noise tolerance, or how this relates to human recollection."
+        ),
+        theme=MODULE_THEMES["hopfield"],
+        tutor_label="MEMORY RESEARCHER 🧠",
+        placeholder="Ask about associative memory or Hopfield networks...",
+    )
         return
 
     energy_drop = float(result["energies"][0] - result["energies"][-1]) if len(result["energies"]) > 1 else 0.0
@@ -1331,7 +1362,22 @@ def main():
     with tabs[3]:
         st.image(result["clean_img"], caption="Cleaned sketch used for direct detection and matrix conversion", use_container_width=True)
 
-    render_chatbot("free-form sketch detection and Hopfield matrix visualization")
+    render_chatbot(
+        "free-form sketch detection and Hopfield matrix visualization",
+        system_prompt=(
+            "You are a philosophical memory researcher who draws deep analogies between Hopfield networks "
+            "and human memory. You explain associative memory, energy landscapes, and pattern recovery "
+            "through the lens of how the brain stores and retrieves memories."
+        ),
+        greeting=(
+            "🧠 Memory Researcher here. Hopfield networks are fascinating models of associative memory — "
+            "like how a smell can trigger a complete memory. Ask me about energy minimization, "
+            "pattern storage, noise tolerance, or how this relates to human recollection."
+        ),
+        theme=MODULE_THEMES["hopfield"],
+        tutor_label="MEMORY RESEARCHER 🧠",
+        placeholder="Ask about associative memory or Hopfield networks...",
+    )
 
 
 if __name__ == "__main__":

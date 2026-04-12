@@ -12,11 +12,13 @@ import os
 # NeuroLab Shared Styles & Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 try:
-    from utils.styles import inject_global_css, gradient_header, section_header
+    from utils.styles import inject_global_css, gradient_header, section_header, inject_module_theme, MODULE_THEMES
 except ImportError:
     def inject_global_css(): pass
     def gradient_header(t, s, i): st.markdown(f"## {i} {t}\n_{s}_")
     def section_header(t, s=""): st.markdown(f"### {t}\n_{s}_")
+    def inject_module_theme(k): pass
+    MODULE_THEMES = {}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CORE LSTM ENGINE
@@ -426,6 +428,7 @@ def _mod_textgen():
 
 def lstm_hub_page():
     inject_global_css()
+    inject_module_theme("lstm")
     mod = st.session_state.get("lstm_active_mod", None)
     
     if mod:
@@ -448,7 +451,21 @@ def lstm_hub_page():
                 push_tutor_insight(ai_text, f"AI Tutor // {mod.title()} Tips")
                 st.session_state[insight_key] = True
 
-        render_chatbot(f"LSTM {mod} sequence processing")
+        render_chatbot(
+            f"LSTM {mod} sequence processing",
+            system_prompt=(
+                "You are a storytelling AI researcher who explains LSTM networks through narrative metaphors. "
+                "You describe sequences as stories, memory cells as plot threads, and gates as editorial decisions. "
+                "You make temporal learning feel intuitive and exciting."
+            ),
+            greeting=(
+                "🚀 Sequence Oracle here. LSTMs are like storytellers — they remember what matters and forget what doesn't. "
+                "Ask me about gates, memory cells, temperature in text generation, or how sequences are learned."
+            ),
+            theme=MODULE_THEMES.get("lstm", {}),
+            tutor_label="SEQUENCE ORACLE 🚀",
+            placeholder="Ask about sequences, memory, or prediction...",
+        )
         return
 
     gradient_header("LSTM Application Hub", "Next-Gen Sequence Analytics Suite", "🧠")
