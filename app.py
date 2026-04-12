@@ -15,6 +15,7 @@ from Backward_Propagation.backward_propagation        import backward_propagatio
 from Sentiment_Analysis.sentiment_analysis            import sentiment_analysis_page
 from LSTM_Application.lstm_hub                     import lstm_hub_page
 from Hopefield.hopefield                             import main as hopfield_page
+from utils.ai_helper                                 import render_ai_settings_panel
 from utils.styles                                     import inject_global_css, get_image_base64
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -259,6 +260,7 @@ pages = {
 
 inject_global_css()
 sidebar_brand()
+render_ai_settings_panel()
 pg = st.navigation(pages)
 # Run the Page
 try:

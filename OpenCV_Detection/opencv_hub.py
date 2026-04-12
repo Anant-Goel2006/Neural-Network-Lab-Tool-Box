@@ -1,31 +1,55 @@
-import streamlit as st
+from __future__ import annotations
+
+import datetime
+import os
+import tempfile
+import time
+
+import cv2
 import numpy as np
 import pandas as pd
-import time
-import datetime
+import streamlit as st
+
+from utils.palmistry_engine import (
+    answer_palm_question,
+    build_palm_report,
+)
 from utils.styles import section_header, gradient_header
-from utils.nlp_engine import generate_cv_insight
-import cv2
+
+os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 
 try:
     from streamlit_webrtc import webrtc_streamer, RTCConfiguration
     import av
+
     WEBRTC_READY = True
 except ImportError:
     WEBRTC_READY = False
 
-RTC_CONFIG = RTCConfiguration({
-    "iceServers": [
-        {"urls": ["stun:stun.l.google.com:19302"]},
-        {"urls": ["stun:stun1.l.google.com:19302"]},
-        {"urls": ["stun:stun2.l.google.com:19302"]},
-        {"urls": ["stun:stun3.l.google.com:19302"]},
-        {"urls": ["stun:stun4.l.google.com:19302"]}
-    ]
-})
+if WEBRTC_READY:
+    RTC_CONFIG_LOCAL = RTCConfiguration({"iceServers": []})
+    RTC_CONFIG_STUN = RTCConfiguration(
+        {
+            "iceServers": [
+                {"urls": ["stun:stun.l.google.com:19302"]},
+                {"urls": ["stun:stun1.l.google.com:19302"]},
+                {"urls": ["stun:stun2.l.google.com:19302"]},
+            ]
+        }
+    )
+else:
+    RTC_CONFIG_LOCAL = None
+    RTC_CONFIG_STUN = None
 
-import tempfile
-import os
+LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "🔴 Live WebRTC", "📹 Video File"]
+LIVE_MEDIA_STREAM_CONSTRAINTS = {
+    "video": {
+        "width": {"ideal": 640},
+        "height": {"ideal": 480},
+        "frameRate": {"ideal": 15, "max": 24},
+    },
+    "audio": False,
+}
 
 CV_GALLERY_PATH = "OpenCV_Detection/page_gallery.py"
 
@@ -116,6 +140,52 @@ def process_video_realtime(video_file, callback_fn):
     os.unlink(tfile.name)
     st.success("Video Processing Complete!")
 
+
+def _decode_image_file(file_obj):
+    if file_obj is None:
+        return None
+    data = np.frombuffer(file_obj.getvalue(), np.uint8)
+    if data.size == 0:
+        return None
+    return cv2.imdecode(data, cv2.IMREAD_COLOR)
+
+
+def _load_image_from_source(src, upload_label, upload_key, camera_label, camera_key):
+    if src == "📷 Photo":
+        return _decode_image_file(st.file_uploader(upload_label, type=["jpg", "jpeg", "png"], key=upload_key))
+    if src == "📸 Camera Snapshot":
+        return _decode_image_file(st.camera_input(camera_label, key=camera_key))
+    return None
+
+
+def _rtc_configuration_selector(key_prefix):
+    if not WEBRTC_READY:
+        return None
+
+    st.caption(
+        "Low-latency local mode is the default and avoids STUN. Turn STUN on only when the app is running remotely and the live stream will not connect."
+    )
+    use_stun = st.toggle("Use STUN servers", value=False, key=f"{key_prefix}_use_stun")
+    return RTC_CONFIG_STUN if use_stun else RTC_CONFIG_LOCAL
+
+
+def _start_webrtc_stream(stream_key, callback, label, key_prefix, hint=None):
+    if not WEBRTC_READY:
+        st.error("`streamlit-webrtc` is missing. Install it to enable live camera streaming.")
+        return
+
+    st.markdown(f"**{label}**")
+    if hint:
+        st.caption(hint)
+
+    webrtc_streamer(
+        key=stream_key,
+        video_frame_callback=callback,
+        rtc_configuration=_rtc_configuration_selector(key_prefix),
+        media_stream_constraints=LIVE_MEDIA_STREAM_CONSTRAINTS,
+        async_processing=True,
+    )
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 1 — ATTENDANCE SYSTEM
 # ═════════════════════════════════════════════════════════════════════════════
@@ -130,7 +200,7 @@ def _attendance_module():
         reg_id=st.text_input("ID / Roll No.", placeholder="e.g. DC-001", key="cv_reg_id")
         
         st.divider()
-        src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_att_src")
+        src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_att_src")
         
         cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
         
@@ -143,12 +213,16 @@ def _attendance_module():
                 cv2.putText(img, person, (x, y-12), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 91, 234), 2)
             return img
 
-        if src == "📷 Photo":
-            f = st.file_uploader("Upload Target Photo", type=["jpg", "png"], key="cv_att_photo")
-            if f and st.button("📸 Detect & Register", type="primary", width="stretch"):
-                img_bytes = np.frombuffer(f.read(), np.uint8)
-                img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-                processed = _att_cb(img)
+        if src in ("📷 Photo", "📸 Camera Snapshot"):
+            img = _load_image_from_source(
+                src,
+                "Upload Target Photo",
+                "cv_att_photo",
+                "Capture Target Photo",
+                "cv_att_camera",
+            )
+            if img is not None and st.button("📸 Detect & Register", type="primary", width="stretch"):
+                processed = _att_cb(img.copy())
                 st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
 
         elif src == "📹 Video File":
@@ -176,7 +250,13 @@ def _attendance_module():
                 except Exception:
                     return frame
 
-            webrtc_streamer(key="att_stream", video_frame_callback=face_log_callback, rtc_configuration=RTC_CONFIG, media_stream_constraints={"video": True, "audio": False})
+            _start_webrtc_stream(
+                "att_stream",
+                face_log_callback,
+                "Live WebRTC Camera",
+                "att_stream",
+                hint="If live streaming still fails in your setup, switch to Camera Snapshot above for a no-STUN fallback.",
+            )
 
     with c2:
         section_header("Attendance Log", f"{len(st.session_state.cv_attendance)} entries")
@@ -201,7 +281,7 @@ def _attendance_module():
 def _face_scan_module():
     section_header("Face Scanner", "Multi-Cascade · Eyes & Smiles")
     
-    src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_fs_src")
+    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_fs_src")
     
     face_cas = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
     eye_cas = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_eye.xml")
@@ -220,12 +300,16 @@ def _face_scan_module():
             for (sx,sy,sw,sh) in smiles: cv2.rectangle(roi_color, (sx,sy), (sx+sw,sy+sh), (237, 29, 36), 2)
         return img
 
-    if src == "📷 Photo":
-        f = st.file_uploader("Upload Photo", type=["jpg", "png"], key="fs_photo")
-        if f:
-            img_bytes = np.frombuffer(f.read(), np.uint8)
-            img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-            processed = _fs_cb(img)
+    if src in ("📷 Photo", "📸 Camera Snapshot"):
+        img = _load_image_from_source(
+            src,
+            "Upload Photo",
+            "fs_photo",
+            "Capture Photo",
+            "fs_camera",
+        )
+        if img is not None:
+            processed = _fs_cb(img.copy())
             st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="fs_video")
@@ -253,8 +337,13 @@ def _face_scan_module():
             except Exception:
                 return frame
 
-        st.markdown("**Live WebRTC Camera**")
-        webrtc_streamer(key="face_scan_stream", video_frame_callback=face_scan_callback, rtc_configuration=RTC_CONFIG)
+        _start_webrtc_stream(
+            "face_scan_stream",
+            face_scan_callback,
+            "Live WebRTC Camera",
+            "face_scan_stream",
+            hint="The stream runs at a lower default resolution for faster face detection.",
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -263,7 +352,7 @@ def _face_scan_module():
 def _vehicle_module():
     section_header("Vehicle Detection", "YOLOv8 Real-Time Counting")
     
-    src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_vd_src")
+    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_vd_src")
     
     # Cache model to avoid re-downloading
     if 'yolo_model' not in st.session_state:
@@ -277,7 +366,7 @@ def _vehicle_module():
     model = st.session_state.yolo_model
 
     def _vd_cb(img):
-        results = model(img, verbose=False)[0]
+        results = model(img, verbose=False, imgsz=640)[0]
         for box in results.boxes:
             cls = int(box.cls[0])
             name = results.names[cls]
@@ -288,12 +377,16 @@ def _vehicle_module():
                 cv2.putText(img, f"{name.upper()} {conf:.1f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 177, 64), 2)
         return img
 
-    if src == "📷 Photo":
-        f = st.file_uploader("Upload Image", type=["jpg", "png"], key="vd_photo")
-        if f:
-            img_bytes = np.frombuffer(f.read(), np.uint8)
-            img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-            processed = _vd_cb(img)
+    if src in ("📷 Photo", "📸 Camera Snapshot"):
+        img = _load_image_from_source(
+            src,
+            "Upload Image",
+            "vd_photo",
+            "Capture Image",
+            "vd_camera",
+        )
+        if img is not None:
+            processed = _vd_cb(img.copy())
             st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="vd_video")
@@ -319,7 +412,7 @@ def _vehicle_module():
                 if st.session_state.vd_frame_count % 3 != 0: return frame
 
                 img = frame.to_ndarray(format="bgr24")
-                results = model(img, verbose=False)[0]
+                results = model(img, verbose=False, imgsz=416)[0]
                 for box in results.boxes:
                     cls = int(box.cls[0])
                     name = results.names[cls]
@@ -332,8 +425,13 @@ def _vehicle_module():
             except Exception:
                 return frame
 
-        st.markdown("**Live WebRTC Camera (YOLOv8)**")
-        webrtc_streamer(key="vehicle_stream", video_frame_callback=vehicle_callback, rtc_configuration=RTC_CONFIG)
+        _start_webrtc_stream(
+            "vehicle_stream",
+            vehicle_callback,
+            "Live WebRTC Camera (YOLOv8)",
+            "vehicle_stream",
+            hint="The detector uses lower-resolution live inference so it starts faster and drops fewer frames on CPU.",
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -342,7 +440,7 @@ def _vehicle_module():
 def _sign_module():
     section_header("Traffic Sign Detection", "CNN Classifier · 43 Classes")
     
-    src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_sd_src")
+    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_sd_src")
     
     def _sd_cb(img):
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -358,12 +456,16 @@ def _sign_module():
                 cv2.putText(img, "Red Sign", (box[0][0], box[0][1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (237, 29, 36), 2)
         return img
 
-    if src == "📷 Photo":
-        f = st.file_uploader("Upload Sign", type=["jpg", "png"], key="sd_photo")
-        if f:
-            img_bytes = np.frombuffer(f.read(), np.uint8)
-            img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-            processed = _sd_cb(img)
+    if src in ("📷 Photo", "📸 Camera Snapshot"):
+        img = _load_image_from_source(
+            src,
+            "Upload Sign",
+            "sd_photo",
+            "Capture Sign",
+            "sd_camera",
+        )
+        if img is not None:
+            processed = _sd_cb(img.copy())
             st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="sd_video")
@@ -392,8 +494,13 @@ def _sign_module():
             except Exception:
                 return frame
 
-        st.markdown("**Live WebRTC Camera**")
-        webrtc_streamer(key="sign_stream", video_frame_callback=sign_callback, rtc_configuration=RTC_CONFIG)
+        _start_webrtc_stream(
+            "sign_stream",
+            sign_callback,
+            "Live WebRTC Camera",
+            "sign_stream",
+            hint="Local mode starts without STUN to reduce camera handshake failures.",
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -497,104 +604,261 @@ def create_palm_overlay(image, mask):
         overlay[class_mask] = overlay[class_mask] * 0.5 + np.array(color) * 0.5
     return overlay.astype(np.uint8)
 
+
+def _palm_observation_inputs():
+    with st.expander("Refine the palm reading", expanded=True):
+        c1, c2, c3 = st.columns(3)
+        dominant_hand = c1.selectbox(
+            "Dominant Hand",
+            ["Right", "Left", "Both / unsure"],
+            key="palm_obs_dominant_hand",
+        )
+        hand_shape = c2.selectbox(
+            "Hand Shape",
+            ["Auto / unsure", "Earth", "Air", "Fire", "Water"],
+            key="palm_obs_hand_shape",
+        )
+        line_depth = c3.selectbox(
+            "Line Depth",
+            ["Faint", "Medium", "Deep"],
+            key="palm_obs_line_depth",
+        )
+
+        c4, c5, c6 = st.columns(3)
+        major_breaks = c4.selectbox(
+            "Visible Breaks",
+            ["None", "A few", "Many"],
+            key="palm_obs_breaks",
+        )
+        fate_line = c5.selectbox(
+            "Fate/Career Line",
+            ["Not visible", "Faint", "Clear", "Strong"],
+            key="palm_obs_fate",
+        )
+        sun_line = c6.selectbox(
+            "Sun/Apollo Line",
+            ["Not visible", "Faint", "Clear"],
+            key="palm_obs_sun",
+        )
+
+    return {
+        "dominant_hand": dominant_hand,
+        "hand_shape": hand_shape,
+        "line_depth": line_depth,
+        "major_breaks": major_breaks,
+        "fate_line": fate_line,
+        "sun_line": sun_line,
+    }
+
+
+def _draw_live_palm_summary(image, report):
+    output = image.copy()
+    labels = [
+        f"Dominant: {report['dominant_line']}",
+        f"Quality: {report['detection_quality']:.2f}",
+        f"Career Shift: {report['career_shift_indicator']}",
+    ]
+    if report["detection_quality"] < 0.55:
+        labels.append("Tip: move closer, flatten palm, use brighter light")
+
+    panel_height = 34 + len(labels) * 22
+    cv2.rectangle(output, (10, 10), (470, panel_height), (5, 10, 24), thickness=-1)
+    for idx, text in enumerate(labels):
+        cv2.putText(
+            output,
+            text,
+            (20, 36 + idx * 22),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.58,
+            (236, 245, 255),
+            2,
+            cv2.LINE_AA,
+        )
+    return output
+
+
+def _render_palm_report(overlay, features, report):
+    c1, c2 = st.columns([1.05, 0.95])
+    with c1:
+        st.image(
+            cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB),
+            width="stretch",
+            caption="Line segmentation overlay (Life: red, Head: green, Heart: blue)",
+        )
+    with c2:
+        st.success("Palm analysis ready")
+        st.metric("Dominant Line", report["dominant_line"])
+        st.metric("Detection Quality", f"{report['detection_quality']:.0%}")
+        st.metric("Career Shift Indicator", report["career_shift_indicator"])
+        st.metric("Hand Shape", report["hand_shape_label"])
+        st.write(report["summary"])
+
+    line_strength_df = pd.DataFrame(
+        {
+            "line": list(report["line_strengths"].keys()),
+            "strength": [round(v * 100, 1) for v in report["line_strengths"].values()],
+        }
+    ).set_index("line")
+
+    overview_tab, feature_tab, detail_tab = st.tabs(["Reading", "Feature Dashboard", "Extracted Features"])
+    with overview_tab:
+        st.markdown("#### Major Line Reading")
+        for item in report["line_readings"]:
+            st.markdown(f"**{item['line']} Line**")
+            st.write(item["detail"])
+            st.caption(f"Primary focus: {item['emphasis']}")
+
+        st.markdown("#### Interpretation Themes")
+        st.write(report["themes"]["mindset"])
+        st.write(report["themes"]["relationships"])
+        st.write(report["themes"]["energy"])
+        st.write(report["themes"]["career"])
+        st.write(report["themes"]["visibility"])
+
+        st.markdown("#### Pattern Notes")
+        for note in report["shared_notes"]:
+            st.markdown(f"- {note}")
+
+        st.markdown("#### Guidance")
+        for item in report["guidance"]:
+            st.markdown(f"- {item}")
+
+    with feature_tab:
+        st.caption("Detected line balance")
+        st.bar_chart(line_strength_df, height=260)
+        st.caption("Palm-reading prompts")
+        for question in report["questions"]:
+            st.markdown(f"- {question}")
+
+    with detail_tab:
+        st.json(
+            {
+                "report": {
+                    "dominant_line": report["dominant_line"],
+                    "dominant_strength_pct": report["dominant_strength_pct"],
+                    "detection_quality": report["detection_quality"],
+                    "observations": report["observations"],
+                },
+                "features": {k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()},
+            }
+        )
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 5 — PALM READING (CNN Segmentation)
 # ═════════════════════════════════════════════════════════════════════════════
 def _palm_module():
-    section_header("Palm Reading Extraction", "Kinematic Analysis")
-    src = st.radio("Input Source", ["📷 Photo", "🔴 Live WebRTC", "📹 Video File"], horizontal=True, key="cv_palm_src")
-    
+    section_header(
+        "Palm Reading Extraction",
+        "Book-guided line analysis with camera snapshot fallback and live low-latency prediction",
+    )
+    st.info(
+        "Use `Camera Snapshot` if live WebRTC gives STUN trouble. The palm tutor will use the latest saved scan for personalized questions."
+    )
+    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
+    observations = _palm_observation_inputs()
+
     try:
-        import torch
-        import segmentation_models_pytorch as smp
         import albumentations as A
+        import segmentation_models_pytorch as smp
+        import torch
         from albumentations.pytorch import ToTensorV2
     except ImportError:
         st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch, segmentation_models_pytorch, albumentations).")
         return
 
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if 'palm_model' not in st.session_state:
+    if "palm_model" not in st.session_state:
         try:
             with st.spinner("Loading Palm Segmentation Model..."):
                 model = smp.Unet(encoder_name="resnet18", encoder_weights=None, in_channels=3, classes=4)
-                model.load_state_dict(torch.load("palm_model.pth", map_location=DEVICE))
-                model.to(DEVICE)
+                model.load_state_dict(torch.load("palm_model.pth", map_location=device))
+                model.to(device)
                 model.eval()
                 st.session_state.palm_model = model
-        except Exception as e:
-            st.error(f"Failed to load Palm Model from 'palm_model.pth': {e}")
+        except Exception as exc:
+            st.error(f"Failed to load Palm Model from 'palm_model.pth': {exc}")
             return
-            
+
     model = st.session_state.palm_model
-    preprocessing = A.Compose([
-        A.Resize(256, 256),
-        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-        ToTensorV2(),
-    ])
+    preprocessing = A.Compose(
+        [
+            A.Resize(256, 256),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            ToTensorV2(),
+        ]
+    )
 
     def _palm_cb(img):
-        # img is BGR
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         preprocessed = preprocessing(image=img_rgb)
-        image_tensor = preprocessed['image'].unsqueeze(0).to(DEVICE)
-        
+        image_tensor = preprocessed["image"].unsqueeze(0).to(device)
+
         with torch.no_grad():
             output = model(image_tensor)
             pred_mask = output.argmax(dim=1).squeeze(0).cpu().numpy()
-            
+
         mask = cv2.resize(pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
         overlay_img = create_palm_overlay(img, mask)
-        return overlay_img, mask
+        features = extract_palm_features(mask)
+        report = build_palm_report(features, observations)
+        return overlay_img, mask, features, report
 
-    if src == "📷 Photo":
-        f = st.file_uploader("Upload Palm Photo", type=["jpg", "png"], key="palm_photo")
-        if f:
-            img_bytes = np.frombuffer(f.read(), np.uint8)
-            img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
-            
+    def _live_frame_overlay(img):
+        small_img = cv2.resize(img, (384, 288))
+        overlay, _, _, report = _palm_cb(small_img)
+        overlay = _draw_live_palm_summary(overlay, report)
+        return cv2.resize(overlay, (img.shape[1], img.shape[0]))
+
+    if src in ("📷 Photo", "📸 Camera Snapshot"):
+        img = _load_image_from_source(
+            src,
+            "Upload Palm Photo",
+            "palm_photo",
+            "Capture Palm Photo",
+            "palm_camera",
+        )
+        if img is not None:
             with st.spinner("Analyzing Palm..."):
-                overlay, mask = _palm_cb(img)
-                features = extract_palm_features(mask)
-                classification = classify_palm(features)
-            
-            c1, c2 = st.columns([1, 1])
-            with c1:
-                st.image(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB), width="stretch", caption="Line Segmentation (Life: Red, Head: Green, Heart: Blue)")
-            with c2:
-                st.success("### Palm Analysis")
-                st.markdown(f"**Dominant Line:** {classification['dominant_line']} ({classification['confidence']:.1%})")
-                st.markdown(f"**Palm Type:** {classification['palm_type']}")
-                st.markdown(f"**Career Shift Indicator:** {classification['career_shift_indicator']}")
-                with st.expander("Extracted Features Details"):
-                    st.json({k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()})
+                overlay, mask, features, report = _palm_cb(img.copy())
+
+            st.session_state["palm_latest_report"] = report
+            st.session_state["palm_latest_features"] = features
+            st.session_state["palm_latest_summary"] = report["summary"]
+            _render_palm_report(overlay, features, report)
 
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="palm_video")
         if v:
-            process_video_realtime(v, lambda frame: _palm_cb(frame)[0])
+            st.caption("Video mode runs the palm overlay and live summary on downscaled frames for smoother playback.")
+            process_video_realtime(v, _live_frame_overlay)
     else:
         def palm_callback(frame: av.VideoFrame) -> av.VideoFrame:
             try:
-                # Frame skipping to prevent lag on slow CPUs
-                if 'palm_frame_count' not in st.session_state: st.session_state.palm_frame_count = 0
+                if "palm_frame_count" not in st.session_state:
+                    st.session_state.palm_frame_count = 0
                 st.session_state.palm_frame_count += 1
-                if st.session_state.palm_frame_count % 3 != 0: return frame # Process every 3rd frame
-                
+                if st.session_state.palm_frame_count % 2 != 0:
+                    return frame
+
                 img = frame.to_ndarray(format="bgr24")
-                # Downsample for faster inference
-                small_img = cv2.resize(img, (320, 240)) 
-                overlay, _ = _palm_cb(small_img)
-                # Resize back
-                final_overlay = cv2.resize(overlay, (img.shape[1], img.shape[0]))
+                final_overlay = _live_frame_overlay(img)
                 return av.VideoFrame.from_ndarray(final_overlay, format="bgr24")
-            except Exception as e:
+            except Exception:
                 return frame
-            
-        st.markdown("**Live WebRTC Camera (CNN Inference)**")
-        st.warning("Note: Real-time CNN inference on CPU may experience low framerates.")
-        webrtc_streamer(key="palm_stream", video_frame_callback=palm_callback, rtc_configuration=RTC_CONFIG)
+
+        _start_webrtc_stream(
+            "palm_stream",
+            palm_callback,
+            "Live WebRTC Camera (Palm Reading)",
+            "palm_stream",
+            hint="Live mode now defaults to no-STUN local streaming and reduced-resolution inference for faster palm predictions.",
+        )
+
+    latest_report = st.session_state.get("palm_latest_report")
+    if latest_report:
+        st.caption("Latest saved scan summary")
+        st.write(latest_report["summary"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -663,6 +927,24 @@ def _render_cv_tutor(module_key, topic_label):
         if ai_text:
             push_tutor_insight(ai_text, f"AI Tutor // {topic_label.title()} Tips")
             st.session_state[insight_key] = True
+
+    if module_key == "palm" and st.session_state.get("palm_latest_report"):
+        palm_report = st.session_state["palm_latest_report"]
+        render_chatbot(
+            "palm reading analysis for the latest scanned hand",
+            context_payload=palm_report.get("chat_context"),
+            system_prompt=(
+                "You are a careful palm-reading guide working from the detected line report. "
+                "Use traditional palmistry language, but always frame the reading as interpretive rather than certain fate. "
+                "Ground every answer in the supplied scan summary."
+            ),
+            fallback_builder=lambda question: answer_palm_question(question, palm_report),
+            greeting=(
+                "I have the latest palm scan loaded. Ask about career, relationships, temperament, decision-making, "
+                "or scan quality and I will answer from the current reading."
+            ),
+        )
+        return
 
     render_chatbot(topic_label)
 

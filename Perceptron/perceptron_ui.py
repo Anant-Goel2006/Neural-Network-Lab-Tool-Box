@@ -135,11 +135,20 @@ def _live_dashboard_fig(X, y, raw, w, b, losses, acc, ep, max_ep, w_traj):
             y=traj[:, 1],
             mode="lines+markers",
             name="(w1, w2)",
+            showlegend=False,
             marker=dict(
                 size=8,
                 color=list(range(len(traj))),
                 colorscale="Turbo",
-                colorbar=dict(title="Epoch", tickfont=dict(color="#F8FAFC")),
+                colorbar=dict(
+                    title="Epoch",
+                    tickfont=dict(color="#F8FAFC"),
+                    x=1.08,
+                    y=0.18,
+                    len=0.34,
+                    thickness=12,
+                    outlinecolor="#334155",
+                ),
             ),
             line=dict(color="#FACC15", width=3),
         ),
@@ -150,7 +159,8 @@ def _live_dashboard_fig(X, y, raw, w, b, losses, acc, ep, max_ep, w_traj):
     fig.update_layout(
         title_text=f"Perceptron Mission Control | Epoch {ep}/{max_ep} | Accuracy {acc:.1f}%",
         showlegend=True,
-        **plotly_layout(height=760, margin=dict(l=40, r=40, t=70, b=40)),
+        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0.0),
+        **plotly_layout(height=760, margin=dict(l=40, r=120, t=90, b=40)),
     )
     fig.update_xaxes(showgrid=True, gridcolor="#334155")
     fig.update_yaxes(showgrid=True, gridcolor="#334155")
@@ -822,11 +832,20 @@ def perceptron_page():
                     x=traj[:, 0],
                     y=traj[:, 1],
                     mode="lines+markers",
+                    showlegend=False,
                     marker=dict(
                         size=9,
                         color=list(range(len(traj))),
                         colorscale="Turbo",
-                        colorbar=dict(title="Epoch", tickfont=dict(color="#F8FAFC")),
+                        colorbar=dict(
+                            title="Epoch",
+                            tickfont=dict(color="#F8FAFC"),
+                            x=1.1,
+                            y=0.5,
+                            len=0.78,
+                            thickness=12,
+                            outlinecolor="#334155",
+                        ),
                     ),
                     line=dict(color="#FACC15", width=3),
                     name="Weight path",
@@ -838,7 +857,7 @@ def perceptron_page():
                     height=320,
                     xaxis=dict(title="w1", gridcolor="#334155", color="#94A3B8"),
                     yaxis=dict(title="w2", gridcolor="#334155", color="#94A3B8"),
-                    margin=dict(l=40, r=20, t=55, b=35),
+                    margin=dict(l=40, r=110, t=55, b=35),
                 ),
             )
             st.plotly_chart(phase_fig, use_container_width=True, key="pct_phase_portrait")
