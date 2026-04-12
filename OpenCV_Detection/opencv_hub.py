@@ -768,8 +768,10 @@ def _palm_module():
 
     try:
         import torch
+        import albumentations as A
+        from albumentations.pytorch import ToTensorV2
     except ImportError:
-        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch).")
+        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch, albumentations).")
         return
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
