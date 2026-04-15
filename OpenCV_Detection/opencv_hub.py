@@ -155,9 +155,9 @@ def _decode_image_file(file_obj):
 
 
 def _load_image_from_source(src, upload_label, upload_key, camera_label, camera_key):
-    if src == "📷 Photo":
+    if src in ("📷 Photo", "📷 Photo Upload"):
         return _decode_image_file(st.file_uploader(upload_label, type=["jpg", "jpeg", "png"], key=upload_key))
-    if src == "📸 Camera Snapshot":
+    if src in ("📸 Camera Snapshot", "📸 Camera Auto-Scan"):
         return _decode_image_file(st.camera_input(camera_label, key=camera_key))
     return None
 
