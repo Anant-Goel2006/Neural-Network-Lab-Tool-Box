@@ -989,21 +989,19 @@ def extract_palm_features(segmentation_mask, raw_image=None):
 
     features = {}
 
-    # ── Basic features (backward compatible) ──
-    features['life_length'] = get_line_length(life_mask)
-    features['head_length'] = get_line_length(head_mask)
-    features['heart_length'] = get_line_length(heart_mask)
-    features['life_curvature'] = get_curvature(life_mask)
-    features['head_curvature'] = get_curvature(head_mask)
-    features['heart_curvature'] = get_curvature(heart_mask)
-    features['life_angle'] = get_line_angle(life_mask)
-    features['head_angle'] = get_line_angle(head_mask)
-    features['heart_angle'] = get_line_angle(heart_mask)
-    features['life_head_intersection'] = count_intersections(life_mask, head_mask)
-    features['life_heart_intersection'] = count_intersections(life_mask, heart_mask)
-    features['head_heart_intersection'] = count_intersections(head_mask, heart_mask)
-
     if raw_image is None:
+        features['life_length'] = get_line_length(life_mask)
+        features['head_length'] = get_line_length(head_mask)
+        features['heart_length'] = get_line_length(heart_mask)
+        features['life_curvature'] = get_curvature(life_mask)
+        features['head_curvature'] = get_curvature(head_mask)
+        features['heart_curvature'] = get_curvature(heart_mask)
+        features['life_angle'] = get_line_angle(life_mask)
+        features['head_angle'] = get_line_angle(head_mask)
+        features['heart_angle'] = get_line_angle(heart_mask)
+        features['life_head_intersection'] = count_intersections(life_mask, head_mask)
+        features['life_heart_intersection'] = count_intersections(life_mask, heart_mask)
+        features['head_heart_intersection'] = count_intersections(head_mask, heart_mask)
         return features
 
     # ══════════════════════════════════════════════════════════════════════
@@ -1011,7 +1009,31 @@ def extract_palm_features(segmentation_mask, raw_image=None):
     # ══════════════════════════════════════════════════════════════════════
     enhanced_line_map, enhanced_gray = enhance_palm_image(raw_image)
 
-    masks = {"life": life_mask, "head": head_mask, "heart": heart_mask}
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    refined_life_mask = cv2.bitwise_and(enhanced_line_map, cv2.dilate(life_mask, kernel_dilate))
+    refined_head_mask = cv2.bitwise_and(enhanced_line_map, cv2.dilate(head_mask, kernel_dilate))
+    refined_heart_mask = cv2.bitwise_and(enhanced_line_map, cv2.dilate(heart_mask, kernel_dilate))
+
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    closed_life = cv2.morphologyEx(refined_life_mask, cv2.MORPH_CLOSE, kernel_close)
+    closed_head = cv2.morphologyEx(refined_head_mask, cv2.MORPH_CLOSE, kernel_close)
+    closed_heart = cv2.morphologyEx(refined_heart_mask, cv2.MORPH_CLOSE, kernel_close)
+
+    # ── Basic features using highly-variable exact edges ──
+    features['life_length'] = get_line_length(closed_life) or get_line_length(life_mask)
+    features['head_length'] = get_line_length(closed_head) or get_line_length(head_mask)
+    features['heart_length'] = get_line_length(closed_heart) or get_line_length(heart_mask)
+    features['life_curvature'] = get_curvature(closed_life) or get_curvature(life_mask)
+    features['head_curvature'] = get_curvature(closed_head) or get_curvature(head_mask)
+    features['heart_curvature'] = get_curvature(closed_heart) or get_curvature(heart_mask)
+    features['life_angle'] = get_line_angle(closed_life) or get_line_angle(life_mask)
+    features['head_angle'] = get_line_angle(closed_head) or get_line_angle(head_mask)
+    features['heart_angle'] = get_line_angle(closed_heart) or get_line_angle(heart_mask)
+    features['life_head_intersection'] = count_intersections(closed_life, closed_head)
+    features['life_heart_intersection'] = count_intersections(closed_life, closed_heart)
+    features['head_heart_intersection'] = count_intersections(closed_head, closed_heart)
+
+    masks = {"life": closed_life, "head": closed_head, "heart": closed_heart}
 
     for name, mask in masks.items():
         # Breaks
@@ -1112,20 +1134,36 @@ def create_palm_overlay(image, mask, enhanced_line_map=None):
     overlay = image.copy()
     # Major lines in vivid colors (Life=Red, Head=Green, Heart=Blue)
     colors = {1: (0, 0, 255), 2: (0, 255, 0), 3: (255, 0, 0)}
-    for class_id, color in colors.items():
-        class_mask = (mask == class_id)
-        overlay[class_mask] = overlay[class_mask] * 0.5 + np.array(color) * 0.5
-    # Fine lines from enhanced CV in cyan (if available)
+    
     if enhanced_line_map is not None:
         if enhanced_line_map.shape[:2] != image.shape[:2]:
             enhanced_line_map = cv2.resize(enhanced_line_map, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        # Remove major line pixels to show only fine/minor lines
+        
+        # Draw highly precise major lines
+        kernel_dilate = np.ones((7,7), np.uint8)
+        kernel_thicken = np.ones((3,3), np.uint8)
         major_combined = np.zeros_like(mask, dtype=np.uint8)
-        for cid in [1, 2, 3]:
-            major_combined[mask == cid] = 255
+        
+        for class_id, color in colors.items():
+            class_mask = (mask == class_id).astype(np.uint8)
+            dilated_mask = cv2.dilate(class_mask, kernel_dilate, iterations=1)
+            major_combined = cv2.bitwise_or(major_combined, dilated_mask)
+            
+            actual_line = cv2.bitwise_and(enhanced_line_map, enhanced_line_map, mask=dilated_mask)
+            thick_line = cv2.dilate(actual_line, kernel_thicken, iterations=1)
+            
+            overlay_mask = thick_line > 0
+            overlay[overlay_mask] = overlay[overlay_mask] * 0.2 + np.array(color) * 0.8
+            
+        # Fine lines
         fine_only = cv2.subtract(enhanced_line_map, major_combined)
         fine_mask = fine_only > 0
-        overlay[fine_mask] = overlay[fine_mask] * 0.6 + np.array([200, 200, 0]) * 0.4  # cyan tint
+        overlay[fine_mask] = overlay[fine_mask] * 0.4 + np.array([255, 255, 0]) * 0.6  # Cyan/yellow tint
+    else:
+        for class_id, color in colors.items():
+            class_mask = (mask == class_id)
+            overlay[class_mask] = overlay[class_mask] * 0.5 + np.array(color) * 0.5
+            
     return overlay.astype(np.uint8)
 
 
