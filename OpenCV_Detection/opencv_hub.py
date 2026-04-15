@@ -1068,26 +1068,58 @@ def classify_palm(features):
 
 
 def create_palm_overlay(image, mask, enhanced_line_map=None):
-    """Create overlay showing major lines (colored) plus fine lines (cyan)."""
-    if mask.shape[:2] != image.shape[:2]:
-        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-    overlay = image.copy()
-    # Major lines in vivid colors (Life=Red, Head=Green, Heart=Blue)
-    colors = {1: (0, 0, 255), 2: (0, 255, 0), 3: (255, 0, 0)}
+    """Create a cinematic professional overlay showing major lines (glowing)
+    plus fine lines and a scanning laser effect."""
+    h, w = image.shape[:2]
+    if mask.shape[:2] != (h, w):
+        mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
+    
+    overlay = image.copy().astype(np.float32)
+    
+    # ── 1. Glowing Major Lines ──
+    # Colors: Life=Crimson, Head=Emerald, Heart=Azure
+    colors = {1: (20, 20, 220), 2: (20, 220, 20), 3: (220, 100, 20)}
+    
     for class_id, color in colors.items():
-        class_mask = (mask == class_id)
-        overlay[class_mask] = overlay[class_mask] * 0.5 + np.array(color) * 0.5
-    # Fine lines from enhanced CV in cyan (if available)
+        class_mask = (mask == class_id).astype(np.uint8) * 255
+        if class_mask.max() == 0:
+            continue
+            
+        # Create Glow
+        glow = cv2.GaussianBlur(class_mask, (15, 15), 0)
+        glow_mask = (glow > 0)
+        
+        # Apply Glow
+        for c in range(3):
+            overlay[glow_mask, c] = overlay[glow_mask, c] * (1 - glow[glow_mask]/255 * 0.4) + \
+                                    color[c] * (glow[glow_mask]/255 * 0.4)
+        
+        # Core Line
+        line_mask = (class_mask > 0)
+        overlay[line_mask] = color
+        
+    # ── 2. Fine Lines (Cyan Mist) ──
     if enhanced_line_map is not None:
-        if enhanced_line_map.shape[:2] != image.shape[:2]:
-            enhanced_line_map = cv2.resize(enhanced_line_map, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        # Remove major line pixels to show only fine/minor lines
-        major_combined = np.zeros_like(mask, dtype=np.uint8)
+        if enhanced_line_map.shape[:2] != (h, w):
+            enhanced_line_map = cv2.resize(enhanced_line_map, (w, h), interpolation=cv2.INTER_NEAREST)
+        
+        major_combined = np.zeros((h, w), dtype=np.uint8)
         for cid in [1, 2, 3]:
             major_combined[mask == cid] = 255
+            
         fine_only = cv2.subtract(enhanced_line_map, major_combined)
-        fine_mask = fine_only > 0
-        overlay[fine_mask] = overlay[fine_mask] * 0.6 + np.array([200, 200, 0]) * 0.4  # cyan tint
+        fine_mask = (fine_only > 0)
+        overlay[fine_mask] = overlay[fine_mask] * 0.4 + np.array([255, 255, 0], dtype=np.float32) * 0.6
+
+    # ── 3. Scanning Laser Line ──
+    # Use a simulated pulse based on time or just a static horizontal line for the snapshot
+    # To keep it looking "active", we'll draw a subtle horizontal gradient line
+    scan_y = int(h * 0.45) # Static for snapshot, but looks like a scan
+    cv2.line(overlay, (0, scan_y), (w, scan_y), (0, 255, 255), 1)
+    # Add a halo for the laser
+    cv2.addWeighted(overlay, 1.0, 
+                   cv2.GaussianBlur(overlay, (1, 51), 0), 0.2, 0, overlay)
+
     return overlay.astype(np.uint8)
 
 
@@ -1434,6 +1466,50 @@ def _render_palm_report(overlay, features, report):
             }
         )
 
+def generate_expert_inspection_crops(image, landmarks):
+    """Identifies and crops key Regions of Interest (ROIs) for expert inspection.
+    Includes Mounts (Jupiter, Saturn, etc.) and line origin points."""
+    h, w = image.shape[:2]
+    def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
+
+    crops = []
+    # Inspection Points: (Name, LandmarkID, Scale, Description)
+    points = [
+        ("Mount of Jupiter", 5, 0.12, "Ambition, leadership, and social authority."),
+        ("Mount of Saturn", 9, 0.12, "Duty, responsibility, and karmic patterns."),
+        ("Mount of Apollo", 13, 0.12, "Artistic talent, fame, and creative success."),
+        ("Mount of Mercury", 17, 0.12, "Business acumen, communication, and science."),
+        ("Mount of Venus", 2, 0.18, "Passion, vitality, warmth, and physical love."),
+        ("Mount of Moon", 0, 0.20, "Imagination, intuition, and travel restless nature."),
+        ("Life-Head Origin", 5, 0.15, "Early life independence and family influence."),
+    ]
+
+    for name, idx, scale, desc in points:
+        pt = get_pt(idx)
+        # Adjust center for some mounts
+        if name == "Mount of Moon": pt[0] += int(w * 0.1) # Move right for Moon
+        if name == "Mount of Venus": pt[1] += int(h * 0.05) # Move down for Venus
+        
+        size = int(max(h, w) * scale)
+        x1 = max(0, pt[0] - size//2)
+        y1 = max(0, pt[1] - size//2)
+        x2 = min(w, pt[0] + size//2)
+        y2 = min(h, pt[1] + size//2)
+        
+        crop = image[y1:y2, x1:x2].copy()
+        if crop.size == 0: continue
+            
+        # Add a magnifying glass border effect to the crop
+        ch, cw = crop.shape[:2]
+        cv2.rectangle(crop, (0,0), (cw-1, ch-1), (0, 255, 255), 3) # Golden border
+        
+        crops.append({
+            "name": name,
+            "image": crop,
+            "description": desc
+        })
+    return crops
+
 @st.cache_resource(show_spinner=False)
 def load_palm_model(_device=None):
     """Download and initialise the MediaPipe HandLandmarker (tasks API)."""
@@ -1662,6 +1738,9 @@ def _palm_module():
         overlay_img = create_palm_overlay(img, mask_full, enhanced_line_map)
         features = extract_palm_features(mask_full, raw_image=img)
         report = build_palm_report(features, observations)
+        # ── Expert Inspection ──
+        report["inspection_crops"] = generate_expert_inspection_crops(img, landmarks)
+
         report["_steps"] = steps
         report["_hand_found"] = True
         return overlay_img, mask_full, features, report
@@ -1800,10 +1879,15 @@ def _render_cv_tutor(module_key, topic_label):
 
     if module_key == "palm" and st.session_state.get("palm_latest_report"):
         palm_report = st.session_state["palm_latest_report"]
+        features = st.session_state.get("palm_latest_features", {})
+        
+        from utils.palmistry_knowledge import get_contextual_knowledge_summary
+        knowledge_context = get_contextual_knowledge_summary(features, palm_report)
+        
         render_chatbot(
             "Professional palm analysis — hand type, lines, mounts, timing, health, personality",
             context_payload=palm_report.get("chat_context"),
-            system_prompt=build_professional_system_prompt(),
+            system_prompt=build_professional_system_prompt(knowledge_context),
             fallback_builder=lambda question: answer_palm_question(question, palm_report),
             greeting=get_professional_greeting(),
             theme=MODULE_THEMES["opencv"],

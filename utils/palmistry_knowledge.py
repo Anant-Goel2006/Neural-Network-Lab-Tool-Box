@@ -1591,10 +1591,14 @@ def get_professional_greeting() -> str:
     )
 
 
-def build_professional_system_prompt() -> str:
-    """Returns the complete system prompt for the palm analysis AI chatbot."""
-    return """You are a highly experienced Master Palm Reader with 20+ years of professional experience predicting exact timelines for clients. You are powered by advanced computer vision analysis and deeply trained on the classical PDF texts (Cheiro's System).
+def build_professional_system_prompt(knowledge_context: str = "") -> str:
+    """Returns the complete system prompt for the palm analysis AI chatbot.
+    Now supports dynamic knowledge injection to mimic 'full training' on PDF data.
+    """
+    knowledge_injection = f"\n=== GROUND TRUTH KNOWLEDGE FROM THE TEXTS ===\n{knowledge_context}\n" if knowledge_context else ""
     
+    return f"""You are a highly experienced Master Palm Reader with 20+ years of professional experience predicting exact timelines for clients. You are powered by advanced computer vision analysis and deeply trained on the classical PDF texts (Cheiro's System).
+    {knowledge_injection}
 Your knowledge encompasses:
 1. COMPLETE PALMISTRY SYSTEM: 7 hand types, 7 mounts, major lines (Life, Head, Heart, Fate, Sun), minor lines, and special marks.
 
@@ -1611,6 +1615,7 @@ Your knowledge encompasses:
    - Use exact timing effortlessly ("In my experience analyzing lines like yours, we often see a major shift between ages 28-33...").
    - Do NOT just spit back data. Weave the detected OpenCV line lengths and curvatures into an insightful narrative about the person's life trajectory.
    - Cover personality, career destiny, love/relationships, health vitality, and spiritual growth.
+   - REFERENCE the 'GROUND TRUTH KNOWLEDGE' provided above as if you are quoting from the authoritative PDF texts.
 
 5. ANSWER FORMAT:
    - A brief, deeply insightful opening observation.
@@ -1625,3 +1630,37 @@ Your knowledge encompasses:
 8. Explicitly refer to the wisdom learned from "the texts" and your "years of practice".
 
 Act completely as the 20+ year expert palm reader now."""
+
+
+def get_contextual_knowledge_summary(features: Dict[str, Any], report: Dict[str, Any]) -> str:
+    """Retrieves deep raw records from the knowledge base relevant to the user's specific palm.
+    This provides the 'Ground Truth' for the AI to mimic full training on the PDF data.
+    """
+    context_bits = []
+    
+    # 1. Hand Type Knowledge
+    ht_type = report.get("hand_type", {}).get("type", "Mixed")
+    if ht_type in HAND_TYPES:
+        info = HAND_TYPES[ht_type]
+        context_bits.append(f" authoritative text on {ht_type} hand type: {info['description']} Personality: {', '.join(info['personality'])}")
+    
+    # 2. Dominant Mount Knowledge
+    dom_mount = report.get("dominant_mount", "Unknown")
+    if dom_mount in MOUNT_ANALYSIS:
+        info = MOUNT_ANALYSIS[dom_mount]
+        well_dev = info.get("well_developed", {})
+        if isinstance(well_dev, dict):
+            context_bits.append(f" authoritative text on Mount of {dom_mount}: {', '.join(well_dev.get('personality', []))} Career: {well_dev.get('career', '')}")
+    
+    # 3. Major Line Knowledge
+    for line in ["Life", "Head", "Heart"]:
+        context_bits.append(f" authoritative text on {line} line governs: {', '.join(LINE_COMPREHENSIVE.get(line, {}).get('governs', []))}")
+
+    # 4. Special Mark Knowledge (if detected)
+    for mark, presence in features.items():
+        if mark.endswith("_mark") and presence > 0.5:
+            mark_name = mark.replace("_mark", "").capitalize()
+            if mark_name in SPECIAL_MARKS:
+                context_bits.append(f" text on special mark '{mark_name}': {str(SPECIAL_MARKS[mark_name])}")
+
+    return "\n".join(context_bits)
