@@ -1,10 +1,11 @@
 """
 ══════════════════════════════════════════════════════════════════════════════
-CHEIRO'S PALMISTRY ENGINE — Professional Reading Generator
+PROFESSIONAL PALM ANALYSIS ENGINE — Advanced Reading Generator
 ══════════════════════════════════════════════════════════════════════════════
-Uses the complete Cheiro knowledge base to produce world-class palm readings
-from extracted line features.  Handles time prediction, mount analysis,
-hand-type classification, and 50+ question categories.
+Uses a comprehensive palmistry knowledge base combined with advanced computer
+vision features (60+ per palm) to produce unique, differentiated readings.
+Handles time prediction, mount analysis, hand-type classification, fine-detail
+interpretation (branches, breaks, islands, depth profiling), and 50+ categories.
 ══════════════════════════════════════════════════════════════════════════════
 """
 from __future__ import annotations
@@ -266,9 +267,75 @@ def _mental_style(head_curvature: float, head_angle: float) -> str:
     return "structured and practical — a straight Head line indicating logical, business-oriented thinking"
 
 
+def _interpret_line_fine_detail(line_name: str, features: Dict[str, Any]) -> str:
+    """Generate unique reading text from advanced CV features (branches, breaks, etc.)"""
+    key = line_name.lower()
+    parts = []
+
+    # Break analysis
+    break_count = int(features.get(f'{key}_break_count', 0))
+    if break_count > 0:
+        breaks = features.get(f'{key}_breaks', [])
+        if break_count == 1:
+            pos = breaks[0].get('position', 0.5) if breaks else 0.5
+            period = 'early life' if pos < 0.35 else 'mid-life' if pos < 0.65 else 'later years'
+            parts.append(f"A break detected in the {period} section indicates a significant transition or redirection at that stage.")
+        else:
+            parts.append(f"{break_count} breaks detected — this line shows a pattern of reinvention, with multiple chapters of change and adaptation.")
+
+    # Branch analysis
+    up = int(features.get(f'{key}_branch_up', 0))
+    down = int(features.get(f'{key}_branch_down', 0))
+    if up > 0 and down > 0:
+        parts.append(f"Both upward ({up}) and downward ({down}) branches present — life shows alternating periods of elevation and challenge, building resilience.")
+    elif up > 0:
+        parts.append(f"{up} upward branch(es) — periods of achievement, success, and rising fortune are encoded in this line.")
+    elif down > 0:
+        parts.append(f"{down} downward branch(es) — periods of effort, adjustment, or energy redirection are marked.")
+
+    # Island analysis
+    islands = int(features.get(f'{key}_island_count', 0))
+    if islands > 0:
+        parts.append(f"{islands} island formation(s) detected — these indicate periods of uncertainty, divided energy, or health sensitivity.")
+
+    # Fork analysis
+    fork_type = features.get(f'{key}_fork_type', 'none')
+    if fork_type == 'writers_fork':
+        parts.append("A prominent fork at the line's end — traditionally the mark of versatility, combining practical execution with creative vision.")
+    elif fork_type == 'small_fork':
+        parts.append("A small fork at the line's terminus — indicates adaptability and multiple paths of expression.")
+
+    # Chain analysis
+    chain_ratio = float(features.get(f'{key}_chain_ratio', 0))
+    if chain_ratio > 0.15:
+        parts.append(f"Chain pattern detected across {chain_ratio:.0%} of this line — variable intensity periods with fluctuating energy.")
+    elif chain_ratio > 0.05:
+        parts.append("Subtle chain markings present — minor oscillations in expression or vitality at certain periods.")
+
+    # Sister line
+    if features.get(f'{key}_has_sister_line', False):
+        parts.append("A parallel sister (guardian) line runs alongside — this is a highly favorable sign indicating extra protection, support, and doubled vitality.")
+
+    # Depth variation
+    depth_var = float(features.get(f'{key}_depth_variance', 0))
+    avg_depth = float(features.get(f'{key}_avg_depth', 0.5))
+    if depth_var > 0.03:
+        deepest = float(features.get(f'{key}_deepest_region', 0.5))
+        faintest = float(features.get(f'{key}_faintest_region', 0.5))
+        deep_period = 'early' if deepest < 0.35 else 'middle' if deepest < 0.65 else 'later'
+        faint_period = 'early' if faintest < 0.35 else 'middle' if faintest < 0.65 else 'later'
+        parts.append(f"Line depth varies significantly — strongest in the {deep_period} segment, faintest in the {faint_period} segment. This reveals shifting energy intensities across life stages.")
+    elif avg_depth > 0.6:
+        parts.append("Consistently deep line throughout — strong, steady expression of this line's governing qualities.")
+    elif avg_depth < 0.35:
+        parts.append("Relatively faint line — subtle, nuanced expression of qualities that manifest more in inner experience than outward display.")
+
+    return " ".join(parts) if parts else ""
+
+
 def _heart_style(heart_curvature: float, heart_ratio: float) -> str:
     if heart_ratio >= 0.37 or heart_curvature >= 1.22:
-        return "openly expressive and deeply passionate — Cheiro would read this as a warm, demonstrative emotional nature"
+        return "openly expressive and deeply passionate — a warm, demonstrative emotional nature"
     if heart_ratio >= 0.30 or heart_curvature >= 1.10:
         return "warm but measured — showing affection selectively with genuine depth"
     return "private and steady — emotions run deep but are not easily displayed"
@@ -282,7 +349,7 @@ def _life_style(life_curvature: float, life_ratio: float) -> str:
     return "steady and energy-conscious — focused vitality directed toward specific goals"
 
 
-def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, length: float) -> Dict[str, Any]:
+def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, length: float, features: Dict[str, Any] | None = None) -> Dict[str, Any]:
     prominence = _prominence_label(ratio)
     shape = _curvature_label(curvature)
     depth = _depth_label(length)
@@ -303,6 +370,9 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             f"The Life line reads as {prominence} ({depth} depth) with a {shape} flow. "
             f"{style}. {variation_text}"
         )
+        fine_detail = _interpret_line_fine_detail("Life", features) if features else ""
+        if fine_detail:
+            detail += f" {fine_detail}"
     elif line_name == "Head":
         emphasis = "mental capacity, thinking style, decision-making, and intellectual power"
         style = _mental_style(curvature, angle)
@@ -317,6 +387,9 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             f"The Head line reads as {prominence} ({depth} depth) with a {shape} flow. "
             f"The mind is {style}. {variation_text}"
         )
+        fine_detail = _interpret_line_fine_detail("Head", features) if features else ""
+        if fine_detail:
+            detail += f" {fine_detail}"
     else:  # Heart
         emphasis = "emotional expression, capacity for love, and relationship patterns"
         style = _heart_style(curvature, ratio)
@@ -331,6 +404,9 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             f"The Heart line reads as {prominence} ({depth} depth) with a {shape} flow. "
             f"Emotional nature is {style}. {variation_text}"
         )
+        fine_detail = _interpret_line_fine_detail("Heart", features) if features else ""
+        if fine_detail:
+            detail += f" {fine_detail}"
 
     # Timing info
     timing_info = line_data.get("timing_method", "")
@@ -353,27 +429,39 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
 # ─────────────────────────────────────────────────────────────────────────
 
 def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
-    """
-    Generate time-based predictions using Cheiro's timing system.
-    """
+    """Generate time-based predictions using proportional timing analysis
+    combined with detected fine-detail features for position-specific predictions."""
     life_length = float(features.get("life_length", 0))
     head_length = float(features.get("head_length", 0))
     life_curv = float(features.get("life_curvature", 0))
     head_angle = abs(float(features.get("head_angle", 0)))
     intersections = int(features.get("life_head_intersection", 0))
+    # Advanced features for position-specific timing
+    life_break_count = int(features.get("life_break_count", 0))
+    life_breaks = features.get("life_breaks", [])
+    life_branch_up = int(features.get("life_branch_up", 0))
+    life_branch_down = int(features.get("life_branch_down", 0))
+    life_head_gap = float(features.get("life_head_gap", 0))
 
     predictions = []
 
     # Independence timing (Life-Head separation)
     if intersections > 0:
-        independence_age = "18-24"
+        # Use life-head gap to estimate independence age more precisely
+        if life_head_gap > 0.05:
+            independence_age = "16-20"
+        elif life_head_gap > 0.02:
+            independence_age = "20-25"
+        else:
+            independence_age = "24-28"
         predictions.append({
             "period": f"Age {independence_age}",
             "event": "Period of independence from family influence",
             "detail": (
                 "The Life and Head lines show connection, indicating family "
-                "influence in early life. Based on Cheiro's timing, independence "
-                f"and self-direction emerge around age {independence_age}."
+                "influence in early life. Based on the detected gap distance "
+                f"({life_head_gap:.4f}), independence and self-direction emerge "
+                f"around age {independence_age}."
             ),
             "category": "life_transition",
         })
@@ -412,15 +500,20 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
             "category": "career",
         })
 
-    # Life energy assessment
+    # Life energy assessment — use depth profile for more specific prediction
+    life_deepest = float(features.get('life_deepest_region', 0.5))
+    life_faintest = float(features.get('life_faintest_region', 0.5))
     if life_curv >= 1.20:
+        peak_start = int(30 + life_deepest * 20)
+        peak_end = peak_start + 12
         predictions.append({
-            "period": "Age 35-45",
+            "period": f"Age {peak_start}-{peak_end}",
             "event": "Peak vitality and life expansion",
             "detail": (
-                "The wide arc of the Life line indicates peak physical vitality "
-                "and life expansion between ages 35-45. This is a period of "
-                "maximum energy and achievement potential."
+                f"The wide arc of the Life line indicates peak physical vitality "
+                f"and life expansion between ages {peak_start}-{peak_end}. The deepest "
+                f"segment of your line maps to this energy peak. This is a period of "
+                f"maximum energy and achievement potential."
             ),
             "category": "health_energy",
         })
@@ -436,15 +529,49 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
             "category": "health_energy",
         })
 
-    # Relationship timing
+    # Break-specific predictions
+    if life_break_count > 0 and life_breaks:
+        for i, brk in enumerate(life_breaks[:2]):
+            pos = brk.get('position', 0.5)
+            age_start = int(15 + pos * 55)
+            age_end = age_start + 5
+            predictions.append({
+                "period": f"Age {age_start}-{age_end}",
+                "event": f"Life transition #{i+1} — significant change point",
+                "detail": (
+                    f"A break detected at position {pos:.1%} along the Life line "
+                    f"indicates a significant change or redirection around ages {age_start}-{age_end}. "
+                    "This could manifest as a major move, career shift, health event, "
+                    "or transformative relationship change."
+                ),
+                "category": "life_transition",
+            })
+
+    # Branch-based predictions
+    if life_branch_up > 0:
+        predictions.append({
+            "period": "Multiple periods",
+            "event": f"{life_branch_up} elevation period(s) detected",
+            "detail": (
+                f"Your Life line shows {life_branch_up} upward branch(es), each "
+                "marking a distinct period of achievement, promotion, or fortune. "
+                "These are encoded directly in your palm's unique structure."
+            ),
+            "category": "career",
+        })
+
+    # Relationship timing — adjusted by heart line depth
+    heart_depth = float(features.get('heart_avg_depth', 0.5))
+    rel_age_start = 22 if heart_depth > 0.6 else 26 if heart_depth > 0.4 else 28
+    rel_age_end = rel_age_start + 6
     predictions.append({
-        "period": "Age 24-30",
+        "period": f"Age {rel_age_start}-{rel_age_end}",
         "event": "Significant emotional partnership",
         "detail": (
-            "Based on Cheiro's timing on the Heart line, a significant "
-            "emotional connection or partnership is indicated between "
-            "ages 24-30. The quality of this bond depends on the Heart "
-            "line's depth and curvature."
+            f"Based on heart line depth analysis ({heart_depth:.2f}), a significant "
+            f"emotional connection or partnership is indicated between "
+            f"ages {rel_age_start}-{rel_age_end}. "
+            f"{'The deep Heart line suggests intense, transformative love.' if heart_depth > 0.6 else 'The Heart line suggests a measured, thoughtful approach to partnership.'}"
         ),
         "category": "relationships",
     })
@@ -479,9 +606,10 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
         "predictions": predictions,
         "timing_method": TIMING_SYSTEM["description"],
         "note": (
-            "These time predictions use Cheiro's proportional timing system "
-            "applied to the detected line positions. They represent traditional "
-            "interpretive tendencies, not certainties."
+            "These time predictions use proportional timing analysis "
+            "applied to the detected line positions and fine-detail features. "
+            "They represent interpretive tendencies based on your unique palm structure, "
+            "not certainties."
         ),
     }
 
@@ -659,7 +787,7 @@ SUN_LINE_MEANINGS = {
 
 
 def build_palm_report(features: Dict[str, float], observations: Dict[str, str] | None = None) -> Dict[str, object]:
-    """Build a comprehensive Cheiro-standard palm reading report."""
+    """Build a comprehensive palm reading report using 60+ features."""
     observations = observations or {}
 
     life_length = float(features.get("life_length", 0.0))
@@ -690,24 +818,27 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     # Personality profile
     personality = build_personality_profile(hand_type, mounts, features)
 
-    # Line readings
+    # Line readings (pass full features for fine-detail interpretation)
     life_reading = _line_reading(
         "Life", line_ratios["Life"],
         float(features.get("life_curvature", 0)),
         float(features.get("life_angle", 0)),
         life_length,
+        features,
     )
     head_reading = _line_reading(
         "Head", line_ratios["Head"],
         float(features.get("head_curvature", 0)),
         float(features.get("head_angle", 0)),
         head_length,
+        features,
     )
     heart_reading = _line_reading(
         "Heart", line_ratios["Heart"],
         float(features.get("heart_curvature", 0)),
         float(features.get("heart_angle", 0)),
         heart_length,
+        features,
     )
 
     # Time predictions
@@ -727,26 +858,25 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     shared_notes = []
     if int(features.get("life_head_intersection", 0)) > 0:
         shared_notes.append(
-            "Life and Head lines are connected — traditionally read as a careful, "
+            "Life and Head lines are connected — this indicates a careful, "
             "family-influenced start with decisions shaped by responsibility. "
-            "Cheiro noted this pattern in people who take longer to find independence."
+            "People with this pattern typically take longer to achieve full independence."
         )
     if int(features.get("head_heart_intersection", 0)) > 0:
         shared_notes.append(
             "Head and Heart lines overlap — logic and emotion strongly influence each "
-            "other. Cheiro read this as a person whose feelings color their thinking "
+            "other. This is characteristic of a person whose feelings color their thinking "
             "and vice versa."
         )
     if int(features.get("life_heart_intersection", 0)) > 0:
         shared_notes.append(
             "Life and Heart lines show overlap — deep personal investment in family "
-            "and close bonds. Cheiro saw this in people whose health is affected by "
-            "emotional stress."
+            "and close bonds. Health may be affected by emotional stress."
         )
     if not shared_notes:
         shared_notes.append(
             "The three major lines are distinct — clear boundaries between energy, "
-            "thought, and feeling. Cheiro considered this a sign of a well-balanced "
+            "thought, and feeling. This is a sign of a well-balanced "
             "nature with clear self-awareness."
         )
 
@@ -763,22 +893,38 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     depth_theme = LINE_DEPTH_MEANINGS.get(line_depth, "")
     dominant_hand_theme = DOMINANT_HAND_MEANINGS.get(dominant_hand, "")
 
-    # Summary — professional Cheiro-style
+    # Summary — professional, unique per palm
+    # Build unique fine-detail snippets for summary
+    fine_highlights = []
+    total_branches = sum(int(features.get(f'{k}_branch_total', 0)) for k in ('life', 'head', 'heart'))
+    total_breaks = sum(int(features.get(f'{k}_break_count', 0)) for k in ('life', 'head', 'heart'))
+    total_fine = int(features.get('total_fine_lines', 0))
+    has_any_sister = any(features.get(f'{k}_has_sister_line', False) for k in ('life', 'head', 'heart'))
+    if total_branches > 0:
+        fine_highlights.append(f"{total_branches} branch line(s) detected")
+    if total_breaks > 0:
+        fine_highlights.append(f"{total_breaks} transition point(s) identified")
+    if total_fine > 0:
+        fine_highlights.append(f"{total_fine} minor/fine lines mapped")
+    if has_any_sister:
+        fine_highlights.append("guardian sister line present")
+    fine_highlight_text = f" Fine analysis reveals: {', '.join(fine_highlights)}." if fine_highlights else ""
+
     summary = (
-        f"🔮 **Cheiro's Analysis**: This is a {hand_type['type']} hand ({hand_type['hindi']}) "
+        f"🔮 **Professional Analysis**: This is a {hand_type['type']} hand ({hand_type['hindi']}) "
         f"with {hand_type['element']} element influence. The reading is led by the "
         f"{dominant_line.lower()} line, with the {dominant_mount.replace('_', ' ')} mount most prominent. "
-        f"Personality archetype: **{personality['archetype']}**.\n\n"
+        f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
         f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
         f"The hand reveals someone who is {'; '.join(hand_type['personality'][:3]).lower()}. "
         f"{depth_theme}"
     )
 
     guidance = [
-        "This reading follows Cheiro's complete palmistry methodology — the same system used to read hands of world leaders for 40+ years.",
-        "For a more precise reading, keep the palm flat, centered, and evenly lit so all lines and mounts are visible.",
+        "This analysis uses advanced computer vision (CLAHE + Gabor filters + CNN segmentation) to detect 60+ unique features from your palm.",
+        "For optimal accuracy, keep the palm flat, centered, and evenly lit so all lines and mounts are visible.",
         "Use the personalized chat below to ask about love, career, timing, health, personality, or any aspect of your reading.",
-        "Remember: palm lines show tendencies, not fixed destiny. Your free will writes the final chapter.",
+        "Palm lines show tendencies, not fixed destiny. Your free will writes the final chapter.",
     ]
     if detection_quality < 0.55:
         guidance.insert(1, "⚠️ Line extraction is weak. Better contrast and a palm filling more of the frame will dramatically improve the reading.")
