@@ -14,6 +14,10 @@ from utils.palmistry_engine import (
     answer_palm_question,
     build_palm_report,
 )
+from utils.palmistry_knowledge import (
+    build_professional_system_prompt,
+    get_professional_greeting,
+)
 from utils.styles import section_header, gradient_header, render_content_card, render_info_grid, MODULE_THEMES, inject_module_theme
 
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
@@ -642,41 +646,66 @@ def _render_palm_report(overlay, features, report):
     from utils.voice import render_voice_button
     import uuid
 
-    # ── Image + key metrics ──────────────────────────────────────────────────
-    c1, c2 = st.columns([1.05, 0.95])
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 1 — PALM SCAN (full-width image + key metrics)
+    # ═══════════════════════════════════════════════════════════════════════
+    st.markdown("""
+        <div style="display:flex;align-items:center;gap:14px;margin:10px 0 20px;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+            <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🖐️ Palm Scan Results</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2 = st.columns([1.2, 0.8])
     with c1:
         st.image(
             cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB),
             use_container_width=True,
-            caption="Line segmentation overlay (Life: red, Head: green, Heart: blue)",
+            caption="Line segmentation overlay (Life: red · Head: green · Heart: blue)",
         )
     with c2:
         dq = report.get("detection_quality", 1.0)
+        ht = report.get("hand_type", {})
+        personality = report.get("personality", {})
         if dq < 0.55:
             render_content_card(
                 "⚠️ Scan Quality Low",
-                "The palm lines are not fully visible. For a clearer reading: use brighter lighting, "
-                "flatten your palm against the camera, and crop tightly so the hand fills the frame.",
-                accent_color="#F59E0B",
-                icon="⚠️",
+                "Better lighting and a flatter palm will improve the reading.",
+                accent_color="#F59E0B", icon="⚠️",
             )
         render_info_grid([
+            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
+            ("Element", ht.get('element', 'Mixed')),
             ("Dominant Line", report["dominant_line"]),
-            ("Detection Quality", f"{dq:.0%}"),
+            ("Detection", f"{dq:.0%}"),
+            ("Dominant Mount", report.get('dominant_mount', 'Unknown').replace('_', ' ')),
             ("Career Shift", report["career_shift_indicator"]),
-            ("Hand Shape", report["hand_shape_label"]),
+            ("Archetype", personality.get('archetype', 'Unknown')),
+            ("Vitality", report.get('health', {}).get('overall_vitality', 'moderate').title()),
         ])
-        render_content_card(
-            "Reading Summary",
-            report["summary"],
-            accent_color="#8B5CF6",
-            icon="🔮",
-        )
-        render_voice_button(report["summary"], key_suffix=f"palm_summary_{uuid.uuid4().hex[:8]}")
 
-    st.divider()
+    # Summary card — full width
+    render_content_card(
+        "🔮 Cheiro's Reading Summary",
+        report["summary"].replace('\n', '<br>'),
+        accent_color="#8B5CF6", icon="🔮",
+    )
+    render_voice_button(report["summary"], key_suffix=f"palm_summary_{uuid.uuid4().hex[:8]}")
 
-    # ── Tabs ─────────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 2 & 3 — EXPLORATION + INTERPRETATION (tabs)
+    # ═══════════════════════════════════════════════════════════════════════
+    st.markdown("""
+        <div style="display:flex;align-items:center;gap:14px;margin:30px 0 20px;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+            <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔍 Deep Analysis</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+        </div>
+    """, unsafe_allow_html=True)
+
     line_strength_df = pd.DataFrame(
         {
             "line": list(report["line_strengths"].keys()),
@@ -684,16 +713,28 @@ def _render_palm_report(overlay, features, report):
         }
     ).set_index("line")
 
-    overview_tab, feature_tab, detail_tab = st.tabs(["✨ Reading", "📊 Feature Dashboard", "🔬 Extracted Features"])
+    # Tabbed phases
+    tab_lines, tab_mounts, tab_timing, tab_personality, tab_health, tab_features, tab_raw = st.tabs([
+        "📜 Line Interpretation",
+        "⛰️ Mount Analysis",
+        "⏳ Time Predictions",
+        "👤 Personality",
+        "💚 Health",
+        "📊 Feature Dashboard",
+        "🔬 Raw Data",
+    ])
 
-    with overview_tab:
-        st.markdown("#### Major Line Reading")
+    # ── TAB 1: LINE INTERPRETATION ──
+    with tab_lines:
         line_icons = {"Life": "❤️", "Head": "🧠", "Heart": "💙"}
         line_colors = {"Life": "#10B981", "Head": "#06B6D4", "Heart": "#EC4899"}
         for item in report["line_readings"]:
+            governs_html = "".join([f"<span style='background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;font-size:11px;color:#94A3B8;margin:2px;display:inline-block;'>{g}</span>" for g in item.get('governs', [])[:4]])
             render_content_card(
-                f"{item['line']} Line",
-                f"{item['detail']}<br><span style='color:#94A3B8; font-size:12px;'>Focus: {item['emphasis']}</span>",
+                f"{item['line']} Line ({item.get('hindi', '')})",
+                f"{item['detail']}<br><br>"
+                f"<div style='margin-top:8px;'>{governs_html}</div><br>"
+                f"<span style='color:#64748B;font-size:11px;'>Depth: {item.get('depth', 'Medium')} · Shape: {item.get('shape', '')} · Prominence: {item.get('prominence', '')}</span>",
                 accent_color=line_colors.get(item["line"], "#3B82F6"),
                 icon=line_icons.get(item["line"], "〰️"),
             )
@@ -702,38 +743,141 @@ def _render_palm_report(overlay, features, report):
         theme_cards = [
             ("🧠", "Mindset", "mindset", "#06B6D4"),
             ("❤️", "Relationships", "relationships", "#EC4899"),
-            ("⚡", "Energy", "energy", "#F59E0B"),
-            ("💼", "Career", "career", "#10B981"),
-            ("✨", "Visibility", "visibility", "#8B5CF6"),
+            ("⚡", "Energy & Vitality", "energy", "#F59E0B"),
+            ("💼", "Career & Fate", "career", "#10B981"),
+            ("✨", "Fame & Visibility", "visibility", "#8B5CF6"),
+            ("🔄", "Life Stability", "stability", "#3B82F6"),
+            ("✋", "Hand Dominance", "dominant_hand", "#F59E0B"),
+            ("📏", "Line Depth", "line_depth", "#06B6D4"),
         ]
-        for icon, title, key, color in theme_cards:
-            render_content_card(title, report["themes"][key], accent_color=color, icon=icon)
+        tc1, tc2 = st.columns(2)
+        for idx, (icon, title, key, color) in enumerate(theme_cards):
+            with tc1 if idx % 2 == 0 else tc2:
+                render_content_card(title, report["themes"].get(key, ""), accent_color=color, icon=icon)
 
-        # Pattern Notes
         notes_html = "".join([f"<div style='margin-bottom:6px;'>• {note}</div>" for note in report["shared_notes"]])
         render_content_card("Pattern Notes", notes_html, accent_color="#8B5CF6", icon="📝")
 
-        # Guidance
-        guidance_html = "".join([f"<div style='margin-bottom:6px;'>🧭 {item}</div>" for item in report["guidance"]])
-        render_content_card("Guidance", guidance_html, accent_color="#06B6D4", icon="🧭")
+    # ── TAB 2: MOUNT ANALYSIS ──
+    with tab_mounts:
+        st.markdown("#### Mount Prominence Analysis")
+        st.caption("Mounts are the fleshy pads on the palm. Each is governed by a planet and reveals personality, career, and relationship tendencies.")
+        mounts = report.get("mounts", {})
+        mount_colors = {"Jupiter": "#F59E0B", "Saturn": "#6366F1", "Sun_Apollo": "#EAB308", "Mercury": "#06B6D4", "Venus": "#EC4899", "Moon": "#8B5CF6", "Mars": "#EF4444"}
+        mc1, mc2 = st.columns(2)
+        for idx, (name, data) in enumerate(mounts.items()):
+            strength = data.get('strength', 'Unknown')
+            score = data.get('score', 0)
+            strength_color = '#10B981' if 'Well' in strength else '#F59E0B' if 'Over' in strength else '#64748B'
+            reading = data.get('reading', {})
+            personality_text = ""
+            if isinstance(reading, dict):
+                p = reading.get('personality', '')
+                if isinstance(p, list):
+                    personality_text = '<br>'.join([f"• {t}" for t in p[:3]])
+                else:
+                    personality_text = str(p)
+            else:
+                personality_text = str(reading)
+            bar_width = int(score * 100)
+            mount_html = (
+                f"<div style='margin-bottom:4px;'>"
+                f"<span style='color:{strength_color};font-weight:700;'>{strength}</span> "
+                f"<span style='color:#64748B;'>(Score: {score})</span></div>"
+                f"<div style='background:rgba(255,255,255,0.05);border-radius:8px;height:8px;margin:8px 0;'>"
+                f"<div style='background:{mount_colors.get(name, '#3B82F6')};height:100%;border-radius:8px;width:{bar_width}%;'></div></div>"
+                f"<div style='font-size:12px;color:#CBD5E1;line-height:1.6;'>{personality_text[:300]}</div>"
+            )
+            with mc1 if idx % 2 == 0 else mc2:
+                render_content_card(f"{name.replace('_', ' ')} Mount", mount_html, accent_color=mount_colors.get(name, "#3B82F6"), icon="⛰️")
 
-    with feature_tab:
+    # ── TAB 3: TIME PREDICTIONS ──
+    with tab_timing:
+        st.markdown("#### Cheiro's Time Predictions")
+        st.caption("Based on Cheiro's proportional timing system applied to your detected line positions.")
+        timing = report.get("timing", {})
+        cat_icons = {"life_transition": "🔄", "career": "💼", "health_energy": "⚡", "relationships": "💕", "spiritual": "🔮"}
+        cat_colors = {"life_transition": "#3B82F6", "career": "#10B981", "health_energy": "#F59E0B", "relationships": "#EC4899", "spiritual": "#8B5CF6"}
+        for pred in timing.get("predictions", []):
+            cat = pred.get("category", "life_transition")
+            render_content_card(
+                f"{pred.get('period', '')} — {pred.get('event', '')}",
+                pred.get('detail', ''),
+                accent_color=cat_colors.get(cat, "#3B82F6"),
+                icon=cat_icons.get(cat, "📅"),
+            )
+        render_content_card("⚠️ Note", timing.get("note", ""), accent_color="#64748B", icon="ℹ️")
+
+    # ── TAB 4: PERSONALITY ──
+    with tab_personality:
+        st.markdown("#### Personality Profile")
+        personality = report.get("personality", {})
+        ht = report.get("hand_type", {})
+        render_info_grid([
+            ("Archetype", personality.get('archetype', 'Unknown')),
+            ("Hand Type", f"{ht.get('type', 'Mixed')} ({ht.get('hindi', '')})"),
+            ("Element", ht.get('element', 'Mixed')),
+            ("Dominant Mount", personality.get('dominant_mount', 'Unknown')),
+        ])
+        render_content_card(
+            "Archetype Description",
+            personality.get('description', ''),
+            accent_color="#8B5CF6", icon="👤",
+        )
+        traits_html = "".join([f"<div style='margin-bottom:6px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border-left:3px solid #3B82F6;'>• {t}</div>" for t in personality.get('core_traits', [])[:8]])
+        render_content_card("Core Character Traits", traits_html, accent_color="#06B6D4", icon="✨")
+        render_content_card(
+            "Hand Type Profile",
+            ht.get('description', ''),
+            accent_color="#F59E0B", icon="✋",
+        )
+        career_html = ", ".join(ht.get('career', [])[:8])
+        render_content_card("Career Aptitude", career_html, accent_color="#10B981", icon="💼")
+        render_content_card("Relationship Style", ht.get('relationships', ''), accent_color="#EC4899", icon="💕")
+
+    # ── TAB 5: HEALTH ──
+    with tab_health:
+        st.markdown("#### Health & Vitality Assessment")
+        health = report.get("health", {})
+        vitality = health.get('overall_vitality', 'moderate').title()
+        vitality_color = '#10B981' if 'Strong' in vitality else '#F59E0B' if 'Sensitive' in vitality else '#3B82F6'
+        render_info_grid([("Overall Vitality", vitality)])
+        for ind in health.get("indicators", []):
+            assessment = ind.get('assessment', 'Unknown')
+            a_color = '#10B981' if assessment in ('Strong', 'Stable', 'Balanced') else '#F59E0B'
+            render_content_card(
+                f"{ind.get('area', '')} — {assessment}",
+                ind.get('detail', ''),
+                accent_color=a_color, icon="💚",
+            )
+        render_content_card("Medical Disclaimer", health.get('disclaimer', ''), accent_color="#EF4444", icon="⚕️")
+
+    # ── TAB 6: FEATURE DASHBOARD ──
+    with tab_features:
         st.caption("Detected line balance")
         st.bar_chart(line_strength_df, height=260)
-        st.caption("Palm-reading prompts")
+        st.caption("Palm-reading prompts — ask these in the chatbot below")
         for question in report["questions"]:
             st.markdown(f"- {question}")
 
-    with detail_tab:
+        guidance_html = "".join([f"<div style='margin-bottom:6px;'>🧭 {item}</div>" for item in report["guidance"]])
+        render_content_card("Guidance", guidance_html, accent_color="#06B6D4", icon="🧭")
+
+    # ── TAB 7: RAW DATA ──
+    with tab_raw:
         st.json(
             {
                 "report": {
                     "dominant_line": report["dominant_line"],
                     "dominant_strength_pct": report["dominant_strength_pct"],
                     "detection_quality": report["detection_quality"],
+                    "hand_type": report.get("hand_type", {}).get("type", "Unknown"),
+                    "archetype": report.get("personality", {}).get("archetype", "Unknown"),
                     "observations": report["observations"],
                 },
                 "features": {k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()},
+                "timing_predictions": [{"period": p["period"], "event": p["event"]} for p in report.get("timing", {}).get("predictions", [])],
+                "mount_scores": {k: v.get("score", 0) for k, v in report.get("mounts", {}).items()},
             }
         )
 
@@ -757,12 +901,21 @@ def load_palm_model(device):
 
 def _palm_module():
     section_header(
-        "Palm Reading Extraction",
-        "Book-guided line analysis with camera snapshot fallback and live low-latency prediction",
+        "Cheiro's Palm Reading",
+        "Professional palmistry analysis based on Count Louis Hamon's 40+ year methodology · Line detection · Mount analysis · Time predictions",
     )
-    st.info(
-        "Use `Camera Snapshot` if live WebRTC gives STUN trouble. The palm tutor will use the latest saved scan for personalized questions."
-    )
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(245,158,11,0.1));
+                    border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 16px 20px;
+                    margin-bottom: 20px;">
+            <span style="font-size: 16px;">🔮</span>
+            <span style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 14px;">
+                Upload or capture your palm image for a complete Cheiro-style reading covering
+                <strong>personality, career, love, health, timing</strong>, and more.
+                Use Camera Snapshot if live WebRTC gives STUN trouble.
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
     src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
     observations = DEFAULT_OBSERVATIONS
 
@@ -927,21 +1080,14 @@ def _render_cv_tutor(module_key, topic_label):
     if module_key == "palm" and st.session_state.get("palm_latest_report"):
         palm_report = st.session_state["palm_latest_report"]
         render_chatbot(
-            "palm reading analysis for the latest scanned hand",
+            "Cheiro's complete palm reading analysis — hand type, lines, mounts, timing, health, personality",
             context_payload=palm_report.get("chat_context"),
-            system_prompt=(
-                "You are a mystical yet grounded palmistry guide. You interpret palm lines as a rich tradition "
-                "of self-reflection, not as fixed fate. Use evocative, poetic language while always grounding "
-                "your answers in the actual scan data provided. Frame every reading as interpretive tradition."
-            ),
+            system_prompt=build_professional_system_prompt(),
             fallback_builder=lambda question: answer_palm_question(question, palm_report),
-            greeting=(
-                "🖐️ I have your palm scan ready. The lines speak of patterns, not certainties. "
-                "Ask me about your career path, relationships, mindset, or the energy your hand reveals."
-            ),
+            greeting=get_professional_greeting(),
             theme=MODULE_THEMES["opencv"],
-            tutor_label="PALMISTRY GUIDE 🖐️",
-            placeholder="Ask about your palm reading...",
+            tutor_label="CHEIRO'S PALMISTRY MASTER 🖐️",
+            placeholder="Ask about career, love, timing, health, personality, fortune...",
         )
         return
 

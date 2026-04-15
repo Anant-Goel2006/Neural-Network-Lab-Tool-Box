@@ -132,11 +132,19 @@ def render_chatbot(
             )
 
             payload_text = _stringify_context(context_payload)
+            # Detect palm reading mode for longer, more professional responses
+            is_palm = "palm" in context_description.lower() or "cheiro" in (system_prompt or "").lower()
+            instruction = (
+                "Give a detailed, professional palm reading response with specific insights, "
+                "timing predictions, and practical advice. Use 6 to 15 rich sentences."
+            ) if is_palm else (
+                "Answer as a patient expert tutor in 3 to 6 clear sentences."
+            )
             full_prompt = (
                 f"Context Description: {context_description}\n"
                 f"Current Module State:\n{payload_text or 'No structured state was supplied.'}\n\n"
                 f"User Question: {prompt}\n"
-                "Answer as a patient expert tutor in 3 to 6 clear sentences."
+                f"{instruction}"
             )
 
             with chat_container:
@@ -152,7 +160,7 @@ def render_chatbot(
                                 "You are a brilliant AI tutor in a neural network lab. "
                                 "Use simple analogies for beginners and stay grounded in the supplied context."
                             ),
-                            max_tokens=320,
+                            max_tokens=800 if is_palm else 400,
                         )
 
                         if not response and fallback_builder is not None:
