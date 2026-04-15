@@ -45,7 +45,7 @@ else:
     RTC_CONFIG_LOCAL = None
     RTC_CONFIG_STUN = None
 
-LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "🔴 Live WebRTC", "📹 Video File"]
+LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "📹 Video File"]
 LIVE_MEDIA_STREAM_CONSTRAINTS = {
     "video": {
         "width": {"ideal": 640},
@@ -1482,7 +1482,7 @@ def _palm_module():
         segmentation_mask = np.zeros((h, w), dtype=np.uint8)
         
         # 1. LANDMARK DETECTION
-        mp_hands = mp.solutions.hands
+        import mediapipe.python.solutions.hands as mp_hands
         with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.1) as hands:
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
