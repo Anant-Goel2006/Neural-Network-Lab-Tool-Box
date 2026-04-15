@@ -1793,6 +1793,25 @@ def _palm_module():
                     st.image(cv2.cvtColor(steps["lines"], cv2.COLOR_BGR2RGB), use_container_width=True,
                              caption="Life (red) · Head (green) · Heart (blue)")
 
+                # ── Expert Deep Dive Inspection ──
+                st.markdown("""
+                    <div style="display:flex;align-items:center;gap:14px;margin:30px 0 20px;">
+                        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+                        <span style="font-size:13px;color:#06B6D4;letter-spacing:3px;
+                            font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔬 Expert Deep Dive</span>
+                        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                inspection_crops = report.get("inspection_crops", [])
+                if inspection_crops:
+                    cols = st.columns(len(inspection_crops))
+                    for i, crop_data in enumerate(inspection_crops):
+                        with cols[i]:
+                            st.image(cv2.cvtColor(crop_data["image"], cv2.COLOR_BGR2RGB), use_container_width=True)
+                            st.markdown(f"<div style='font-size:11px; font-weight:700; color:#06B6D4; text-transform:uppercase; text-align:center;'>{crop_data['name']}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='font-size:10px; color:#94A3B8; text-align:center; line-height:1.2;'>{crop_data['description']}</div>", unsafe_allow_html=True)
+
             st.session_state["palm_latest_report"] = report
             st.session_state["palm_latest_features"] = features
             st.session_state["palm_latest_summary"] = report["summary"]
