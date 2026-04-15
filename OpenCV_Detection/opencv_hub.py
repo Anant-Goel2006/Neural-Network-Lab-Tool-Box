@@ -1221,7 +1221,7 @@ def _render_palm_report(overlay, features, report):
         for item in report["line_readings"]:
             governs_html = "".join([f"<span style='background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;font-size:11px;color:#94A3B8;margin:2px;display:inline-block;'>{g}</span>" for g in item.get('governs', [])[:4]])
             render_content_card(
-                f"{item['line']} Line ({item.get('hindi', '')})",
+                f"{item['line']} Line",
                 f"{item['detail']}<br><br>"
                 f"<div style='margin-top:8px;'>{governs_html}</div><br>"
                 f"<span style='color:#64748B;font-size:11px;'>Depth: {item.get('depth', 'Medium')} · Shape: {item.get('shape', '')} · Prominence: {item.get('prominence', '')}</span>",
@@ -1368,7 +1368,7 @@ def _render_palm_report(overlay, features, report):
         ht = report.get("hand_type", {})
         render_info_grid([
             ("Archetype", personality.get('archetype', 'Unknown')),
-            ("Hand Type", f"{ht.get('type', 'Mixed')} ({ht.get('hindi', '')})"),
+            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
             ("Element", ht.get('element', 'Mixed')),
             ("Dominant Mount", personality.get('dominant_mount', 'Unknown')),
         ])
@@ -1504,74 +1504,132 @@ def _palm_module():
 
     def _palm_cb(img):
         h, w = img.shape[:2]
-        segmentation_mask = np.zeros((h, w), dtype=np.uint8)
 
         # 1. LANDMARK DETECTION via MediaPipe Tasks API
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
         result = landmarker.detect(mp_image)
 
-        if result.hand_landmarks:
-            landmarks = result.hand_landmarks[0]
-            def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
+        if not result.hand_landmarks:
+            # No hand found — still run basic pipeline on full image
+            segmentation_mask = np.zeros((h, w), dtype=np.uint8)
+            enhanced_line_map, _ = enhance_palm_image(img)
+            overlay_img = create_palm_overlay(img, segmentation_mask, enhanced_line_map)
+            features = extract_palm_features(segmentation_mask, raw_image=img)
+            report = build_palm_report(features, observations)
+            return overlay_img, segmentation_mask, features, report
 
-            wrist = get_pt(0)
-            thumb_base = get_pt(2)
-            index_base = get_pt(5)
-            middle_base = get_pt(9)
-            ring_base = get_pt(13)
-            pinky_side = get_pt(18)
+        landmarks = result.hand_landmarks[0]
+        def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
 
-            # 2. ROI EXTRACTION & CREASE MASKING
-            palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
-            palm_mask = np.zeros((h, w), dtype=np.uint8)
-            cv2.fillPoly(palm_mask, [palm_poly], 255)
-            palm_mask = cv2.erode(palm_mask, np.ones((7, 7), np.uint8), iterations=1)
+        # Get all 21 landmark points
+        all_pts = [get_pt(i) for i in range(21)]
+        xs = [p[0] for p in all_pts]
+        ys = [p[1] for p in all_pts]
 
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-            enhanced = clahe.apply(gray)
+        # ── AUTO-CROP: zoom into palm region with generous padding ──
+        pad = int(max(max(xs) - min(xs), max(ys) - min(ys)) * 0.15)
+        x_min = max(0, min(xs) - pad)
+        x_max = min(w, max(xs) + pad)
+        y_min = max(0, min(ys) - pad)
+        y_max = min(h, max(ys) + pad)
+        crop = img[y_min:y_max, x_min:x_max]
 
-            inv = cv2.bitwise_not(enhanced)
-            blur = cv2.GaussianBlur(inv, (5, 5), 0)
-            edges = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
-            lines_mask = cv2.bitwise_and(edges, edges, mask=palm_mask)
-            lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+        # ── UPSCALE small crops so faint lines become detectable ──
+        ch, cw = crop.shape[:2]
+        target_size = 800
+        scale = max(1.0, target_size / max(ch, cw))
+        if scale > 1.0:
+            crop = cv2.resize(crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_CUBIC)
+        uh, uw = crop.shape[:2]
 
-            # 3. ANATOMICAL LINE SEGMENTATION (1=Life, 2=Head, 3=Heart)
-            y_indices, x_indices = np.where(palm_mask > 0)
-            if len(y_indices) > 0:
-                pts = np.vstack((x_indices, y_indices)).T
+        # Re-project landmarks into the cropped/upscaled coordinate space
+        def crop_pt(idx):
+            return np.array([int((landmarks[idx].x * w - x_min) * scale),
+                             int((landmarks[idx].y * h - y_min) * scale)])
 
-                def pt_to_segment_dist(p, a, b):
-                    ab = (b - a).astype(float)
-                    ap = (p - a).astype(float)
-                    ab_norm = np.linalg.norm(ab)
-                    if ab_norm == 0:
-                        return np.linalg.norm(ap, axis=1)
-                    t = np.sum(ap * ab, axis=1) / (ab_norm ** 2)
-                    t = np.clip(t, 0, 1)
-                    proj = a.astype(float) + t[:, np.newaxis] * ab
-                    return np.linalg.norm(p - proj, axis=1)
+        wrist = crop_pt(0)
+        thumb_base = crop_pt(2)
+        index_base = crop_pt(5)
+        middle_base = crop_pt(9)
+        ring_base = crop_pt(13)
+        pinky_side = crop_pt(18)
 
-                d_life = pt_to_segment_dist(pts, (index_base + wrist) // 2, wrist)
-                d_heart = pt_to_segment_dist(pts, (index_base + middle_base) // 2, pinky_side)
-                d_head = pt_to_segment_dist(pts, index_base, (pinky_side + wrist) // 2)
+        # 2. ROI EXTRACTION & CREASE MASKING on the upscaled crop
+        palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
+        palm_mask = np.zeros((uh, uw), dtype=np.uint8)
+        cv2.fillPoly(palm_mask, [palm_poly], 255)
+        palm_mask = cv2.erode(palm_mask, np.ones((5, 5), np.uint8), iterations=1)
 
-                dists = np.vstack((d_life, d_head, d_heart)).T
-                labels = np.argmin(dists, axis=1) + 1  # 1: life, 2: head, 3: heart
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
 
-                for i, (x, y) in enumerate(pts):
-                    if lines_mask[y, x] > 0:
-                        segmentation_mask[y, x] = labels[i]
+        # ── MULTI-PASS ENHANCEMENT for faint lines ──
+        # Pass 1: Strong CLAHE
+        clahe_strong = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(6, 6))
+        enhanced_strong = clahe_strong.apply(gray)
+        # Pass 2: Mild CLAHE (catches different contrast levels)
+        clahe_mild = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(12, 12))
+        enhanced_mild = clahe_mild.apply(gray)
+        # Combine: take the max enhancement
+        enhanced = np.maximum(enhanced_strong, enhanced_mild)
 
-        mask = segmentation_mask
-        # Advanced: enhance raw image and extract 60+ features
+        # ── MORPHOLOGICAL BLACK-HAT: extracts dark creases from bright skin ──
+        blackhat_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+        blackhat = cv2.morphologyEx(enhanced, cv2.MORPH_BLACKHAT, blackhat_kernel)
+        blackhat = cv2.bitwise_and(blackhat, blackhat, mask=palm_mask)
+
+        # ── ADAPTIVE THRESHOLD on inverted enhanced image ──
+        inv = cv2.bitwise_not(enhanced)
+        blur = cv2.GaussianBlur(inv, (5, 5), 0)
+        edges_adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
+        edges_adapt = cv2.bitwise_and(edges_adapt, edges_adapt, mask=palm_mask)
+
+        # ── THRESHOLD on blackhat (catches even the faintest creases) ──
+        _, bh_thresh = cv2.threshold(blackhat, 15, 255, cv2.THRESH_BINARY)
+        bh_thresh = cv2.bitwise_and(bh_thresh, bh_thresh, mask=palm_mask)
+
+        # ── COMBINE both detection passes ──
+        lines_mask = cv2.bitwise_or(edges_adapt, bh_thresh)
+        lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+        # Remove tiny noise specks
+        lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+
+        # 3. ANATOMICAL LINE SEGMENTATION (1=Life, 2=Head, 3=Heart)
+        segmentation_mask = np.zeros((uh, uw), dtype=np.uint8)
+        y_indices, x_indices = np.where(palm_mask > 0)
+        if len(y_indices) > 0:
+            pts = np.vstack((x_indices, y_indices)).T
+
+            def pt_to_segment_dist(p, a, b):
+                ab = (b - a).astype(float)
+                ap = (p - a).astype(float)
+                ab_norm = np.linalg.norm(ab)
+                if ab_norm == 0:
+                    return np.linalg.norm(ap, axis=1)
+                t = np.sum(ap * ab, axis=1) / (ab_norm ** 2)
+                t = np.clip(t, 0, 1)
+                proj = a.astype(float) + t[:, np.newaxis] * ab
+                return np.linalg.norm(p - proj, axis=1)
+
+            d_life = pt_to_segment_dist(pts, (index_base + wrist) // 2, wrist)
+            d_heart = pt_to_segment_dist(pts, (index_base + middle_base) // 2, pinky_side)
+            d_head = pt_to_segment_dist(pts, index_base, (pinky_side + wrist) // 2)
+
+            dists = np.vstack((d_life, d_head, d_heart)).T
+            labels = np.argmin(dists, axis=1) + 1  # 1=life, 2=head, 3=heart
+
+            for i, (x, y) in enumerate(pts):
+                if lines_mask[y, x] > 0:
+                    segmentation_mask[y, x] = labels[i]
+
+        # ── DOWNSCALE segmentation back to original image size for overlay ──
+        mask_full = cv2.resize(segmentation_mask, (w, h), interpolation=cv2.INTER_NEAREST)
+
         enhanced_line_map, _ = enhance_palm_image(img)
-        overlay_img = create_palm_overlay(img, mask, enhanced_line_map)
-        features = extract_palm_features(mask, raw_image=img)
+        overlay_img = create_palm_overlay(img, mask_full, enhanced_line_map)
+        features = extract_palm_features(mask_full, raw_image=img)
         report = build_palm_report(features, observations)
-        return overlay_img, mask, features, report
+        return overlay_img, mask_full, features, report
 
     def _live_frame_overlay(img):
         small_img = cv2.resize(img, (384, 288))

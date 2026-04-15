@@ -97,7 +97,6 @@ def classify_hand_type(features: Dict[str, float], observations: Optional[Dict[s
             ht = HAND_TYPES[cheiro_type]
             return {
                 "type": cheiro_type,
-                "hindi": ht["hindi"],
                 "description": ht["description"],
                 "personality": ht["personality"],
                 "career": ht["career"],
@@ -146,7 +145,6 @@ def classify_hand_type(features: Dict[str, float], observations: Optional[Dict[s
     ht = HAND_TYPES[inferred]
     return {
         "type": inferred,
-        "hindi": ht["hindi"],
         "description": ht["description"],
         "personality": ht["personality"],
         "career": ht["career"],
@@ -413,7 +411,7 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
 
     return {
         "line": line_name,
-        "hindi": line_data.get("hindi", ""),
+
         "prominence": prominence,
         "shape": shape,
         "depth": depth,
@@ -911,7 +909,7 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     fine_highlight_text = f" Fine analysis reveals: {', '.join(fine_highlights)}." if fine_highlights else ""
 
     summary = (
-        f"🔮 **Professional Analysis**: This is a {hand_type['type']} hand ({hand_type['hindi']}) "
+        f"🔮 **Professional Analysis**: This is a {hand_type['type']} hand "
         f"with {hand_type['element']} element influence. The reading is led by the "
         f"{dominant_line.lower()} line, with the {dominant_mount.replace('_', ' ')} mount most prominent. "
         f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
@@ -946,7 +944,7 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         "dominant_strength_pct": round(line_ratios.get(dominant_line, 0.0) * 100, 1) if dominant_line != "Unknown" else 0.0,
         "detection_quality": round(detection_quality, 2),
         "hand_type": hand_type,
-        "hand_shape_label": f"{hand_type['type']} ({hand_type['hindi']})",
+        "hand_shape_label": f"{hand_type['type']}",
         "personality": personality,
         "career_shift_indicator": career_shift,
         "line_readings": [life_reading, head_reading, heart_reading],
@@ -992,14 +990,14 @@ def palm_report_to_chat_context(report: Dict[str, object]) -> str:
     for item in report.get("line_readings", []):
         governs = ", ".join(item.get("governs", [])[:3])
         line_bits.append(
-            f"{item['line']} line ({item.get('hindi', '')}): {item['detail']} "
+            f"{item['line']} line: {item['detail']} "
             f"Governs: {governs}. Timing: {item.get('timing_method', 'N/A')[:200]}"
         )
 
     # Hand type context
     ht = report.get("hand_type", {})
     hand_ctx = (
-        f"Hand Type: {ht.get('type', 'Unknown')} ({ht.get('hindi', '')}) — "
+        f"Hand Type: {ht.get('type', 'Unknown')} — "
         f"{ht.get('description', '')[:300]} "
         f"Career aptitude: {', '.join(ht.get('career', [])[:5])}. "
         f"Relationships: {ht.get('relationships', '')[:200]}"
@@ -1149,7 +1147,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         traits = "\n".join([f"• {t}" for t in personality.get("core_traits", [])[:6]])
         return (
             f"👤 **Personality Profile (Cheiro's Classification)**\n\n"
-            f"**Hand Type**: {ht.get('type', 'Mixed')} ({ht.get('hindi', '')})\n"
+            f"**Hand Type**: {ht.get('type', 'Mixed')}\n"
             f"**Element**: {ht.get('element', 'Mixed')}\n"
             f"**Archetype**: {personality.get('archetype', 'Unknown')}\n"
             f"**Dominant Mount**: {personality.get('dominant_mount', 'Unknown')}\n\n"
@@ -1163,7 +1161,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
     if any(w in q for w in ("shape", "element", "earth", "air", "fire", "water", "hand type", "square", "conic")):
         return (
             f"✋ **Hand Type Analysis (Cheiro's 7-Type System)**\n\n"
-            f"**Your Hand Type**: {ht.get('type', 'Mixed')} ({ht.get('hindi', '')})\n\n"
+            f"**Your Hand Type**: {ht.get('type', 'Mixed')}\n\n"
             f"{ht.get('description', '')}\n\n"
             f"**Element**: {ht.get('element', 'Mixed')}\n\n"
             f"**Key Personality Traits**:\n"
