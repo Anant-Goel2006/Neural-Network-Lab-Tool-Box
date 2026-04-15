@@ -1,6 +1,6 @@
 import json
 
-import streamlit.components.v1 as components
+import streamlit as st
 
 
 def render_voice_button(text_to_speak, key_suffix=""):
@@ -164,4 +164,4 @@ def render_voice_button(text_to_speak, key_suffix=""):
     </script>
     """
 
-    components.html(html_code, height=86)
+    st.html(html_code)

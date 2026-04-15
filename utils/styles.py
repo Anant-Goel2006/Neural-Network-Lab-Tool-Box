@@ -1,7 +1,6 @@
 import streamlit as st
 import time
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
 import base64
 import os
 
@@ -530,7 +529,7 @@ def inject_global_css():
     """, unsafe_allow_html=True)
     
     # ── INJECT ELECTRIFYING NEURONS LIVE CANVAS ──
-    components.html("""
+    st.html("""
         <script>
             const parentDoc = window.parent.document;
             const oldCanvas = parentDoc.getElementById('neuro-bg-canvas');
@@ -696,7 +695,7 @@ def inject_global_css():
                 }
                 parentDoc.defaultView.requestAnimationFrame(animate);
         </script>
-    """, height=0, width=0)
+    """)
 
 def section_header(title, subtitle):
     st.markdown(f"""
