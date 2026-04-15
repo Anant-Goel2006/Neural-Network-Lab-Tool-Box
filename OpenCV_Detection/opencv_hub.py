@@ -1646,7 +1646,18 @@ def _palm_module():
 
         # ═══ STEP 4: BUILD FULL ANALYSIS ═══
         mask_full = cv2.resize(segmentation_mask, (w, h), interpolation=cv2.INTER_NEAREST)
+
+        # Build a palm-only ROI mask on the original image so overlay shows lines ONLY on the palm
+        orig_pts = [get_pt(i) for i in [0, 2, 5, 9, 13, 17]]
+        palm_roi = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillPoly(palm_roi, [np.array(orig_pts, dtype=np.int32)], 255)
+        # Expand slightly to catch edges
+        palm_roi = cv2.dilate(palm_roi, np.ones((15, 15), np.uint8), iterations=1)
+
+        # Run enhanced line detection but MASK to palm region only
         enhanced_line_map, _ = enhance_palm_image(img)
+        enhanced_line_map = cv2.bitwise_and(enhanced_line_map, enhanced_line_map, mask=palm_roi)
+
         overlay_img = create_palm_overlay(img, mask_full, enhanced_line_map)
         features = extract_palm_features(mask_full, raw_image=img)
         report = build_palm_report(features, observations)

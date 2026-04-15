@@ -164,4 +164,4 @@ def render_voice_button(text_to_speak, key_suffix=""):
     </script>
     """
 
-    st.html(html_code)
+    st.html(html_code, height=100)
