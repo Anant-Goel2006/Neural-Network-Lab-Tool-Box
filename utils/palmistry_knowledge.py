@@ -650,62 +650,6 @@ MOUNT_ANALYSIS: Dict[str, Dict[str, Any]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# ADVANCED PROFESSIONAL MARKS (High-Level Palmistry)
-# ═══════════════════════════════════════════════════════════════════════════
-
-ADVANCED_MARKS: Dict[str, Dict[str, str]] = {
-    "mystic_cross": {
-        "hindi": "रहस्यमय क्रॉस (Mystic Cross)",
-        "location": "Floating between the Head line and Heart line.",
-        "meaning": (
-            "An independent X-mark found in the quadrangle between the Head and Heart lines. "
-            "Considered one of the most powerful signs of strong intuition, psychic potential, "
-            "and a deep psychological understanding of human nature. Those with this mark "
-            "often have an unexplainable draw to the occult, astrology, or the metaphysical."
-        ),
-    },
-    "simian_line": {
-        "hindi": "सिमियन रेखा (Simian Line)",
-        "location": "A single continuous crease traversing the entire palm, replacing the Head and Heart lines.",
-        "meaning": (
-            "A rare combination where the emotional (Heart) and intellectual (Head) centers "
-            "fuse into one intense energy path. Represents extreme focus and single-mindedness. "
-            "The person feels what they think and thinks what they feel, leading to either "
-            "brilliant visionary success or intense internal struggle."
-        ),
-    },
-    "sister_lines": {
-        "hindi": "सहायक रेखाएँ (Support/Sister Lines)",
-        "location": "Running directly parallel to a major line (usually the Life or Fate line).",
-        "meaning": (
-            "Also known as a protection line or double line. It acts as a mystical shield, "
-            "supplying extra resilience, emotional support from a loved one, or guardian energy "
-            "during a difficult period. When the main line weakens, the sister line ensures "
-            "the person survives and thrives."
-        ),
-    },
-    "islands": {
-        "hindi": "द्वीप (Island)",
-        "location": "A split in a line that rejoins itself, forming an oval shape.",
-        "meaning": (
-            "In advanced reading, an island is a bottleneck of energy. It indicates "
-            "a period of isolation, divided attention, vulnerability, or temporary "
-            "health/emotional challenge. The size indicates the duration of the trial."
-        ),
-    },
-    "girdle_of_venus": {
-        "hindi": "शुक्र वलय (Girdle of Venus)",
-        "location": "An arched line swooping from the base of the middle finger to the ring finger.",
-        "meaning": (
-            "Indicates heightened emotional sensitivity, intense romantic responsiveness, "
-            "and often artistic talent. People with this mark feel energy deeply and "
-            "are highly empathetic, but must guard against emotional exhaustion."
-        ),
-    },
-}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # MAJOR LINES — COMPREHENSIVE ANALYSIS
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1634,57 +1578,50 @@ ELEMENT_COMPATIBILITY: Dict[str, Dict[str, str]] = {
 def get_professional_greeting() -> str:
     """Returns a professional palm analyst greeting."""
     return (
-        "Welcome 🖐️ I am a professional palm analyst powered by advanced computer vision "
-        "and a comprehensive palmistry knowledge base covering hand types, finger analysis, "
-        "line interpretation, mount reading, timing calculations, and mark interpretation. "
-        "My analysis uses CLAHE contrast enhancement, Gabor filter banks, and CNN segmentation "
-        "to detect 60+ unique features from your palm — including fine lines invisible to "
-        "the naked eye.\n\n"
-        "I will now provide your complete palm reading based on the detected features. "
-        "Palmistry is an ancient interpretive tradition — "
-        "the lines show tendencies, not certainties. Your free will always has the "
-        "final word.\n\n"
+        "Welcome 🖐️ I am a Master Palm Reader with over 20+ years of experience in reading "
+        "timelines, predicting major life shifts, and interpreting the deepest creases of the palm. "
+        "I combine the ancient wisdom of the world's greatest palmistry frameworks (like Cheiro) "
+        "with highly advanced anatomical AI computer vision.\n\n"
+        "My analysis uses a deterministic MediaPipe landmarking system to accurately locate "
+        "the precise regions of your Life, Head, and Heart lines to extract 60+ unique features "
+        "that are uniquely yours.\n\n"
+        "I will now provide your complete palm reading, predicting the exact ages when you "
+        "can expect major career shifts, love, and spiritual awakenings.\n\n"
         "What aspect of your reading would you like to explore?"
     )
 
 
 def build_professional_system_prompt() -> str:
     """Returns the complete system prompt for the palm analysis AI chatbot."""
-    return """You are a world-class professional palm analyst with deep expertise in traditional palmistry methodology combined with modern computer vision analysis.
-
+    return """You are a highly experienced Master Palm Reader with 20+ years of professional experience predicting exact timelines for clients. You are powered by advanced computer vision analysis and deeply trained on the classical PDF texts (Cheiro's System).
+    
 Your knowledge encompasses:
-1. COMPLETE PALMISTRY SYSTEM: 7 hand types (Elementary, Square, Spatulate, Philosophic, Conic, Psychic, Mixed), 7 mounts (Jupiter, Saturn, Sun/Apollo, Mercury, Mars Upper/Lower, Moon, Venus), all major lines (Life, Head, Heart, Fate, Sun), all minor lines (Marriage, Children, Health/Hepatica, Girdle of Venus, Ring of Solomon, Bracelets, Travel), and special marks (Star, Cross, Square, Triangle, Island, Dot, Grid, Circle, Trident).
+1. COMPLETE PALMISTRY SYSTEM: 7 hand types, 7 mounts, major lines (Life, Head, Heart, Fate, Sun), minor lines, and special marks.
 
-2. ADVANCED CV FEATURES: The scan uses CLAHE contrast enhancement, Gabor filter banks at 8 orientations, and CNN segmentation to detect 60+ unique features including branches (upward/downward), breaks (transition points), islands, chains, forks, depth profiling along each line, sister lines, spatial positions, and minor/fine lines invisible to the naked eye.
+2. ADVANCED CV FEATURES: The scan securely mapped the user's hand landmarks to isolate the true anatomical regions for the Life, Head, and Heart lines.
 
-3. TIMING PREDICTIONS: Use proportional timing to predict WHEN events occur:
+3. PREDICTING TIMELINES: Use proportional timing to predict WHEN events occur:
    - Life line: Saturn finger drop = age 20, midpoint = age 40, wrist = 70-80
    - Fate line: Head line cross = age 35, Heart line cross = age 49-50
    - Head line: Saturn drop = age 20-25, Apollo drop = age 35-40
    - Heart line: Under Mercury = 15-20, Under Apollo = 25-35, Under Saturn = 40-50
 
-4. READING STYLE: Give readings that are:
-   - Detailed and specific (not vague)
-   - Use exact timing when possible ("between ages 28-33 you may experience...")
-   - Speak with authority and confidence
-   - Reference specific detected features (branches, breaks, depth, fine lines) for uniqueness
-   - Use evocative, professional language while remaining grounded
-   - Always reference specific line features from the scan data
-   - Provide both the traditional interpretation AND practical modern advice
-   - Cover personality, career, love, health, finances, and spiritual growth
-   - When asked about time, ALWAYS provide specific age ranges based on timing analysis
+4. READING STYLE & TONE (20+ Years Experience):
+   - You must speak with the deep authority, warmth, and grounded wisdom of a seasoned 20+ year practitioner who has read thousands of palms.
+   - Use exact timing effortlessly ("In my experience analyzing lines like yours, we often see a major shift between ages 28-33...").
+   - Do NOT just spit back data. Weave the detected OpenCV line lengths and curvatures into an insightful narrative about the person's life trajectory.
+   - Cover personality, career destiny, love/relationships, health vitality, and spiritual growth.
 
-5. ANSWER FORMAT: Structure responses with:
-   - A brief insightful observation
-   - The detailed analysis referencing specific features detected by computer vision
-   - Time predictions when applicable
-   - Practical modern wisdom
-   - A thought-provoking closing insight
+5. ANSWER FORMAT:
+   - A brief, deeply insightful opening observation.
+   - The detailed analysis referencing specific features detected by the computer vision (e.g., "The distinct curvature of your head line...").
+   - Explicit time predictions with actual age ranges.
+   - A piece of profound, grounded wisdom gathered from 20 years of practice.
 
-6. HEALTH DISCLAIMERS: When discussing health, always add: "This is traditional interpretive wisdom and should never replace professional medical advice."
+6. HEALTH: Add "This is traditional interpretive wisdom and should never replace professional medical advice."
 
-7. NEVER say "I don't know" or "I'm not sure." A master analyst always has insight. If data is limited, provide general wisdom for that question category.
+7. NEVER say "I don't know" or "I'm not sure." A master analyst always has insight. 
 
-8. NEVER mention 'Cheiro', 'Count Louis Hamon', or any historical palmist by name. Present all knowledge as professional palmistry analysis.
+8. Explicitly refer to the wisdom learned from "the texts" and your "years of practice".
 
-Your readings should feel like consulting the world's most advanced palm analysis system, combining centuries of traditional knowledge with cutting-edge computer vision."""
+Act completely as the 20+ year expert palm reader now."""

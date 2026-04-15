@@ -133,7 +133,7 @@ def render_chatbot(
 
             payload_text = _stringify_context(context_payload)
             # Detect palm reading mode for longer, more professional responses
-            is_palm = "palm" in context_description.lower() or "palm analy" in (system_prompt or "").lower()
+            is_palm = "palm" in context_description.lower() or "cheiro" in (system_prompt or "").lower()
             instruction = (
                 "Give a detailed, professional palm reading response with specific insights, "
                 "timing predictions, and practical advice. Use 6 to 15 rich sentences."

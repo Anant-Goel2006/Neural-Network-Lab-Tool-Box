@@ -73,37 +73,37 @@ def _depth_label(length: float) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# HAND TYPE CLASSIFICATION — 7-type system
+# HAND TYPE CLASSIFICATION — Cheiro's 7-type system
 # ─────────────────────────────────────────────────────────────────────────
 
 def classify_hand_type(features: Dict[str, float], observations: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """
-    Classify the hand into one of the 7 standard hand types based on
+    Classify the hand into one of Cheiro's 7 hand types based on
     extracted features and optional user observations.
     """
     observations = observations or {}
     user_shape = observations.get("hand_shape", "Auto / unsure")
 
     if user_shape != "Auto / unsure":
-        # Map legacy element names to standard types
-        element_to_type = {
+        # Map legacy element names to Cheiro types
+        element_to_cheiro = {
             "Earth": "Square",
             "Air": "Philosophic",
             "Fire": "Spatulate",
             "Water": "Conic",
         }
-        mapped_type = element_to_type.get(user_shape, user_shape)
-        if mapped_type in HAND_TYPES:
-            ht = HAND_TYPES[mapped_type]
+        cheiro_type = element_to_cheiro.get(user_shape, user_shape)
+        if cheiro_type in HAND_TYPES:
+            ht = HAND_TYPES[cheiro_type]
             return {
-                "type": mapped_type,
+                "type": cheiro_type,
                 "hindi": ht["hindi"],
                 "description": ht["description"],
                 "personality": ht["personality"],
                 "career": ht["career"],
                 "health": ht["health"],
                 "relationships": ht["relationships"],
-                "element": _type_to_element(mapped_type),
+                "element": _type_to_element(cheiro_type),
                 "source": "user_selected",
             }
 
@@ -178,7 +178,7 @@ def analyze_mounts(features: Dict[str, float]) -> Dict[str, Dict[str, Any]]:
     """
     Infer mount prominence from line geometry.
     Real mount analysis requires 3D palm topography; this approximates
-    from 2D line features using traditional palmistry relationship rules.
+    from 2D line features using Cheiro's relationship rules.
     """
     life_length = float(features.get("life_length", 0))
     head_length = float(features.get("head_length", 0))
@@ -256,7 +256,7 @@ def get_dominant_mount(mounts: Dict[str, Dict[str, Any]]) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# LINE READING — Enhanced Analysis
+# LINE READING — Enhanced from Cheiro
 # ─────────────────────────────────────────────────────────────────────────
 
 def _mental_style(head_curvature: float, head_angle: float) -> str:
@@ -293,41 +293,10 @@ def _interpret_line_fine_detail(line_name: str, features: Dict[str, Any]) -> str
     elif down > 0:
         parts.append(f"{down} downward branch(es) — periods of effort, adjustment, or energy redirection are marked.")
 
-    # Advanced Marks — Islands
+    # Island analysis
     islands = int(features.get(f'{key}_island_count', 0))
     if islands > 0:
-        from utils.palmistry_knowledge import ADVANCED_MARKS
-        island_desc = ADVANCED_MARKS["islands"]["meaning"]
-        parts.append(f"{islands} island formation(s) detected — {island_desc}")
-
-    # Advanced Marks — Sister Lines
-    if features.get(f'{key}_has_sister_line', False):
-        from utils.palmistry_knowledge import ADVANCED_MARKS
-        sister_desc = ADVANCED_MARKS["sister_lines"]["meaning"]
-        parts.append(f"A parallel sister (guardian) line runs alongside — {sister_desc}")
-
-    # Check for Simian Line proxy
-    life_head_intersection = int(features.get('life_head_intersection', 0))
-    head_heart_gap = float(features.get('head_heart_gap', 1.0))
-    if key in ('head', 'heart') and head_heart_gap < 0.05:
-        from utils.palmistry_knowledge import ADVANCED_MARKS
-        simian_desc = ADVANCED_MARKS["simian_line"]["meaning"]
-        parts.append(f"<b>Simian Line Marker:</b> {simian_desc}")
-
-    # Check for Mystic Cross proxy
-    total_fine_lines = int(features.get('total_fine_lines', 0))
-    head_angle = abs(float(features.get('head_angle', 0)))
-    if key == 'head' and head_heart_gap > 0.1 and total_fine_lines > 5 and head_angle > 10:
-        from utils.palmistry_knowledge import ADVANCED_MARKS
-        mystic_desc = ADVANCED_MARKS["mystic_cross"]["meaning"]
-        parts.append(f"<b>Mystic Cross Pattern Present:</b> {mystic_desc}")
-
-    # Check for Girdle of Venus proxy
-    heart_curv = float(features.get('heart_curvature', 1.0))
-    if key == 'heart' and heart_curv > 1.25 and total_fine_lines > 5:
-        from utils.palmistry_knowledge import ADVANCED_MARKS
-        girdle_desc = ADVANCED_MARKS["girdle_of_venus"]["meaning"]
-        parts.append(f"<b>Girdle of Venus Extension Present:</b> {girdle_desc}")
+        parts.append(f"{islands} island formation(s) detected — these indicate periods of uncertainty, divided energy, or health sensitivity.")
 
     # Fork analysis
     fork_type = features.get(f'{key}_fork_type', 'none')
@@ -343,6 +312,9 @@ def _interpret_line_fine_detail(line_name: str, features: Dict[str, Any]) -> str
     elif chain_ratio > 0.05:
         parts.append("Subtle chain markings present — minor oscillations in expression or vitality at certain periods.")
 
+    # Sister line
+    if features.get(f'{key}_has_sister_line', False):
+        parts.append("A parallel sister (guardian) line runs alongside — this is a highly favorable sign indicating extra protection, support, and doubled vitality.")
 
     # Depth variation
     depth_var = float(features.get(f'{key}_depth_variance', 0))
@@ -453,7 +425,7 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# TIME PREDICTIONS — Proportional Timing Method
+# TIME PREDICTIONS — Cheiro's Method
 # ─────────────────────────────────────────────────────────────────────────
 
 def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
@@ -622,7 +594,7 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
         "period": "Age 55-70+",
         "event": "Legacy and spiritual growth",
         "detail": (
-            "Based on traditional timing analysis, the later portion of the Life line "
+            "Based on Cheiro's system, the later portion of the Life line "
             "reflects a period of consolidation, legacy building, and "
             "potential spiritual deepening. The quality of this period is "
             "shaped by all prior life choices."
@@ -647,7 +619,7 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────
 
 def analyze_health(features: Dict[str, float]) -> Dict[str, Any]:
-    """Produce health analysis based on traditional palmistry indicators."""
+    """Produce health analysis based on Cheiro's indicators."""
     life_curv = float(features.get("life_curvature", 0))
     head_curv = float(features.get("head_curvature", 0))
     heart_curv = float(features.get("heart_curvature", 0))
@@ -709,8 +681,8 @@ def analyze_health(features: Dict[str, float]) -> Dict[str, Any]:
         "overall_vitality": overall_vitality,
         "indicators": indicators,
         "disclaimer": (
-            "⚕️ This health analysis is based on traditional palmistry interpretation. "
-            "It is NOT medical advice. Always consult qualified "
+            "⚕️ This health analysis is based on traditional palmistry interpretation "
+            "from Cheiro's system. It is NOT medical advice. Always consult qualified "
             "healthcare professionals for health concerns."
         ),
     }
@@ -815,10 +787,7 @@ SUN_LINE_MEANINGS = {
 
 
 def build_palm_report(features: Dict[str, float], observations: Dict[str, str] | None = None) -> Dict[str, object]:
-    """Build a comprehensive palm reading report using 60+ features.
-    When observations are derived dynamically from features (via
-    derive_dynamic_observations), the report will uniquely reflect
-    each palm that is scanned."""
+    """Build a comprehensive palm reading report using 60+ features."""
     observations = observations or {}
 
     life_length = float(features.get("life_length", 0.0))
@@ -833,18 +802,10 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     }
     dominant_line = max(line_ratios, key=line_ratios.get) if total_length > 0 else "Unknown"
 
-    # Detection quality — enhanced: includes fine line metrics for better scoring
     visible_lines = sum(1 for l in (life_length, head_length, heart_length) if l > 20)
-    fine_line_count = int(features.get('total_fine_lines', 0))
-    fine_line_density = float(features.get('fine_line_density', 0))
     detection_quality = min(
-        0.98,
-        _clamp01(
-            0.18 + visible_lines * 0.18
-            + min(total_length / 800.0, 0.38)
-            + min(fine_line_count / 80.0, 0.12)
-            + min(fine_line_density / 20.0, 0.08)
-        ),
+        0.95,
+        _clamp01(0.22 + visible_lines * 0.19 + min(total_length / 900.0, 0.42)),
     )
 
     # Hand type classification
@@ -956,10 +917,7 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
         f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
         f"The hand reveals someone who is {'; '.join(hand_type['personality'][:3]).lower()}. "
-        f"{depth_theme}\n\n"
-        f"**Detected line depth**: {line_depth} | **Breaks**: {major_breaks} | "
-        f"**Fate line**: {fate_line} | **Sun line**: {sun_line} | "
-        f"**Fine lines detected**: {fine_line_count} (density: {fine_line_density:.1f}/10k px)"
+        f"{depth_theme}"
     )
 
     guidance = [
@@ -974,7 +932,7 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     questions = [
         "When will I experience a major career change?",
         "What does my palm say about my love life and marriage timing?",
-        "What are my strongest personality traits based on my palm?",
+        "What are my strongest personality traits according to Cheiro?",
         "Tell me about my health outlook and vitality",
         "What career path does my hand suggest?",
         "What time period shows the most significant life changes?",
@@ -1078,7 +1036,7 @@ def palm_report_to_chat_context(report: Dict[str, object]) -> str:
     shared_notes = " ".join(report.get("shared_notes", []))
 
     return (
-        f"=== PROFESSIONAL PALM ANALYSIS DATA ===\n"
+        f"=== CHEIRO'S PALM READING DATA ===\n"
         f"Palm summary: {report.get('summary', '')}\n\n"
         f"Dominant line: {report.get('dominant_line', 'Unknown')} at {report.get('dominant_strength_pct', 0)}% prominence.\n"
         f"Detection quality: {report.get('detection_quality', 0)}.\n\n"
@@ -1105,7 +1063,7 @@ def palm_report_to_chat_context(report: Dict[str, object]) -> str:
 # ─────────────────────────────────────────────────────────────────────────
 
 def answer_palm_question(question: str, report: Dict[str, object]) -> str:
-    """Professional palm analysis answer for 50+ question categories."""
+    """Professional Cheiro-level answer for 50+ question categories."""
     q = question.lower()
     themes = report.get("themes", {})
     ht = report.get("hand_type", {})
@@ -1120,7 +1078,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         timing_events = [p for p in timing.get("predictions", []) if p.get("category") == "career"]
         timing_text = timing_events[0]["detail"] if timing_events else ""
         return (
-            f"🔮 **Career Reading**\n\n"
+            f"🔮 **Career Reading (Cheiro's Analysis)**\n\n"
             f"{themes.get('career', '')}\n\n"
             f"**Hand Type Insight**: Your {ht.get('type', 'Mixed')} hand suggests aptitude for: {career_list}.\n\n"
             f"**Mount Influence**: Your dominant {report.get('dominant_mount', 'Unknown').replace('_', ' ')} mount shapes your professional instincts — "
@@ -1137,7 +1095,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         rel_text = rel_timing[0]["detail"] if rel_timing else "Significant emotional connection indicated in the 24-30 age range."
         venus_mount = mounts.get("Venus", {})
         return (
-            f"💕 **Love & Relationship Reading**\n\n"
+            f"💕 **Love & Relationship Reading (Cheiro's Analysis)**\n\n"
             f"{themes.get('relationships', '')}\n\n"
             f"**Heart Line Style**: {report.get('line_readings', [{}])[-1].get('detail', '')[:300]}\n\n"
             f"**Venus Mount**: {venus_mount.get('strength', 'Unknown')} — "
@@ -1155,8 +1113,8 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         for pred in timing.get("predictions", []):
             pred_texts.append(f"• **{pred['period']}** — {pred['event']}: {pred['detail'][:200]}")
         return (
-            f"⏳ **Time Predictions (Proportional Timing)**\n\n"
-            f"Using proportional timing analysis: {TIMING_SYSTEM['description'][:200]}\n\n"
+            f"⏳ **Time Predictions (Cheiro's Timing System)**\n\n"
+            f"Cheiro developed a precise timing method: {TIMING_SYSTEM['description'][:200]}\n\n"
             f"**Your Predicted Timeline:**\n\n"
             + "\n\n".join(pred_texts) +
             f"\n\n**Note**: {timing.get('note', '')}"
@@ -1190,13 +1148,13 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
     if any(w in q for w in ("personality", "character", "trait", "nature", "type", "who am i", "myself", "about me", "describe")):
         traits = "\n".join([f"• {t}" for t in personality.get("core_traits", [])[:6]])
         return (
-            f"👤 **Personality Profile**\n\n"
+            f"👤 **Personality Profile (Cheiro's Classification)**\n\n"
             f"**Hand Type**: {ht.get('type', 'Mixed')} ({ht.get('hindi', '')})\n"
             f"**Element**: {ht.get('element', 'Mixed')}\n"
             f"**Archetype**: {personality.get('archetype', 'Unknown')}\n"
             f"**Dominant Mount**: {personality.get('dominant_mount', 'Unknown')}\n\n"
             f"**Core Traits**:\n{traits}\n\n"
-            f"**Description**: {ht.get('description', '')[:400]}\n\n"
+            f"**Cheiro's Description**: {ht.get('description', '')[:400]}\n\n"
             f"**Career Aptitude**: {', '.join(ht.get('career', [])[:5])}\n\n"
             f"**In Relationships**: {ht.get('relationships', '')}"
         )
@@ -1204,7 +1162,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
     # ── HAND SHAPE & ELEMENT ──
     if any(w in q for w in ("shape", "element", "earth", "air", "fire", "water", "hand type", "square", "conic")):
         return (
-            f"✋ **Hand Type Analysis (7-Type System)**\n\n"
+            f"✋ **Hand Type Analysis (Cheiro's 7-Type System)**\n\n"
             f"**Your Hand Type**: {ht.get('type', 'Mixed')} ({ht.get('hindi', '')})\n\n"
             f"{ht.get('description', '')}\n\n"
             f"**Element**: {ht.get('element', 'Mixed')}\n\n"
@@ -1220,7 +1178,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         for name, data in mounts.items():
             mount_bits.append(f"• **{name.replace('_', ' ')}**: {data.get('strength', 'Unknown')} (score: {data.get('score', 0)})")
         return (
-            f"⛰️ **Mount Analysis**\n\n"
+            f"⛰️ **Mount Analysis (Cheiro's System)**\n\n"
             f"**Dominant Mount**: {report.get('dominant_mount', 'Unknown').replace('_', ' ')}\n\n"
             + "\n".join(mount_bits) +
             f"\n\n**Dominant Mount Reading**:\n"
@@ -1247,7 +1205,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
             f"👑 **Dominant Line Analysis**\n\n"
             f"Your dominant line is the **{report.get('dominant_line', 'Unknown')}** line "
             f"at **{report.get('dominant_strength_pct', 0):.1f}%** of the detected pattern.\n\n"
-            f"In traditional palmistry, the dominant line reveals the primary theme of your life:\n"
+            f"In Cheiro's system, the dominant line reveals the primary theme of your life:\n"
             f"• **Life line dominant** = Life energy and vitality drive everything\n"
             f"• **Head line dominant** = Mental pursuits and intellect are central\n"
             f"• **Heart line dominant** = Emotional expression and relationships define life\n\n"
@@ -1305,7 +1263,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
 
     # ── DEFAULT COMPREHENSIVE ──
     return (
-        f"🔮 **Complete Professional Palm Analysis**\n\n"
+        f"🔮 **Complete Cheiro's Palm Reading**\n\n"
         f"{report.get('summary', '')}\n\n"
         f"**Quick Insights**:\n"
         f"• Hand Type: {ht.get('type', 'Mixed')} ({ht.get('element', 'Mixed')} element)\n"
@@ -1315,7 +1273,7 @@ def answer_palm_question(question: str, report: Dict[str, object]) -> str:
         f"• Career Shift: {report.get('career_shift_indicator', 'No')}\n\n"
         f"Ask me specific questions about **career, love, timing, health, personality, "
         f"spirituality, travel, children, fortune**, or any aspect of your reading "
-        f"for a deeper, more detailed analysis."
+        f"for a deeper Cheiro-level analysis."
     )
 
 
