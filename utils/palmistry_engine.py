@@ -47,29 +47,25 @@ def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
-def _band(value: float, low: float, high: float, labels):
-    if value >= high:
-        return labels[2]
-    if value >= low:
-        return labels[1]
-    return labels[0]
+def _band(value: float, points: List[float], labels: List[str]):
+    """Multi-bin band classifier for higher granularity."""
+    for i, p in enumerate(points):
+        if value < p:
+            return labels[i]
+    return labels[-1]
 
 
 def _prominence_label(ratio: float) -> str:
-    return _band(ratio, 0.30, 0.37, ("subtle", "balanced", "dominant"))
+    return _band(ratio, [0.28, 0.32, 0.36, 0.40], ["faint presence", "subtle", "balanced", "dominant", "sovereign"])
 
 
 def _curvature_label(curvature: float) -> str:
-    return _band(curvature, 1.10, 1.24, ("straight", "balanced", "curved"))
+    return _band(curvature, [1.04, 1.10, 1.18, 1.26], ["rigidly straight", "composed", "balanced", "curved", "highly expressive"])
 
 
 def _depth_label(length: float) -> str:
-    """Infer line depth from length — longer lines generally appear deeper."""
-    if length > 250:
-        return "Deep"
-    if length > 120:
-        return "Medium"
-    return "Faint"
+    """Infer line depth from length and presence of fine detail."""
+    return _band(length, [80, 140, 220, 320], ["faint", "emerging", "moderate", "deep", "profound"])
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -189,60 +185,60 @@ def analyze_mounts(features: Dict[str, float]) -> Dict[str, Dict[str, Any]]:
 
     mounts = {}
 
-    # Jupiter — inferred from heart line ending position (toward Jupiter = strong)
-    jupiter_score = _clamp01(0.3 + (heart_length / max(total, 1)) * 1.2)
+    # Jupiter — inferred from heart line ending position
+    jupiter_score = _clamp01(0.25 + (heart_length / max(total, 1)) * 1.3)
     mounts["Jupiter"] = {
-        "strength": _band(jupiter_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(jupiter_score, 2),
-        "reading": MOUNT_ANALYSIS["Jupiter"]["well_developed"] if jupiter_score >= 0.35 else MOUNT_ANALYSIS["Jupiter"]["under_developed"],
+        "strength": _band(jupiter_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(jupiter_score, 3),
+        "reading": MOUNT_ANALYSIS["Jupiter"]["well_developed"] if jupiter_score >= 0.40 else MOUNT_ANALYSIS["Jupiter"]["under_developed"],
     }
 
-    # Saturn — inferred from fate line depth (approximated by intersections)
-    saturn_score = _clamp01(0.25 + int(features.get("life_head_intersection", 0)) * 0.15 + 0.1)
+    # Saturn — inferred from intersections and line stability
+    saturn_score = _clamp01(0.2 + int(features.get("life_head_intersection", 0)) * 0.18 + 0.12)
     mounts["Saturn"] = {
-        "strength": _band(saturn_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(saturn_score, 2),
-        "reading": MOUNT_ANALYSIS["Saturn"]["well_developed"] if saturn_score >= 0.35 else MOUNT_ANALYSIS["Saturn"]["under_developed"],
+        "strength": _band(saturn_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(saturn_score, 3),
+        "reading": MOUNT_ANALYSIS["Saturn"]["well_developed"] if saturn_score >= 0.40 else MOUNT_ANALYSIS["Saturn"]["under_developed"],
     }
 
-    # Sun/Apollo — inferred from overall line clarity
-    apollo_score = _clamp01(0.2 + (total / 900) * 0.5 + (1 if head_curv > 1.15 else 0) * 0.15)
+    # Sun/Apollo — inferred from overall line clarity and curvature
+    apollo_score = _clamp01(0.15 + (total / 1000) * 0.55 + (0.15 if head_curv > 1.18 else 0))
     mounts["Sun_Apollo"] = {
-        "strength": _band(apollo_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(apollo_score, 2),
-        "reading": MOUNT_ANALYSIS["Sun_Apollo"]["well_developed"] if apollo_score >= 0.35 else MOUNT_ANALYSIS["Sun_Apollo"]["under_developed"],
+        "strength": _band(apollo_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(apollo_score, 3),
+        "reading": MOUNT_ANALYSIS["Sun_Apollo"]["well_developed"] if apollo_score >= 0.40 else MOUNT_ANALYSIS["Sun_Apollo"]["under_developed"],
     }
 
-    # Mercury — inferred from head line characteristics
-    mercury_score = _clamp01(0.25 + (head_length / max(total, 1)) * 1.0 + (0.1 if abs(head_angle) < 10 else 0))
+    # Mercury — inferred from head line length and angle
+    mercury_score = _clamp01(0.2 + (head_length / max(total, 1)) * 1.1 + (0.12 if abs(head_angle) < 8 else 0))
     mounts["Mercury"] = {
-        "strength": _band(mercury_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(mercury_score, 2),
-        "reading": MOUNT_ANALYSIS["Mercury"]["well_developed"] if mercury_score >= 0.35 else MOUNT_ANALYSIS["Mercury"]["under_developed"],
+        "strength": _band(mercury_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(mercury_score, 3),
+        "reading": MOUNT_ANALYSIS["Mercury"]["well_developed"] if mercury_score >= 0.40 else MOUNT_ANALYSIS["Mercury"]["under_developed"],
     }
 
-    # Venus — inferred from life line curvature (wide curve = prominent Venus)
-    venus_score = _clamp01(0.2 + life_curv * 0.3 + (life_length / max(total, 1)) * 0.3)
+    # Venus — inferred from life line curvature
+    venus_score = _clamp01(0.15 + life_curv * 0.35 + (life_length / max(total, 1)) * 0.35)
     mounts["Venus"] = {
-        "strength": _band(venus_score, 0.40, 0.60, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(venus_score, 2),
-        "reading": MOUNT_ANALYSIS["Venus"]["well_developed"] if venus_score >= 0.40 else MOUNT_ANALYSIS["Venus"]["under_developed"],
+        "strength": _band(venus_score, [0.30, 0.45, 0.60, 0.75], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(venus_score, 3),
+        "reading": MOUNT_ANALYSIS["Venus"]["well_developed"] if venus_score >= 0.45 else MOUNT_ANALYSIS["Venus"]["under_developed"],
     }
 
-    # Moon — inferred from head line slope
-    moon_score = _clamp01(0.15 + (abs(head_angle) / 30) * 0.5 + (head_curv - 1.0) * 0.3)
+    # Moon — inferred from head line slope and curvature
+    moon_score = _clamp01(0.1 + (abs(head_angle) / 35) * 0.55 + (head_curv - 1.0) * 0.4)
     mounts["Moon"] = {
-        "strength": _band(moon_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(moon_score, 2),
-        "reading": MOUNT_ANALYSIS["Moon"]["well_developed"] if moon_score >= 0.35 else MOUNT_ANALYSIS["Moon"]["under_developed"],
+        "strength": _band(moon_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(moon_score, 3),
+        "reading": MOUNT_ANALYSIS["Moon"]["well_developed"] if moon_score >= 0.40 else MOUNT_ANALYSIS["Moon"]["under_developed"],
     }
 
-    # Mars — inferred from overall line intensity
-    mars_score = _clamp01(0.3 + (total / 1200) * 0.4)
+    # Mars — inferred from total line intensity and energy variance
+    mars_score = _clamp01(0.25 + (total / 1300) * 0.5)
     mounts["Mars"] = {
-        "strength": _band(mars_score, 0.35, 0.55, ("Under-developed", "Well-developed", "Over-developed")),
-        "score": round(mars_score, 2),
-        "reading": MOUNT_ANALYSIS.get("Mars_Lower", MOUNT_ANALYSIS["Mars_Upper"])["well_developed"] if mars_score >= 0.35 else {"personality": "Average martial energy."},
+        "strength": _band(mars_score, [0.25, 0.40, 0.55, 0.70], ["Dormant", "Under-developed", "Balanced", "Well-developed", "Highly Prominent"]),
+        "score": round(mars_score, 3),
+        "reading": MOUNT_ANALYSIS.get("Mars_Lower", MOUNT_ANALYSIS["Mars_Upper"])["well_developed"] if mars_score >= 0.40 else {"personality": "Average martial energy profile."},
     }
 
     return mounts
@@ -365,7 +361,7 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             variation_key = "long_well_marked"
         variation_text = line_data.get("variations", {}).get(variation_key, "")
         detail = (
-            f"The Life line reads as {prominence} ({depth} depth) with a {shape} flow. "
+            f"The Life line reads as {prominence} ({depth} depth) with a {shape} flow (curvature index: {curvature:.3f}). "
             f"{style}. {variation_text}"
         )
         fine_detail = _interpret_line_fine_detail("Life", features) if features else ""
@@ -382,7 +378,7 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             variation_key = "deep_well_marked"
         variation_text = line_data.get("variations", {}).get(variation_key, "")
         detail = (
-            f"The Head line reads as {prominence} ({depth} depth) with a {shape} flow. "
+            f"The Head line reads as {prominence} ({depth} depth) with a {shape} flow (slope: {abs(angle):.1f}°). "
             f"The mind is {style}. {variation_text}"
         )
         fine_detail = _interpret_line_fine_detail("Head", features) if features else ""
@@ -399,7 +395,7 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
             variation_key = "ending_between_jupiter_saturn"
         variation_text = line_data.get("variations", {}).get(variation_key, "")
         detail = (
-            f"The Heart line reads as {prominence} ({depth} depth) with a {shape} flow. "
+            f"The Heart line reads as {prominence} ({depth} depth) with a {shape} flow (intensity ratio: {ratio:.3f}). "
             f"Emotional nature is {style}. {variation_text}"
         )
         fine_detail = _interpret_line_fine_detail("Heart", features) if features else ""
@@ -413,8 +409,8 @@ def _line_reading(line_name: str, ratio: float, curvature: float, angle: float, 
         "line": line_name,
 
         "prominence": prominence,
-        "shape": shape,
-        "depth": depth,
+        "shape": f"{shape} ({curvature:.2f})",
+        "depth": f"{depth} ({length:.0f}px)",
         "detail": detail,
         "emphasis": emphasis,
         "governs": line_data.get("governs", []),
@@ -458,19 +454,21 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
             "detail": (
                 "The Life and Head lines show connection, indicating family "
                 "influence in early life. Based on the detected gap distance "
-                f"({life_head_gap:.4f}), independence and self-direction emerge "
-                f"around age {independence_age}."
+                f"({life_head_gap:.4f}) and intersection count ({intersections}), "
+                f"independence and self-direction emerge around age {independence_age}."
             ),
             "category": "life_transition",
         })
     else:
+        # Separation indicates earlier independence
+        gap = float(features.get("life_head_gap", 0))
         predictions.append({
             "period": "Age 14-18",
             "event": "Early independence and self-direction",
             "detail": (
                 "The Life and Head lines are separated from the start, indicating "
-                "an independent nature from early age. Self-directed decisions "
-                "begin around age 14-18."
+                f"an independent nature from early age. The detected separation ({gap:.4f}) "
+                "suggests self-directed decisions begin around age 14-18."
             ),
             "category": "life_transition",
         })
@@ -516,13 +514,14 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
             "category": "health_energy",
         })
     else:
+        # More specific detail for practical hands
         predictions.append({
             "period": "Age 30-40",
             "event": "Steady energy, directed effort",
             "detail": (
-                "The Life line suggests a period of focused, well-managed "
-                "energy between ages 30-40. Success comes through directed "
-                "effort rather than broad expansion."
+                f"The steady curvature of the Life line ({life_curv:.2f}) suggests a period "
+                "of focused, well-managed energy between ages 30-40. Success comes "
+                "through directed effort rather than broad expansion."
             ),
             "category": "health_energy",
         })
@@ -566,7 +565,8 @@ def predict_timing(features: Dict[str, float]) -> Dict[str, Any]:
         "period": f"Age {rel_age_start}-{rel_age_end}",
         "event": "Significant emotional partnership",
         "detail": (
-            f"Based on heart line depth analysis ({heart_depth:.2f}), a significant "
+            f"Based on heart line depth analysis ({heart_depth:.2f}) and its curvature "
+            f"({float(features.get('heart_curvature', 0)):.2f}), a significant "
             f"emotional connection or partnership is indicated between "
             f"ages {rel_age_start}-{rel_age_end}. "
             f"{'The deep Heart line suggests intense, transformative love.' if heart_depth > 0.6 else 'The Heart line suggests a measured, thoughtful approach to partnership.'}"
@@ -910,8 +910,9 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
 
     summary = (
         f"🔮 **Professional Analysis**: This is a {hand_type['type']} hand "
-        f"with {hand_type['element']} element influence. The reading is led by the "
-        f"{dominant_line.lower()} line, with the {dominant_mount.replace('_', ' ')} mount most prominent. "
+        f"with {hand_type['element']} element influence (Signature: `#{features.get('palm_signature', '0000')}`). "
+        f"The reading is led by the {dominant_line.lower()} line ({line_ratios.get(dominant_line, 0):.1%}), "
+        f"with the {dominant_mount.replace('_', ' ')} mount most prominent. "
         f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
         f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
         f"The hand reveals someone who is {'; '.join(hand_type['personality'][:3]).lower()}. "

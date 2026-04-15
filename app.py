@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 from utils.styles import sidebar_brand, inject_global_css, get_image_base64
 
@@ -92,7 +93,7 @@ def home_page():
     </div>
     """, unsafe_allow_html=True)
 
-    st.html("""
+    components.html("""
         <script>
             setTimeout(() => {
                 const links = window.parent.document.querySelectorAll('a[href="#lab-modules"]');
@@ -105,7 +106,7 @@ def home_page():
                 });
             }, 1000);
         </script>
-    """)
+    """, height=0)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""<div style="display:flex;align-items:center;gap:14px;margin:30px 0;">
