@@ -1645,8 +1645,9 @@ def _palm_module():
         steps["lines"] = step3_img
 
         # ═══ STEP 4: BUILD FULL ANALYSIS ═══
-        mask_full = cv2.resize(segmentation_mask, (w, h), interpolation=cv2.INTER_NEAREST)
-
+        mask_downscaled = cv2.resize(segmentation_mask, (cw, ch), interpolation=cv2.INTER_NEAREST)
+        mask_full = np.zeros((h, w), dtype=np.uint8)
+        mask_full[y_min:y_max, x_min:x_max] = mask_downscaled
         # Build a palm-only ROI mask on the original image so overlay shows lines ONLY on the palm
         orig_pts = [get_pt(i) for i in [0, 2, 5, 9, 13, 17]]
         palm_roi = np.zeros((h, w), dtype=np.uint8)
