@@ -787,7 +787,10 @@ SUN_LINE_MEANINGS = {
 
 
 def build_palm_report(features: Dict[str, float], observations: Dict[str, str] | None = None) -> Dict[str, object]:
-    """Build a comprehensive palm reading report using 60+ features."""
+    """Build a comprehensive palm reading report using 60+ features.
+    When observations are derived dynamically from features (via
+    derive_dynamic_observations), the report will uniquely reflect
+    each palm that is scanned."""
     observations = observations or {}
 
     life_length = float(features.get("life_length", 0.0))
@@ -802,10 +805,18 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     }
     dominant_line = max(line_ratios, key=line_ratios.get) if total_length > 0 else "Unknown"
 
+    # Detection quality — enhanced: includes fine line metrics for better scoring
     visible_lines = sum(1 for l in (life_length, head_length, heart_length) if l > 20)
+    fine_line_count = int(features.get('total_fine_lines', 0))
+    fine_line_density = float(features.get('fine_line_density', 0))
     detection_quality = min(
-        0.95,
-        _clamp01(0.22 + visible_lines * 0.19 + min(total_length / 900.0, 0.42)),
+        0.98,
+        _clamp01(
+            0.18 + visible_lines * 0.18
+            + min(total_length / 800.0, 0.38)
+            + min(fine_line_count / 80.0, 0.12)
+            + min(fine_line_density / 20.0, 0.08)
+        ),
     )
 
     # Hand type classification
@@ -917,7 +928,10 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
         f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
         f"The hand reveals someone who is {'; '.join(hand_type['personality'][:3]).lower()}. "
-        f"{depth_theme}"
+        f"{depth_theme}\n\n"
+        f"**Detected line depth**: {line_depth} | **Breaks**: {major_breaks} | "
+        f"**Fate line**: {fate_line} | **Sun line**: {sun_line} | "
+        f"**Fine lines detected**: {fine_line_count} (density: {fine_line_density:.1f}/10k px)"
     )
 
     guidance = [

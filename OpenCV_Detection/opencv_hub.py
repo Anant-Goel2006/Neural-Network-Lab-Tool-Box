@@ -516,53 +516,80 @@ def extract_skeleton(mask):
     return cv2.ximgproc.thinning(mask_binary * 255) if hasattr(cv2, 'ximgproc') else mask_binary
 
 
-# ── PHASE 1: ENHANCED IMAGE PREPROCESSING ─────────────────────────────────
+# ── PHASE 1: ENHANCED IMAGE PREPROCESSING (MULTI-SCALE) ───────────────────
 
 def enhance_palm_image(image):
-    """Multi-stage preprocessing to reveal even the finest palm lines.
-    Uses CLAHE → Gabor filter bank → adaptive threshold → morphological cleanup.
+    """Multi-stage preprocessing to reveal even the finest, faintest palm lines.
+    Pipeline: Multi-scale CLAHE → Unsharp mask → Bilateral denoise →
+    Multi-scale Gabor bank (36 filters) → Canny edge fusion → LoG fusion →
+    Adaptive threshold → Gentle morphological cleanup.
     Returns the enhanced binary line map and the CLAHE-enhanced grayscale."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # 1. CLAHE — reveal invisible fine lines with local contrast enhancement
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
+    # 1. Multi-scale CLAHE — reveal faint lines at different spatial scales
+    clahe_fine = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(4, 4))
+    clahe_medium = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+    clahe_coarse = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
+    enhanced_fine = clahe_fine.apply(gray)
+    enhanced_medium = clahe_medium.apply(gray)
+    enhanced_coarse = clahe_coarse.apply(gray)
+    # Blend: take the maximum contrast across all scales
+    enhanced = np.maximum(np.maximum(enhanced_fine, enhanced_medium), enhanced_coarse)
 
-    # 2. Bilateral filter — reduce noise while preserving line edges
-    denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
+    # 2. Unsharp masking — sharpen fine crease details before detection
+    gauss_blur = cv2.GaussianBlur(enhanced, (0, 0), 3)
+    enhanced = cv2.addWeighted(enhanced, 1.5, gauss_blur, -0.5, 0)
 
-    # 3. Gabor filter bank — detect directional line structures at 8 orientations
+    # 3. Bilateral filter — reduce noise while keeping line edges crisp
+    denoised = cv2.bilateralFilter(enhanced, 9, 60, 60)
+
+    # 4. Multi-scale Gabor filter bank — 3 scales × 12 orientations = 36 filters
+    #    Captures both thick major lines and thin faint creases at every angle
     gabor_responses = []
-    ksize = 21
-    sigma = 4.0
-    lambd = 10.0
-    gamma = 0.5
-    for theta_deg in range(0, 180, 22):  # 8 orientations
-        theta = np.deg2rad(theta_deg)
-        kernel = cv2.getGaborKernel(
-            (ksize, ksize), sigma, theta, lambd, gamma, psi=0, ktype=cv2.CV_32F,
-        )
-        filtered = cv2.filter2D(denoised, cv2.CV_32F, kernel)
-        gabor_responses.append(np.abs(filtered))
+    scales = [
+        (15, 2.5, 6.0, 0.4),   # Fine scale — thin faint lines
+        (21, 4.0, 10.0, 0.5),  # Medium scale — standard lines
+        (31, 5.5, 14.0, 0.5),  # Coarse scale — deep major lines
+    ]
+    for ksize, sigma, lambd, gamma in scales:
+        for theta_deg in range(0, 180, 15):  # 12 orientations (every 15°)
+            theta = np.deg2rad(theta_deg)
+            kernel = cv2.getGaborKernel(
+                (ksize, ksize), sigma, theta, lambd, gamma, psi=0, ktype=cv2.CV_32F,
+            )
+            filtered = cv2.filter2D(denoised, cv2.CV_32F, kernel)
+            gabor_responses.append(np.abs(filtered))
 
-    # Max response across all orientations — captures lines at any angle
+    # Max response across all orientations and scales
     gabor_max = np.max(np.stack(gabor_responses, axis=0), axis=0)
     gabor_norm = cv2.normalize(gabor_max, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-    # 4. Adaptive threshold — handles uneven lighting across the palm
+    # 5. Canny edge detection — catches fine edges Gabor might miss
+    canny_edges = cv2.Canny(denoised, 25, 80)
+
+    # 6. Laplacian of Gaussian — catches thin crease-like structures
+    log_input = cv2.GaussianBlur(denoised, (5, 5), 0)
+    log_response = cv2.Laplacian(log_input, cv2.CV_64F)
+    log_norm = cv2.normalize(np.abs(log_response), None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    # 7. Fuse all detection layers — any method that finds a line keeps it
+    fused = np.maximum(gabor_norm, canny_edges)
+    fused = np.maximum(fused, log_norm)
+
+    # 8. Adaptive threshold — handles uneven lighting across the palm
     line_map = cv2.adaptiveThreshold(
-        gabor_norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, -3,
+        fused, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, -2,
     )
 
-    # 5. Morphological cleanup — remove noise dots, connect broken segments
-    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    line_map = cv2.morphologyEx(line_map, cv2.MORPH_OPEN, kernel_open, iterations=1)
-    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    # 9. Morphological cleanup — connect broken segments first, then gentle noise removal
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     line_map = cv2.morphologyEx(line_map, cv2.MORPH_CLOSE, kernel_close, iterations=1)
+    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    line_map = cv2.morphologyEx(line_map, cv2.MORPH_OPEN, kernel_open, iterations=1)
 
-    # 6. Remove very small connected components (noise)
+    # 10. Remove only the tiniest noise specks (very low threshold to preserve faint lines)
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(line_map, connectivity=8)
-    min_area = max(15, line_map.shape[0] * line_map.shape[1] * 0.0002)
+    min_area = max(6, line_map.shape[0] * line_map.shape[1] * 0.00006)
     for i in range(1, num_labels):
         if stats[i, cv2.CC_STAT_AREA] < min_area:
             line_map[labels == i] = 0
@@ -873,32 +900,43 @@ def compute_line_gap(mask1, mask2):
 
 def detect_minor_lines(enhanced_line_map, major_mask_combined, mask_shape):
     """Detect minor/fine lines that are NOT part of the 3 major lines.
-    These include fate, sun, marriage, travel lines etc."""
+    These include fate, sun, marriage, travel, children lines etc.
+    Uses lower thresholds to capture even faint, short creases."""
+    # Dilate major lines slightly so we don't double-count border pixels
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    major_dilated = cv2.dilate(major_mask_combined, kernel_dilate, iterations=1)
     # Remove major lines from the enhanced map
-    fine_only = cv2.subtract(enhanced_line_map, major_mask_combined)
+    fine_only = cv2.subtract(enhanced_line_map, major_dilated)
     if fine_only.max() == 0:
-        return {"total_fine_lines": 0, "fine_line_density": 0.0, "fine_line_total_length": 0.0}
+        return {"total_fine_lines": 0, "fine_line_density": 0.0, "fine_line_total_length": 0.0,
+                "fine_line_lengths": [], "longest_fine_line": 0.0}
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(fine_only, connectivity=8)
-    min_line_length = 10
+    min_line_area = 5      # Very low — capture even tiny faint lines
+    min_arc_length = 8     # Lower threshold — keep short creases
     valid_lines = 0
     total_fine_length = 0.0
+    fine_line_lengths = []
     for i in range(1, num_labels):
         area = stats[i, cv2.CC_STAT_AREA]
-        if area >= min_line_length:
+        if area >= min_line_area:
             # Compute arc length for this component
             comp_mask = (labels == i).astype(np.uint8) * 255
             contours, _ = cv2.findContours(comp_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             if contours:
                 arc = cv2.arcLength(max(contours, key=cv2.contourArea), False)
-                if arc > 15:
+                if arc > min_arc_length:
                     valid_lines += 1
                     total_fine_length += arc
+                    fine_line_lengths.append(round(arc, 1))
     h, w = mask_shape[:2]
     density = total_fine_length / (h * w) * 10000  # per 10k pixels
+    fine_line_lengths.sort(reverse=True)
     return {
         "total_fine_lines": valid_lines,
         "fine_line_density": round(density, 2),
         "fine_line_total_length": round(total_fine_length, 1),
+        "fine_line_lengths": fine_line_lengths[:20],  # Top 20 longest
+        "longest_fine_line": fine_line_lengths[0] if fine_line_lengths else 0.0,
     }
 
 
@@ -1092,7 +1130,7 @@ def create_palm_overlay(image, mask, enhanced_line_map=None):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DEFAULT PALM OBSERVATIONS (replaces the removed expander form)
+# DYNAMIC PALM OBSERVATIONS — derived from actual detected features per palm
 # ─────────────────────────────────────────────────────────────────────────────
 DEFAULT_OBSERVATIONS = {
     "dominant_hand": "Right",
@@ -1102,6 +1140,69 @@ DEFAULT_OBSERVATIONS = {
     "fate_line": "Faint",
     "sun_line": "Faint",
 }
+
+
+def derive_dynamic_observations(features):
+    """Derive palmistry observations dynamically from actual CV-detected features.
+    Each palm scan produces unique, accurate observations instead of relying
+    on hardcoded defaults. This ensures the analysis updates per-palm."""
+    obs = {}
+
+    # Dominant hand — cannot be detected from image, default to Right
+    obs["dominant_hand"] = "Right"
+
+    # Hand shape — auto-detect from features (the engine will classify)
+    obs["hand_shape"] = "Auto / unsure"
+
+    # Line depth — derive from the averaged depth across all 3 major lines
+    avg_depths = []
+    for key in ('life', 'head', 'heart'):
+        d = features.get(f'{key}_avg_depth', None)
+        if d is not None:
+            avg_depths.append(float(d))
+    if avg_depths:
+        overall_depth = sum(avg_depths) / len(avg_depths)
+        if overall_depth > 0.55:
+            obs["line_depth"] = "Deep"
+        elif overall_depth > 0.30:
+            obs["line_depth"] = "Medium"
+        else:
+            obs["line_depth"] = "Faint"
+    else:
+        obs["line_depth"] = "Medium"
+
+    # Major breaks — derive from actual break counts detected by CV
+    total_breaks = sum(int(features.get(f'{k}_break_count', 0)) for k in ('life', 'head', 'heart'))
+    if total_breaks == 0:
+        obs["major_breaks"] = "None"
+    elif total_breaks <= 3:
+        obs["major_breaks"] = "A few"
+    else:
+        obs["major_breaks"] = "Many"
+
+    # Fate line visibility — infer from minor line analysis
+    total_fine = int(features.get('total_fine_lines', 0))
+    fine_density = float(features.get('fine_line_density', 0))
+    longest_fine = float(features.get('longest_fine_line', 0))
+
+    if longest_fine > 80 and fine_density > 4.0:
+        obs["fate_line"] = "Strong"
+    elif longest_fine > 40 and fine_density > 2.0:
+        obs["fate_line"] = "Clear"
+    elif total_fine > 2:
+        obs["fate_line"] = "Faint"
+    else:
+        obs["fate_line"] = "Not visible"
+
+    # Sun line visibility — similar inference from fine line characteristics
+    if longest_fine > 60 and total_fine > 8:
+        obs["sun_line"] = "Clear"
+    elif total_fine > 4:
+        obs["sun_line"] = "Faint"
+    else:
+        obs["sun_line"] = "Not visible"
+
+    return obs
 
 
 def _draw_live_palm_summary(image, report):
@@ -1332,14 +1433,26 @@ def _render_palm_report(overlay, features, report):
                 accent_color=fine_colors.get(lkey, "#3B82F6"),
                 icon=fine_icons.get(lkey, "〰️"),
             )
-        # Minor lines summary
+        # Minor lines summary with dynamic observations
         total_fine = features.get('total_fine_lines', 0)
         fine_density = features.get('fine_line_density', 0)
         gap_info = features.get('life_head_gap', 0)
+        longest_fine = features.get('longest_fine_line', 0)
+        fine_lengths = features.get('fine_line_lengths', [])
+        # Show dynamic observation values derived from THIS palm
+        obs = report.get('observations', {})
         minor_html = (
             f"<b>Total minor/fine lines:</b> {total_fine}<br>"
             f"<b>Fine line density:</b> {fine_density:.1f} per 10k px<br>"
+            f"<b>Longest fine line:</b> {longest_fine:.1f} px<br>"
+            f"<b>Top fine line lengths:</b> {', '.join(str(l) for l in fine_lengths[:8])} px<br>"
             f"<b>Life-Head origin gap:</b> {gap_info:.4f} (larger = earlier independence)<br>"
+            f"<hr style='border:0;border-top:1px solid rgba(255,255,255,0.08);margin:8px 0;'>"
+            f"<b>🔄 Dynamic Observations (per-palm):</b><br>"
+            f"<b>Line Depth:</b> {obs.get('line_depth', 'N/A')} | "
+            f"<b>Breaks:</b> {obs.get('major_breaks', 'N/A')} | "
+            f"<b>Fate Line:</b> {obs.get('fate_line', 'N/A')} | "
+            f"<b>Sun Line:</b> {obs.get('sun_line', 'N/A')}<br>"
             f"<b>Palm Signature:</b> <code>{features.get('palm_signature', 'N/A')}</code>"
         )
         render_content_card("Minor Lines & Palm Fingerprint", minor_html, accent_color="#F59E0B", icon="🔍")
@@ -1506,7 +1619,9 @@ def _palm_module():
         enhanced_line_map, _ = enhance_palm_image(img)
         overlay_img = create_palm_overlay(img, mask, enhanced_line_map)
         features = extract_palm_features(mask, raw_image=img)
-        report = build_palm_report(features, observations)
+        # Dynamic observations — derived from THIS palm's actual features
+        dynamic_obs = derive_dynamic_observations(features)
+        report = build_palm_report(features, dynamic_obs)
         return overlay_img, mask, features, report
 
     def _live_frame_overlay(img):
@@ -1524,7 +1639,12 @@ def _palm_module():
             "palm_camera",
         )
         if img is not None:
-            with st.spinner("Analyzing palm — extracting 60+ features with CLAHE + Gabor filters..."):
+            # Clear previous palm state — ensures fresh per-palm analysis
+            for key in list(st.session_state.keys()):
+                if key.startswith("palm_latest_"):
+                    del st.session_state[key]
+
+            with st.spinner("🔬 Analyzing palm — multi-scale CLAHE + 36 Gabor filters + Canny/LoG fusion + 60+ feature extraction..."):
                 overlay, mask, features, report = _palm_cb(img.copy())
 
             st.session_state["palm_latest_report"] = report
