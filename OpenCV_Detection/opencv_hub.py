@@ -518,13 +518,50 @@ def extract_skeleton(mask):
 
 # ── PHASE 1: ENHANCED IMAGE PREPROCESSING (MULTI-SCALE) ───────────────────
 
-def enhance_palm_image(image):
+def enhance_palm_image(image, unet_mask=None):
     """Multi-stage preprocessing to reveal even the finest, faintest palm lines.
-    Pipeline: Multi-scale CLAHE → Unsharp mask → Bilateral denoise →
+    Pipeline: Auto exact palm extraction -> Multi-scale CLAHE → Unsharp mask → Bilateral denoise →
     Multi-scale Gabor bank (36 filters) → Canny edge fusion → LoG fusion →
     Adaptive threshold → Gentle morphological cleanup.
     Returns the enhanced binary line map and the CLAHE-enhanced grayscale."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # 0. Extract exact palm mask to eliminate background lines
+    palm_mask = None
+    if unet_mask is not None and np.max(unet_mask) > 0:
+        binary_lines = (unet_mask > 0).astype(np.uint8) * 255
+        contours, _ = cv2.findContours(binary_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            all_pts = np.vstack(contours)
+            hull = cv2.convexHull(all_pts)
+            palm_hull_mask = np.zeros(gray.shape, dtype=np.uint8)
+            cv2.drawContours(palm_hull_mask, [hull], -1, 255, -1)
+            
+            # Dilate the hull to cover the whole palm (approx 12% of max dimension)
+            margin = int(max(image.shape[0], image.shape[1]) * 0.12)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (margin, margin))
+            palm_hull_mask = cv2.dilate(palm_hull_mask, kernel)
+            
+            # Combine with skin color detection for exact boundaries
+            ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
+            lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+            upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+            skin_mask = cv2.inRange(ycrcb, lower_skin, upper_skin)
+            
+            skin_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+            skin_mask = cv2.morphologyEx(skin_mask, cv2.MORPH_CLOSE, skin_kernel)
+            
+            exact_palm = cv2.bitwise_and(palm_hull_mask, skin_mask)
+            contours_palm, _ = cv2.findContours(exact_palm, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if contours_palm:
+                largest_palm = max(contours_palm, key=cv2.contourArea)
+                palm_mask = np.zeros(gray.shape, dtype=np.uint8)
+                cv2.drawContours(palm_mask, [largest_palm], -1, 255, -1)
+                # Erode slightly to avoid edge lines
+                palm_mask = cv2.erode(palm_mask, np.ones((7,7), np.uint8), iterations=2)
+            else:
+                palm_mask = exact_palm
 
     # 1. Multi-scale CLAHE — reveal faint lines at different spatial scales
     clahe_fine = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(4, 4))
@@ -594,6 +631,11 @@ def enhance_palm_image(image):
     for i in range(1, num_labels):
         if stats[i, cv2.CC_STAT_AREA] < min_area:
             line_map[labels == i] = 0
+
+    # 11. Apply exact palm mask to remove ALL background lines
+    if palm_mask is not None:
+        line_map = cv2.bitwise_and(line_map, line_map, mask=palm_mask)
+        enhanced = cv2.bitwise_and(enhanced, enhanced, mask=palm_mask)
 
     return line_map, enhanced
 
@@ -1008,7 +1050,7 @@ def extract_palm_features(segmentation_mask, raw_image=None):
     # ══════════════════════════════════════════════════════════════════════
     # ADVANCED FEATURES — derived from raw image analysis
     # ══════════════════════════════════════════════════════════════════════
-    enhanced_line_map, enhanced_gray = enhance_palm_image(raw_image)
+    enhanced_line_map, enhanced_gray = enhance_palm_image(raw_image, segmentation_mask)
 
     kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     refined_life_mask = cv2.bitwise_and(enhanced_line_map, cv2.dilate(life_mask, kernel_dilate))
@@ -1681,7 +1723,7 @@ def _palm_module():
         mask = cv2.resize(best_pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
         
         # Advanced: enhance raw image and extract 60+ features
-        enhanced_line_map, _ = enhance_palm_image(img)
+        enhanced_line_map, _ = enhance_palm_image(img, mask)
         overlay_img = create_palm_overlay(img, mask, enhanced_line_map)
         features = extract_palm_features(mask, raw_image=img)
         # Dynamic observations — derived from THIS palm's actual features
