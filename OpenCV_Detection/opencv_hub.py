@@ -1503,31 +1503,45 @@ def _palm_module():
     import mediapipe as mp
 
     def _palm_cb(img):
+        """Step-by-step palm analysis like a human reader:
+        Step 1: Detect palm → Step 2: Zoom & crop → Step 3: Trace lines → Step 4: Analyze"""
         h, w = img.shape[:2]
+        steps = {}  # Store step images for display
 
-        # 1. LANDMARK DETECTION via MediaPipe Tasks API
+        # ═══ STEP 1: DETECT PALM ═══
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
         result = landmarker.detect(mp_image)
 
         if not result.hand_landmarks:
-            # No hand found — still run basic pipeline on full image
             segmentation_mask = np.zeros((h, w), dtype=np.uint8)
             enhanced_line_map, _ = enhance_palm_image(img)
             overlay_img = create_palm_overlay(img, segmentation_mask, enhanced_line_map)
             features = extract_palm_features(segmentation_mask, raw_image=img)
             report = build_palm_report(features, observations)
+            report["_steps"] = None  # No steps since no hand found
+            report["_hand_found"] = False
             return overlay_img, segmentation_mask, features, report
 
         landmarks = result.hand_landmarks[0]
         def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
 
-        # Get all 21 landmark points
+        # Draw detection on original image
+        step1_img = img.copy()
         all_pts = [get_pt(i) for i in range(21)]
+        # Draw skeleton connections
+        connections = [(0,1),(1,2),(2,3),(3,4),(0,5),(5,6),(6,7),(7,8),(5,9),(9,10),(10,11),(11,12),
+                       (9,13),(13,14),(14,15),(15,16),(13,17),(17,18),(18,19),(19,20),(0,17)]
+        for a, b in connections:
+            cv2.line(step1_img, tuple(all_pts[a]), tuple(all_pts[b]), (0, 255, 200), 2)
+        for pt in all_pts:
+            cv2.circle(step1_img, tuple(pt), 4, (0, 140, 255), -1)
+        steps["detect"] = step1_img
+
         xs = [p[0] for p in all_pts]
         ys = [p[1] for p in all_pts]
 
-        # ── AUTO-CROP: zoom into palm region with generous padding ──
+        # ═══ STEP 2: ZOOM INTO PALM ═══
         pad = int(max(max(xs) - min(xs), max(ys) - min(ys)) * 0.15)
         x_min = max(0, min(xs) - pad)
         x_max = min(w, max(xs) + pad)
@@ -1535,15 +1549,14 @@ def _palm_module():
         y_max = min(h, max(ys) + pad)
         crop = img[y_min:y_max, x_min:x_max]
 
-        # ── UPSCALE small crops so faint lines become detectable ──
         ch, cw = crop.shape[:2]
         target_size = 800
         scale = max(1.0, target_size / max(ch, cw))
         if scale > 1.0:
             crop = cv2.resize(crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_CUBIC)
         uh, uw = crop.shape[:2]
+        steps["zoom"] = crop.copy()
 
-        # Re-project landmarks into the cropped/upscaled coordinate space
         def crop_pt(idx):
             return np.array([int((landmarks[idx].x * w - x_min) * scale),
                              int((landmarks[idx].y * h - y_min) * scale)])
@@ -1555,7 +1568,7 @@ def _palm_module():
         ring_base = crop_pt(13)
         pinky_side = crop_pt(18)
 
-        # 2. ROI EXTRACTION & CREASE MASKING on the upscaled crop
+        # ═══ STEP 3: TRACE LINES ═══
         palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
         palm_mask = np.zeros((uh, uw), dtype=np.uint8)
         cv2.fillPoly(palm_mask, [palm_poly], 255)
@@ -1563,38 +1576,34 @@ def _palm_module():
 
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
 
-        # ── MULTI-PASS ENHANCEMENT for faint lines ──
-        # Pass 1: Strong CLAHE
+        # Multi-pass CLAHE
         clahe_strong = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(6, 6))
         enhanced_strong = clahe_strong.apply(gray)
-        # Pass 2: Mild CLAHE (catches different contrast levels)
         clahe_mild = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(12, 12))
         enhanced_mild = clahe_mild.apply(gray)
-        # Combine: take the max enhancement
         enhanced = np.maximum(enhanced_strong, enhanced_mild)
 
-        # ── MORPHOLOGICAL BLACK-HAT: extracts dark creases from bright skin ──
+        # Blackhat for dark creases
         blackhat_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
         blackhat = cv2.morphologyEx(enhanced, cv2.MORPH_BLACKHAT, blackhat_kernel)
         blackhat = cv2.bitwise_and(blackhat, blackhat, mask=palm_mask)
 
-        # ── ADAPTIVE THRESHOLD on inverted enhanced image ──
+        # Adaptive threshold
         inv = cv2.bitwise_not(enhanced)
         blur = cv2.GaussianBlur(inv, (5, 5), 0)
         edges_adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
         edges_adapt = cv2.bitwise_and(edges_adapt, edges_adapt, mask=palm_mask)
 
-        # ── THRESHOLD on blackhat (catches even the faintest creases) ──
+        # Blackhat threshold
         _, bh_thresh = cv2.threshold(blackhat, 15, 255, cv2.THRESH_BINARY)
         bh_thresh = cv2.bitwise_and(bh_thresh, bh_thresh, mask=palm_mask)
 
-        # ── COMBINE both detection passes ──
+        # Combine
         lines_mask = cv2.bitwise_or(edges_adapt, bh_thresh)
         lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-        # Remove tiny noise specks
         lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
 
-        # 3. ANATOMICAL LINE SEGMENTATION (1=Life, 2=Head, 3=Heart)
+        # Anatomical segmentation
         segmentation_mask = np.zeros((uh, uw), dtype=np.uint8)
         y_indices, x_indices = np.where(palm_mask > 0)
         if len(y_indices) > 0:
@@ -1616,19 +1625,33 @@ def _palm_module():
             d_head = pt_to_segment_dist(pts, index_base, (pinky_side + wrist) // 2)
 
             dists = np.vstack((d_life, d_head, d_heart)).T
-            labels = np.argmin(dists, axis=1) + 1  # 1=life, 2=head, 3=heart
+            labels = np.argmin(dists, axis=1) + 1
 
             for i, (x, y) in enumerate(pts):
                 if lines_mask[y, x] > 0:
                     segmentation_mask[y, x] = labels[i]
 
-        # ── DOWNSCALE segmentation back to original image size for overlay ──
-        mask_full = cv2.resize(segmentation_mask, (w, h), interpolation=cv2.INTER_NEAREST)
+        # Build color-coded line trace on zoomed crop
+        step3_img = crop.copy()
+        life_color, head_color, heart_color = (0, 0, 255), (0, 255, 0), (255, 100, 0)
+        # Dilate masks for visibility
+        for label_val, color, name in [(1, life_color, "Life"), (2, head_color, "Head"), (3, heart_color, "Heart")]:
+            lmask = (segmentation_mask == label_val).astype(np.uint8) * 255
+            if lmask.max() > 0:
+                lmask_thick = cv2.dilate(lmask, np.ones((3, 3), np.uint8), iterations=2)
+                step3_img[lmask_thick > 0] = color
+        # Draw ROI boundary
+        cv2.polylines(step3_img, [palm_poly], True, (255, 255, 0), 2)
+        steps["lines"] = step3_img
 
+        # ═══ STEP 4: BUILD FULL ANALYSIS ═══
+        mask_full = cv2.resize(segmentation_mask, (w, h), interpolation=cv2.INTER_NEAREST)
         enhanced_line_map, _ = enhance_palm_image(img)
         overlay_img = create_palm_overlay(img, mask_full, enhanced_line_map)
         features = extract_palm_features(mask_full, raw_image=img)
         report = build_palm_report(features, observations)
+        report["_steps"] = steps
+        report["_hand_found"] = True
         return overlay_img, mask_full, features, report
 
     def _live_frame_overlay(img):
@@ -1646,8 +1669,38 @@ def _palm_module():
             "palm_camera",
         )
         if img is not None:
-            with st.spinner("Analyzing palm — extracting 60+ features with CLAHE + Gabor filters..."):
+            with st.spinner("🖐️ Step 1: Detecting palm..."):
                 overlay, mask, features, report = _palm_cb(img.copy())
+
+            steps = report.get("_steps")
+            hand_found = report.get("_hand_found", False)
+
+            if not hand_found:
+                st.warning("⚠️ No hand detected. Please show your full palm clearly with good lighting.")
+            else:
+                # ── Show step-by-step visual process ──
+                st.markdown("""
+                    <div style="display:flex;align-items:center;gap:14px;margin:10px 0 15px;">
+                        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+                        <span style="font-size:13px;color:#F59E0B;letter-spacing:3px;
+                            font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔬 Detection Process</span>
+                        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                s1, s2, s3 = st.columns(3)
+                with s1:
+                    st.markdown("**Step 1: Palm Detected**")
+                    st.image(cv2.cvtColor(steps["detect"], cv2.COLOR_BGR2RGB), use_container_width=True,
+                             caption="21 landmarks identified")
+                with s2:
+                    st.markdown("**Step 2: Zoomed & Enhanced**")
+                    st.image(cv2.cvtColor(steps["zoom"], cv2.COLOR_BGR2RGB), use_container_width=True,
+                             caption=f"Auto-cropped & upscaled to {steps['zoom'].shape[1]}×{steps['zoom'].shape[0]}px")
+                with s3:
+                    st.markdown("**Step 3: Lines Traced**")
+                    st.image(cv2.cvtColor(steps["lines"], cv2.COLOR_BGR2RGB), use_container_width=True,
+                             caption="Life (red) · Head (green) · Heart (blue)")
 
             st.session_state["palm_latest_report"] = report
             st.session_state["palm_latest_features"] = features
