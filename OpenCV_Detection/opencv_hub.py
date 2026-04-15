@@ -1647,9 +1647,12 @@ def load_palm_model(device):
         return None
 
 def _palm_module():
+    import cv2
+    from OpenCV_Detection.palm_mediapipe import detect_and_crop_palm, detect_palm_lines, analyze_with_llm
+
     section_header(
         "Professional Palm Analyzer",
-        "Advanced CV palm analysis with CLAHE + Gabor filter bank · 60+ unique features · Fine line detection · Depth profiling",
+        "Advanced CV palm analysis with MediaPipe Detection & NVIDIA Vision · Personalized timeline predictions",
     )
     st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(245,158,11,0.1));
@@ -1657,80 +1660,14 @@ def _palm_module():
                     margin-bottom: 20px;">
             <span style="font-size: 16px;">🖐️</span>
             <span style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 14px;">
-                Upload or capture your palm for a <strong>precision analysis</strong> covering
-                <strong>personality, career, love, health, timing</strong> — powered by
-                advanced computer vision that detects even the finest lines invisible to the eye.
-                Use Camera Snapshot if live WebRTC gives STUN trouble.
+                Upload or capture your palm for a <strong>precision analysis</strong> spanning
+                <strong>personality, career, love, health, timeline</strong> — powered by
+                <strong>MediaPipe Line Detection and NVIDIA Vision LLM</strong>.
             </span>
         </div>
     """, unsafe_allow_html=True)
     src = st.radio("Input Source", ["📷 Photo Upload", "📸 Camera Auto-Scan"], horizontal=True, key="cv_palm_src")
-    observations = DEFAULT_OBSERVATIONS
-
-    try:
-        import torch
-        import albumentations as A
-        from albumentations.pytorch import ToTensorV2
-    except ImportError:
-        st.error("Missing dependencies. Please run `pip install -r requirements.txt` (needs torch, albumentations).")
-        return
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = load_palm_model(device)
-    if model is None: return
-    preprocessing = A.Compose(
-        [
-            A.Resize(256, 256),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            ToTensorV2(),
-        ]
-    )
-
-    def _palm_cb(img):
-        best_angle = 0
-        best_pred_mask = None
-        best_area = -1
-        best_rgb_img = None
-        
-        # Test 4 angles for true auto-alignment
-        for angle in [0, 90, 180, 270]:
-            if angle == 90:
-                rotated = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            elif angle == 180:
-                rotated = cv2.rotate(img, cv2.ROTATE_180)
-            elif angle == 270:
-                rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-            else:
-                rotated = img.copy()
-
-            img_rgb_rot = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
-            preprocessed_rot = preprocessing(image=img_rgb_rot)
-            image_tensor_rot = preprocessed_rot["image"].unsqueeze(0).to(device)
-
-            with torch.no_grad():
-                output_rot = model(image_tensor_rot)
-                pred_mask_rot = output_rot.argmax(dim=1).squeeze(0).cpu().numpy()
-
-            area = np.sum(pred_mask_rot > 0)
-            if area > best_area:
-                best_area = area
-                best_angle = angle
-                best_pred_mask = pred_mask_rot
-                best_rgb_img = rotated
-
-        # Use the precisely aligned image and mask
-        img = best_rgb_img
-        mask = cv2.resize(best_pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
-        
-        # Advanced: enhance raw image and extract 60+ features
-        enhanced_line_map, _ = enhance_palm_image(img, mask)
-        overlay_img = create_palm_overlay(img, mask, enhanced_line_map)
-        features = extract_palm_features(mask, raw_image=img)
-        # Dynamic observations — derived from THIS palm's actual features
-        dynamic_obs = derive_dynamic_observations(features)
-        report = build_palm_report(features, dynamic_obs)
-        return overlay_img, mask, features, report
-
+    
     if src in ("📷 Photo Upload", "📸 Camera Auto-Scan"):
         img = _load_image_from_source(
             src,
@@ -1740,23 +1677,44 @@ def _palm_module():
             "palm_camera",
         )
         if img is not None:
-            # Clear previous palm state — ensures fresh per-palm analysis
-            for key in list(st.session_state.keys()):
-                if key.startswith("palm_latest_"):
-                    del st.session_state[key]
+            # Clear previous result
+            for key in ["palm_latest_result", "palm_latest_annotated", "palm_latest_crop"]:
+                st.session_state.pop(key, None)
 
-            with st.spinner("🔬 Auto-aligning palm (4-axis scan) & extracting 60+ features via CLAHE/Gabor fusion..."):
-                overlay, mask, features, report = _palm_cb(img.copy())
+            with st.spinner("🔬 Detecting hand landmarks via MediaPipe..."):
+                palm_crop, palm_poly, landmark_dict, error = detect_and_crop_palm(img)
 
-            st.session_state["palm_latest_report"] = report
-            st.session_state["palm_latest_features"] = features
-            st.session_state["palm_latest_summary"] = report["summary"]
-            _render_palm_report(overlay, features, report)
-
-    latest_report = st.session_state.get("palm_latest_report")
-    if latest_report:
-        st.caption("Latest saved scan summary")
-        st.write(latest_report["summary"])
+            if error:
+                st.error(error)
+            else:
+                with st.spinner("🔬 Extracting palm lines..."):
+                    annotated, line_summary, line_count = detect_palm_lines(palm_crop, palm_poly)
+                    
+                with st.spinner("🤖 Analyzing lines using NVIDIA Vision LLM & Cheiro Knowledge..."):
+                    try:
+                        result = analyze_with_llm(annotated, line_summary, line_count, landmark_dict)
+                        # Encode images for display
+                        _, buf_crop = cv2.imencode(".png", palm_crop)
+                        _, buf_ann = cv2.imencode(".png", annotated)
+                        
+                        st.session_state["palm_latest_result"] = result
+                        st.session_state["palm_latest_annotated"] = buf_ann.tobytes()
+                        st.session_state["palm_latest_crop"] = buf_crop.tobytes()
+                    except Exception as e:
+                        st.error(f"LLM call failed: {e}")
+            
+    if "palm_latest_result" in st.session_state:
+        st.write("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Detected Hand Region")
+            st.image(st.session_state["palm_latest_crop"], use_container_width=True)
+        with col2:
+            st.caption("Extracted Lines Overlay")
+            st.image(st.session_state["palm_latest_annotated"], use_container_width=True)
+        
+        st.write("---")
+        st.markdown(st.session_state["palm_latest_result"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
