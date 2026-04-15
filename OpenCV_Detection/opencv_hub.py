@@ -1434,17 +1434,47 @@ def _render_palm_report(overlay, features, report):
             }
         )
 
-# ═════════════════════════════════════════════════════════════════════════════
-# MODULE 5 — PALM READING (CNN Segmentation)
-# ═════════════════════════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner=False)
-def load_palm_model(device):
-    """Initializes Mediapipe for anatomical landmark tracking."""
+def load_palm_model(_device=None):
+    """Download and initialise the MediaPipe HandLandmarker (tasks API)."""
+    import urllib.request, shutil
+    from pathlib import Path
+
+    assets_dir = Path(__file__).resolve().parents[1] / "assets" / "palm"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    model_path = assets_dir / "hand_landmarker.task"
+    legacy_path = Path("hand_landmarker.task")
+
+    # migrate legacy location
+    if not model_path.exists() and legacy_path.exists():
+        try:
+            shutil.move(str(legacy_path), str(model_path))
+        except Exception:
+            pass
+
+    # download if absent
+    if not model_path.exists():
+        url = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
+        urllib.request.urlretrieve(url, str(model_path))
+
     try:
-        import mediapipe as mp
-        return True
+        from mediapipe.tasks.python import BaseOptions
+        from mediapipe.tasks.python.vision import (
+            HandLandmarker,
+            HandLandmarkerOptions,
+            RunningMode,
+        )
+        options = HandLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=str(model_path)),
+            running_mode=RunningMode.IMAGE,
+            num_hands=1,
+            min_hand_detection_confidence=0.4,
+            min_hand_presence_confidence=0.4,
+            min_tracking_confidence=0.4,
+        )
+        return HandLandmarker.create_from_options(options)
     except Exception as exc:
-        st.error(f"Failed to load mediapipe. Please pip install mediapipe.")
+        st.error(f"Failed to load HandLandmarker: {exc}")
         return None
 
 def _palm_module():
@@ -1461,84 +1491,80 @@ def _palm_module():
                 Upload or capture your palm for a <strong>precision analysis</strong> covering
                 <strong>personality, career, love, health, timing</strong> — powered by
                 advanced computer vision that detects even the finest lines invisible to the eye.
-                Use Camera Snapshot if live WebRTC gives STUN trouble.
             </span>
         </div>
     """, unsafe_allow_html=True)
     src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
     observations = DEFAULT_OBSERVATIONS
 
-    try:
-        import mediapipe as mp
-    except ImportError:
-        st.error("Missing dependencies. Please run `pip install mediapipe`.")
+    landmarker = load_palm_model()
+    if landmarker is None:
         return
-
-    model = load_palm_model('cpu')
-    if model is None: return
+    import mediapipe as mp
 
     def _palm_cb(img):
         h, w = img.shape[:2]
         segmentation_mask = np.zeros((h, w), dtype=np.uint8)
-        
-        # 1. LANDMARK DETECTION
-        import mediapipe.python.solutions.hands as mp_hands
-        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.1) as hands:
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            results = hands.process(img_rgb)
-            
-            if results.multi_hand_landmarks:
-                landmarks = results.multi_hand_landmarks[0].landmark
-                def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
-                
-                wrist = get_pt(0)
-                thumb_base = get_pt(2)
-                index_base = get_pt(5)
-                middle_base = get_pt(9)
-                ring_base = get_pt(13)
-                pinky_side = get_pt(18)
-                
-                # 2. ROI EXTRACTION & CREASE MASKING
-                palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
-                palm_mask = np.zeros((h, w), dtype=np.uint8)
-                cv2.fillPoly(palm_mask, [palm_poly], 255)
-                palm_mask = cv2.erode(palm_mask, np.ones((7, 7), np.uint8), iterations=1)
-                
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-                enhanced = clahe.apply(gray)
-                
-                inv = cv2.bitwise_not(enhanced)
-                blur = cv2.GaussianBlur(inv, (5, 5), 0)
-                edges = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
-                lines_mask = cv2.bitwise_and(edges, edges, mask=palm_mask)
-                lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2,2), np.uint8))
-                
-                # 3. ANATOMICAL LINE SEGMENTATION (1=Life, 2=Head, 3=Heart)
-                y_indices, x_indices = np.where(palm_mask > 0)
+
+        # 1. LANDMARK DETECTION via MediaPipe Tasks API
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        result = landmarker.detect(mp_image)
+
+        if result.hand_landmarks:
+            landmarks = result.hand_landmarks[0]
+            def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
+
+            wrist = get_pt(0)
+            thumb_base = get_pt(2)
+            index_base = get_pt(5)
+            middle_base = get_pt(9)
+            ring_base = get_pt(13)
+            pinky_side = get_pt(18)
+
+            # 2. ROI EXTRACTION & CREASE MASKING
+            palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
+            palm_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.fillPoly(palm_mask, [palm_poly], 255)
+            palm_mask = cv2.erode(palm_mask, np.ones((7, 7), np.uint8), iterations=1)
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray)
+
+            inv = cv2.bitwise_not(enhanced)
+            blur = cv2.GaussianBlur(inv, (5, 5), 0)
+            edges = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
+            lines_mask = cv2.bitwise_and(edges, edges, mask=palm_mask)
+            lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+
+            # 3. ANATOMICAL LINE SEGMENTATION (1=Life, 2=Head, 3=Heart)
+            y_indices, x_indices = np.where(palm_mask > 0)
+            if len(y_indices) > 0:
                 pts = np.vstack((x_indices, y_indices)).T
-                
+
                 def pt_to_segment_dist(p, a, b):
-                    ab = b - a
-                    ap = p - a
+                    ab = (b - a).astype(float)
+                    ap = (p - a).astype(float)
                     ab_norm = np.linalg.norm(ab)
-                    if ab_norm == 0: return np.linalg.norm(ap, axis=1)
+                    if ab_norm == 0:
+                        return np.linalg.norm(ap, axis=1)
                     t = np.sum(ap * ab, axis=1) / (ab_norm ** 2)
                     t = np.clip(t, 0, 1)
-                    proj = a + t[:, np.newaxis] * ab
+                    proj = a.astype(float) + t[:, np.newaxis] * ab
                     return np.linalg.norm(p - proj, axis=1)
-                    
-                d_life = pt_to_segment_dist(pts, (index_base+wrist)//2, wrist)
-                d_heart = pt_to_segment_dist(pts, (index_base+middle_base)//2, pinky_side)
-                d_head = pt_to_segment_dist(pts, index_base, (pinky_side+wrist)//2)
-                
+
+                d_life = pt_to_segment_dist(pts, (index_base + wrist) // 2, wrist)
+                d_heart = pt_to_segment_dist(pts, (index_base + middle_base) // 2, pinky_side)
+                d_head = pt_to_segment_dist(pts, index_base, (pinky_side + wrist) // 2)
+
                 dists = np.vstack((d_life, d_head, d_heart)).T
-                labels = np.argmin(dists, axis=1) + 1 # 1: life, 2: head, 3: heart
-                
+                labels = np.argmin(dists, axis=1) + 1  # 1: life, 2: head, 3: heart
+
                 for i, (x, y) in enumerate(pts):
                     if lines_mask[y, x] > 0:
                         segmentation_mask[y, x] = labels[i]
-        
+
         mask = segmentation_mask
         # Advanced: enhance raw image and extract 60+ features
         enhanced_line_map, _ = enhance_palm_image(img)
@@ -1575,28 +1601,6 @@ def _palm_module():
         if v:
             st.caption("Video mode runs the palm overlay and live summary on downscaled frames for smoother playback.")
             process_video_realtime(v, _live_frame_overlay)
-    else:
-        def palm_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            try:
-                if "palm_frame_count" not in st.session_state:
-                    st.session_state.palm_frame_count = 0
-                st.session_state.palm_frame_count += 1
-                if st.session_state.palm_frame_count % 2 != 0:
-                    return frame
-
-                img = frame.to_ndarray(format="bgr24")
-                final_overlay = _live_frame_overlay(img)
-                return av.VideoFrame.from_ndarray(final_overlay, format="bgr24")
-            except Exception:
-                return frame
-
-        _start_webrtc_stream(
-            "palm_stream",
-            palm_callback,
-            "Live WebRTC Camera (Palm Reading)",
-            "palm_stream",
-            hint="Live mode now defaults to no-STUN local streaming and reduced-resolution inference for faster palm predictions.",
-        )
 
     latest_report = st.session_state.get("palm_latest_report")
     if latest_report:
