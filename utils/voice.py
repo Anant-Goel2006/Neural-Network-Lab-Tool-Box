@@ -1,6 +1,5 @@
 import json
-
-import streamlit as st
+import streamlit.components.v1 as components
 
 
 def render_voice_button(text_to_speak, key_suffix=""):
@@ -77,29 +76,11 @@ def render_voice_button(text_to_speak, key_suffix=""):
 
             function normalizeSpeechText(text) {{
                 return String(text)
-                    .replace(/ŷ/g, ' y hat ')
-                    .replace(/η/g, ' eta ')
-                    .replace(/Δ/g, ' delta ')
-                    .replace(/σ/g, ' sigma ')
-                    .replace(/⊙/g, ' x nor ')
-                    .replace(/⊕/g, ' or ')
-                    .replace(/⊗/g, ' and ')
-                    .replace(/⊻/g, ' x or ')
-                    .replace(/·/g, ' times ')
-                    .replace(/→/g, ' leads to ')
-                    .replace(/≤/g, ' less than or equal to ')
-                    .replace(/≥/g, ' greater than or equal to ')
-                    .replace(/≈/g, ' approximately ')
                     .replace(/%/g, ' percent ')
                     .replace(/w1/g, ' w 1 ')
                     .replace(/w2/g, ' w 2 ')
                     .replace(/x1/g, ' x 1 ')
                     .replace(/x2/g, ' x 2 ')
-                    .replace(/dL\\/dW/g, ' d L by d W ')
-                    .replace(/dL\\/dA/g, ' d L by d A ')
-                    .replace(/dA\\/dZ/g, ' d A by d Z ')
-                    .replace(/dL\\/dZ/g, ' d L by d Z ')
-                    .replace(/\\s+/g, ' ')
                     .trim();
             }}
 
@@ -164,4 +145,4 @@ def render_voice_button(text_to_speak, key_suffix=""):
     </script>
     """
 
-    st.html(html_code, height=100)
+    components.html(html_code, height=86)
