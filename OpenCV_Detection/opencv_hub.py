@@ -543,11 +543,12 @@ def enhance_palm_image(image):
     # 3. Bilateral filter — reduce noise while keeping line edges crisp
     denoised = cv2.bilateralFilter(enhanced, 9, 60, 60)
 
-    # 4. Multi-scale Gabor filter bank — 3 scales × 12 orientations = 36 filters
-    #    Captures both thick major lines and thin faint creases at every angle
+    # 4. Multi-scale Gabor filter bank — 4 scales × 12 orientations = 48 filters
+    #    Captures everything from deep major lines to hair-thin faint creases
     gabor_responses = []
     scales = [
-        (15, 2.5, 6.0, 0.4),   # Fine scale — thin faint lines
+        (9,  1.5,  4.0, 0.4),  # Micro scale — ultra-faint intuition/intuition lines
+        (15, 2.5,  6.0, 0.4),  # Fine scale — thin faint lines
         (21, 4.0, 10.0, 0.5),  # Medium scale — standard lines
         (31, 5.5, 14.0, 0.5),  # Coarse scale — deep major lines
     ]
@@ -576,9 +577,9 @@ def enhance_palm_image(image):
     fused = np.maximum(gabor_norm, canny_edges)
     fused = np.maximum(fused, log_norm)
 
-    # 8. Adaptive threshold — handles uneven lighting across the palm
+    # 8. Adaptive threshold — handles uneven lighting across the palm (more sensitive)
     line_map = cv2.adaptiveThreshold(
-        fused, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, -2,
+        fused, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, -3,
     )
 
     # 9. Morphological cleanup — connect broken segments first, then gentle noise removal
@@ -587,9 +588,9 @@ def enhance_palm_image(image):
     kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
     line_map = cv2.morphologyEx(line_map, cv2.MORPH_OPEN, kernel_open, iterations=1)
 
-    # 10. Remove only the tiniest noise specks (very low threshold to preserve faint lines)
+    # 10. Remove only the tiniest noise specks (ultra-low threshold to preserve faint lines)
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(line_map, connectivity=8)
-    min_area = max(6, line_map.shape[0] * line_map.shape[1] * 0.00006)
+    min_area = max(3, line_map.shape[0] * line_map.shape[1] * 0.00002)
     for i in range(1, num_labels):
         if stats[i, cv2.CC_STAT_AREA] < min_area:
             line_map[labels == i] = 0
@@ -1621,7 +1622,7 @@ def _palm_module():
             </span>
         </div>
     """, unsafe_allow_html=True)
-    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
+    src = st.radio("Input Source", ["📷 Photo Upload", "📸 Camera Auto-Scan"], horizontal=True, key="cv_palm_src")
     observations = DEFAULT_OBSERVATIONS
 
     try:
@@ -1644,15 +1645,41 @@ def _palm_module():
     )
 
     def _palm_cb(img):
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        preprocessed = preprocessing(image=img_rgb)
-        image_tensor = preprocessed["image"].unsqueeze(0).to(device)
+        best_angle = 0
+        best_pred_mask = None
+        best_area = -1
+        best_rgb_img = None
+        
+        # Test 4 angles for true auto-alignment
+        for angle in [0, 90, 180, 270]:
+            if angle == 90:
+                rotated = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            elif angle == 180:
+                rotated = cv2.rotate(img, cv2.ROTATE_180)
+            elif angle == 270:
+                rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            else:
+                rotated = img.copy()
 
-        with torch.no_grad():
-            output = model(image_tensor)
-            pred_mask = output.argmax(dim=1).squeeze(0).cpu().numpy()
+            img_rgb_rot = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+            preprocessed_rot = preprocessing(image=img_rgb_rot)
+            image_tensor_rot = preprocessed_rot["image"].unsqueeze(0).to(device)
 
-        mask = cv2.resize(pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
+            with torch.no_grad():
+                output_rot = model(image_tensor_rot)
+                pred_mask_rot = output_rot.argmax(dim=1).squeeze(0).cpu().numpy()
+
+            area = np.sum(pred_mask_rot > 0)
+            if area > best_area:
+                best_area = area
+                best_angle = angle
+                best_pred_mask = pred_mask_rot
+                best_rgb_img = rotated
+
+        # Use the precisely aligned image and mask
+        img = best_rgb_img
+        mask = cv2.resize(best_pred_mask.astype(np.uint8), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
+        
         # Advanced: enhance raw image and extract 60+ features
         enhanced_line_map, _ = enhance_palm_image(img)
         overlay_img = create_palm_overlay(img, mask, enhanced_line_map)
@@ -1662,13 +1689,7 @@ def _palm_module():
         report = build_palm_report(features, dynamic_obs)
         return overlay_img, mask, features, report
 
-    def _live_frame_overlay(img):
-        small_img = cv2.resize(img, (384, 288))
-        overlay, _, _, report = _palm_cb(small_img)
-        overlay = _draw_live_palm_summary(overlay, report)
-        return cv2.resize(overlay, (img.shape[1], img.shape[0]))
-
-    if src in ("📷 Photo", "📸 Camera Snapshot"):
+    if src in ("📷 Photo Upload", "📸 Camera Auto-Scan"):
         img = _load_image_from_source(
             src,
             "Upload Palm Photo",
@@ -1682,41 +1703,13 @@ def _palm_module():
                 if key.startswith("palm_latest_"):
                     del st.session_state[key]
 
-            with st.spinner("🔬 Analyzing palm — multi-scale CLAHE + 36 Gabor filters + Canny/LoG fusion + 60+ feature extraction..."):
+            with st.spinner("🔬 Auto-aligning palm (4-axis scan) & extracting 60+ features via CLAHE/Gabor fusion..."):
                 overlay, mask, features, report = _palm_cb(img.copy())
 
             st.session_state["palm_latest_report"] = report
             st.session_state["palm_latest_features"] = features
             st.session_state["palm_latest_summary"] = report["summary"]
             _render_palm_report(overlay, features, report)
-
-    elif src == "📹 Video File":
-        v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="palm_video")
-        if v:
-            st.caption("Video mode runs the palm overlay and live summary on downscaled frames for smoother playback.")
-            process_video_realtime(v, _live_frame_overlay)
-    else:
-        def palm_callback(frame: av.VideoFrame) -> av.VideoFrame:
-            try:
-                if "palm_frame_count" not in st.session_state:
-                    st.session_state.palm_frame_count = 0
-                st.session_state.palm_frame_count += 1
-                if st.session_state.palm_frame_count % 2 != 0:
-                    return frame
-
-                img = frame.to_ndarray(format="bgr24")
-                final_overlay = _live_frame_overlay(img)
-                return av.VideoFrame.from_ndarray(final_overlay, format="bgr24")
-            except Exception:
-                return frame
-
-        _start_webrtc_stream(
-            "palm_stream",
-            palm_callback,
-            "Live WebRTC Camera (Palm Reading)",
-            "palm_stream",
-            hint="Live mode now defaults to no-STUN local streaming and reduced-resolution inference for faster palm predictions.",
-        )
 
     latest_report = st.session_state.get("palm_latest_report")
     if latest_report:

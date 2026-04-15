@@ -650,6 +650,62 @@ MOUNT_ANALYSIS: Dict[str, Dict[str, Any]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# ADVANCED PROFESSIONAL MARKS (High-Level Palmistry)
+# ═══════════════════════════════════════════════════════════════════════════
+
+ADVANCED_MARKS: Dict[str, Dict[str, str]] = {
+    "mystic_cross": {
+        "hindi": "रहस्यमय क्रॉस (Mystic Cross)",
+        "location": "Floating between the Head line and Heart line.",
+        "meaning": (
+            "An independent X-mark found in the quadrangle between the Head and Heart lines. "
+            "Considered one of the most powerful signs of strong intuition, psychic potential, "
+            "and a deep psychological understanding of human nature. Those with this mark "
+            "often have an unexplainable draw to the occult, astrology, or the metaphysical."
+        ),
+    },
+    "simian_line": {
+        "hindi": "सिमियन रेखा (Simian Line)",
+        "location": "A single continuous crease traversing the entire palm, replacing the Head and Heart lines.",
+        "meaning": (
+            "A rare combination where the emotional (Heart) and intellectual (Head) centers "
+            "fuse into one intense energy path. Represents extreme focus and single-mindedness. "
+            "The person feels what they think and thinks what they feel, leading to either "
+            "brilliant visionary success or intense internal struggle."
+        ),
+    },
+    "sister_lines": {
+        "hindi": "सहायक रेखाएँ (Support/Sister Lines)",
+        "location": "Running directly parallel to a major line (usually the Life or Fate line).",
+        "meaning": (
+            "Also known as a protection line or double line. It acts as a mystical shield, "
+            "supplying extra resilience, emotional support from a loved one, or guardian energy "
+            "during a difficult period. When the main line weakens, the sister line ensures "
+            "the person survives and thrives."
+        ),
+    },
+    "islands": {
+        "hindi": "द्वीप (Island)",
+        "location": "A split in a line that rejoins itself, forming an oval shape.",
+        "meaning": (
+            "In advanced reading, an island is a bottleneck of energy. It indicates "
+            "a period of isolation, divided attention, vulnerability, or temporary "
+            "health/emotional challenge. The size indicates the duration of the trial."
+        ),
+    },
+    "girdle_of_venus": {
+        "hindi": "शुक्र वलय (Girdle of Venus)",
+        "location": "An arched line swooping from the base of the middle finger to the ring finger.",
+        "meaning": (
+            "Indicates heightened emotional sensitivity, intense romantic responsiveness, "
+            "and often artistic talent. People with this mark feel energy deeply and "
+            "are highly empathetic, but must guard against emotional exhaustion."
+        ),
+    },
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MAJOR LINES — COMPREHENSIVE ANALYSIS
 # ═══════════════════════════════════════════════════════════════════════════
 

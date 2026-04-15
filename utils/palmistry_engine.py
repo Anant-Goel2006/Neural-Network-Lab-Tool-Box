@@ -293,10 +293,41 @@ def _interpret_line_fine_detail(line_name: str, features: Dict[str, Any]) -> str
     elif down > 0:
         parts.append(f"{down} downward branch(es) — periods of effort, adjustment, or energy redirection are marked.")
 
-    # Island analysis
+    # Advanced Marks — Islands
     islands = int(features.get(f'{key}_island_count', 0))
     if islands > 0:
-        parts.append(f"{islands} island formation(s) detected — these indicate periods of uncertainty, divided energy, or health sensitivity.")
+        from utils.palmistry_knowledge import ADVANCED_MARKS
+        island_desc = ADVANCED_MARKS["islands"]["meaning"]
+        parts.append(f"{islands} island formation(s) detected — {island_desc}")
+
+    # Advanced Marks — Sister Lines
+    if features.get(f'{key}_has_sister_line', False):
+        from utils.palmistry_knowledge import ADVANCED_MARKS
+        sister_desc = ADVANCED_MARKS["sister_lines"]["meaning"]
+        parts.append(f"A parallel sister (guardian) line runs alongside — {sister_desc}")
+
+    # Check for Simian Line proxy
+    life_head_intersection = int(features.get('life_head_intersection', 0))
+    head_heart_gap = float(features.get('head_heart_gap', 1.0))
+    if key in ('head', 'heart') and head_heart_gap < 0.05:
+        from utils.palmistry_knowledge import ADVANCED_MARKS
+        simian_desc = ADVANCED_MARKS["simian_line"]["meaning"]
+        parts.append(f"<b>Simian Line Marker:</b> {simian_desc}")
+
+    # Check for Mystic Cross proxy
+    total_fine_lines = int(features.get('total_fine_lines', 0))
+    head_angle = abs(float(features.get('head_angle', 0)))
+    if key == 'head' and head_heart_gap > 0.1 and total_fine_lines > 5 and head_angle > 10:
+        from utils.palmistry_knowledge import ADVANCED_MARKS
+        mystic_desc = ADVANCED_MARKS["mystic_cross"]["meaning"]
+        parts.append(f"<b>Mystic Cross Pattern Present:</b> {mystic_desc}")
+
+    # Check for Girdle of Venus proxy
+    heart_curv = float(features.get('heart_curvature', 1.0))
+    if key == 'heart' and heart_curv > 1.25 and total_fine_lines > 5:
+        from utils.palmistry_knowledge import ADVANCED_MARKS
+        girdle_desc = ADVANCED_MARKS["girdle_of_venus"]["meaning"]
+        parts.append(f"<b>Girdle of Venus Extension Present:</b> {girdle_desc}")
 
     # Fork analysis
     fork_type = features.get(f'{key}_fork_type', 'none')
@@ -312,9 +343,6 @@ def _interpret_line_fine_detail(line_name: str, features: Dict[str, Any]) -> str
     elif chain_ratio > 0.05:
         parts.append("Subtle chain markings present — minor oscillations in expression or vitality at certain periods.")
 
-    # Sister line
-    if features.get(f'{key}_has_sister_line', False):
-        parts.append("A parallel sister (guardian) line runs alongside — this is a highly favorable sign indicating extra protection, support, and doubled vitality.")
 
     # Depth variation
     depth_var = float(features.get(f'{key}_depth_variance', 0))
