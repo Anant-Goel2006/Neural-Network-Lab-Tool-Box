@@ -23,30 +23,11 @@ from utils.styles import section_header, gradient_header, render_content_card, r
 
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 
-try:
-    from streamlit_webrtc import webrtc_streamer, RTCConfiguration
-    import av
+WEBRTC_READY = False
+RTC_CONFIG_LOCAL = None
+RTC_CONFIG_STUN = None
 
-    WEBRTC_READY = True
-except ImportError:
-    WEBRTC_READY = False
-
-if WEBRTC_READY:
-    RTC_CONFIG_LOCAL = RTCConfiguration({"iceServers": []})
-    RTC_CONFIG_STUN = RTCConfiguration(
-        {
-            "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]},
-                {"urls": ["stun:stun1.l.google.com:19302"]},
-                {"urls": ["stun:stun2.l.google.com:19302"]},
-            ]
-        }
-    )
-else:
-    RTC_CONFIG_LOCAL = None
-    RTC_CONFIG_STUN = None
-
-LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "🎥 Live Camera", "📹 Video File"]
+LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
 PALM_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
 LIVE_MEDIA_STREAM_CONSTRAINTS = {
     "video": {
@@ -2517,8 +2498,7 @@ def _render_cv_shell(title, subtitle, icon):
     inject_global_css()
     gradient_header(title, subtitle, icon)
 
-    if not WEBRTC_READY:
-        st.error("`streamlit-webrtc` is missing. Features requiring live camera will not function.")
+    pass
 
 
 def _render_cv_jump_bar(active_key=None):
