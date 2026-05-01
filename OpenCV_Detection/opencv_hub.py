@@ -82,7 +82,7 @@ CV_MODULES = [
         "key": "palm",
         "icon": "🖐️",
         "title": "Palm Analysis",
-        "gallery_subtitle": "60+ Features · Fine Lines · AI Analysis",
+        "gallery_subtitle": "60+ Features · Fine Lines · Expert Interpretation",
         "page_title": "Professional Palm Analyzer",
         "page_subtitle": "Advanced computer vision palm analysis with CLAHE, Gabor filters, and 60+ unique feature extraction",
         "path": "OpenCV_Detection/page_palm.py",
@@ -2182,8 +2182,17 @@ def _palm_module():
         h, w = img.shape[:2]
         steps = {} if include_steps else None
 
+        # ═══ PRE-PROCESS: RESIZE FOR SPEED ═══
+        # Very high res images can hang the landmarker in cloud environments
+        max_dim = 1024
+        if h > max_dim or w > max_dim:
+            scale = max_dim / max(h, w)
+            img_detect = cv2.resize(img, (int(w * scale), int(h * scale)))
+        else:
+            img_detect = img
+
         # ═══ STEP 1: DETECT PALM ═══
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_rgb = cv2.cvtColor(img_detect, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
         result = landmarker.detect(mp_image)
 

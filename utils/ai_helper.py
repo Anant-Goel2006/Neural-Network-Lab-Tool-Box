@@ -184,11 +184,11 @@ def _build_client(provider, api_key):
 def get_ai_explanation(
     prompt,
     system_prompt=(
-        "You are an expert AI tutor explaining deep learning concepts visually and clearly. "
-        "Keep explanations concise, around 2-3 sentences max."
+        "You are an expert AI assistant. Keep explanations concise and professional."
     ),
     model=None,
-    max_tokens=150,
+    max_tokens=1000,
+    timeout=30,
 ):
     """
     Sends a prompt to the configured LLM provider and returns the textual explanation.
@@ -208,6 +208,7 @@ def get_ai_explanation(
             ],
             temperature=0.4,
             max_tokens=max_tokens,
+            timeout=timeout,
         )
         st.session_state["last_ai_error"] = ""
         return resp.choices[0].message.content.strip()

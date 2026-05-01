@@ -817,14 +817,22 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         fine_highlights.append("guardian sister line present")
     fine_highlight_text = f" Fine analysis reveals: {', '.join(fine_highlights)}." if fine_highlights else ""
 
+    # Natural summary fallback - clean and professional
+    summary_intros = [
+        f"🖐️ **Detailed Reading**: Your hand shows a clear {hand_type['type']} structure ",
+        f"✋ **Palm Interpretation**: Based on the {hand_type['type']} form of your palm ",
+        f"🔍 **Feature Analysis**: The {hand_type['type']} hand shape suggests ",
+    ]
+    import random
+    intro = random.choice(summary_intros)
+    
     summary = (
-        f"🔮 **Professional Analysis**: This is a {hand_type['type']} hand "
-        f"with {hand_type['element']} element influence (Signature: `#{features.get('palm_signature', '0000')}`). "
-        f"The reading is led by the {dominant_line.lower()} line ({line_ratios.get(dominant_line, 0):.1%}), "
-        f"with the {dominant_mount.replace('_', ' ')} mount most prominent. "
-        f"Personality archetype: **{personality['archetype']}**.{fine_highlight_text}\n\n"
+        f"{intro} with strong {hand_type['element']} characteristics. "
+        f"The energy flow is primarily through the {dominant_line.lower()} line ({line_ratios.get(dominant_line, 0):.1%}), "
+        f"complemented by a prominent {dominant_mount.replace('_', ' ')} mount. "
+        f"Your reading indicates the **{personality['archetype']}** archetype.{fine_highlight_text}\n\n"
         f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
-        f"The hand reveals someone who is {'; '.join(hand_type['personality'][:3]).lower()}. "
+        f"The hand indicates a nature that is {'; '.join(hand_type['personality'][:3]).lower()}. "
         f"{depth_theme}"
     )
 
@@ -888,10 +896,8 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
     }
     report["chat_context"] = palm_report_to_chat_context(report)
 
-    # ── FULL AI PALM READING ENGINE ──
-    # The AI is the sole interpreter. It receives all 60+ extracted biometric
-    # metrics and produces the entire reading: lines, mounts, timelines,
-    # health, personality — everything.
+    # ── FULL PALM INTERPRETATION ENGINE ──
+    # The expert model interprets all 60+ extracted biometric metrics.
     try:
         from utils.ai_helper import get_ai_explanation
         import json
@@ -921,32 +927,24 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         )
 
         ai_prompt = (
-            "You are a world-class Cheiro-tradition palmist with decades of experience. "
-            "A client has scanned their palm. Computer-vision has extracted precise biometric data. "
-            "Your job is to DEEPLY ANALYZE every metric and produce a FULL, UNIQUE, PERSONALIZED reading.\n\n"
-            "## EXTRACTED PALM DATA\n" + ctx[:1600] + "\n\n"
-            "## RAW BIOMETRIC FEATURES\n" + feat_str + "\n\n"
+            "You are a master palmist. Based on the extracted metrics, "
+            "provide a comprehensive reading formatted strictly as a JSON object.\n\n"
+            "## EXTRACTED DATA\n" + ctx[:1600] + "\n\n"
             "## YOUR TASK\n"
-            "Produce a JSON object with EXACTLY these keys. Every value must be rich, specific, and unique to THIS palm.\n"
-            "DO NOT use generic filler. Reference actual metrics (curvature, depth, break count, etc.).\n\n"
+            "Produce a JSON object with these keys. Be insightful, specific, and professional.\n"
+            "DO NOT mention you are an AI. Speak as a human expert.\n\n"
             + prompt_schema + "\n"
-            "Output ONLY the raw JSON. No markdown fences. No explanation outside the JSON."
+            "Output ONLY the raw JSON. No markdown code blocks."
         )
 
         ai_response = get_ai_explanation(
             ai_prompt,
-            system_prompt="You are an expert Cheiro-tradition palmist. Output ONLY valid raw JSON. No markdown.",
-            max_tokens=3200
+            system_prompt="You are a professional palmist. Output ONLY raw JSON. No markdown.",
+            max_tokens=2000,
+            timeout=25
         )
         if ai_response:
-            # Strip any markdown wrapping
-            ai_response = ai_response.strip()
-            if ai_response.startswith("```"):
-                ai_response = ai_response.split("\n", 1)[-1]
-            if ai_response.endswith("```"):
-                ai_response = ai_response.rsplit("```", 1)[0]
-            ai_response = ai_response.strip()
-
+            ai_response = ai_response.strip().replace('```json', '').replace('```', '').strip()
             ai_data = json.loads(ai_response)
 
             # Overwrite all report sections with AI-generated content
