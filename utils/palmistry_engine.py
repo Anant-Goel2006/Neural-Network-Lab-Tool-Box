@@ -817,23 +817,17 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         fine_highlights.append("guardian sister line present")
     fine_highlight_text = f" Fine analysis reveals: {', '.join(fine_highlights)}." if fine_highlights else ""
 
-    # Natural summary fallback - clean and professional
-    summary_intros = [
-        f"🖐️ **Detailed Reading**: Your hand shows a clear {hand_type['type']} structure ",
-        f"✋ **Palm Interpretation**: Based on the {hand_type['type']} form of your palm ",
-        f"🔍 **Feature Analysis**: The {hand_type['type']} hand shape suggests ",
-    ]
+    # Dynamic salt for uniqueness
     import random
-    intro = random.choice(summary_intros)
+    salt = random.choice(["✨", "🔍", "🖐️", "✋", "👁️"])
     
+    # Concisely summarize extracted features for initial view
     summary = (
-        f"{intro} with strong {hand_type['element']} characteristics. "
-        f"The energy flow is primarily through the {dominant_line.lower()} line ({line_ratios.get(dominant_line, 0):.1%}), "
-        f"complemented by a prominent {dominant_mount.replace('_', ' ')} mount. "
-        f"Your reading indicates the **{personality['archetype']}** archetype.{fine_highlight_text}\n\n"
-        f"{mindset_theme} {relationship_theme} {energy_theme}\n\n"
-        f"The hand indicates a nature that is {'; '.join(hand_type['personality'][:3]).lower()}. "
-        f"{depth_theme}"
+        f"{salt} **Feature Analysis**: Detected a **{hand_type['type']}** hand structure "
+        f"with **{hand_type['element']}** influences. "
+        f"Energy flows primarily through the {dominant_line.lower()} line ({line_ratios.get(dominant_line, 0):.1%}), "
+        f"while the {dominant_mount.replace('_', ' ')} mount shows strongest development. "
+        f"Initial mapping aligns with the **{personality['archetype']}** archetype."
     )
 
     guidance = [
@@ -953,23 +947,32 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         )
         if ai_response:
             ai_response = ai_response.strip().replace('```json', '').replace('```', '').strip()
-            ai_data = json.loads(ai_response)
-
-            # Overwrite all report sections with AI-generated content
-            if "summary" in ai_data:
-                report["summary"] = ai_data["summary"]
-            if "line_readings" in ai_data:
-                report["line_readings"] = ai_data["line_readings"]
-            if "themes" in ai_data:
-                report["themes"].update(ai_data["themes"])
-            if "shared_notes" in ai_data:
-                report["shared_notes"] = ai_data["shared_notes"]
-            if "personality" in ai_data:
-                report["personality"].update(ai_data["personality"])
-            if "health" in ai_data:
-                report["health"] = ai_data["health"]
-            if "timing" in ai_data:
-                report["timing"] = ai_data["timing"]
+            try:
+                ai_data = json.loads(ai_response)
+                
+                # FULL OVERWRITE: Prioritize AI insights over rule-based placeholders
+                if "summary" in ai_data: 
+                    report["summary"] = ai_data["summary"]
+                if "line_readings" in ai_data: 
+                    report["line_readings"] = ai_data["line_readings"]
+                if "themes" in ai_data: 
+                    report["themes"] = ai_data["themes"]
+                if "personality" in ai_data: 
+                    report["personality"] = ai_data["personality"]
+                if "health" in ai_data: 
+                    report["health"] = ai_data["health"]
+                if "timing" in ai_data: 
+                    report["timing"] = ai_data["timing"]
+                if "shared_notes" in ai_data: 
+                    report["shared_notes"] = ai_data["shared_notes"]
+                
+                import streamlit as st
+                st.toast("✅ Master interpretation complete.")
+            except Exception as je:
+                print(f"AI JSON Parse Error: {je}")
+                report["summary"] += "\n\n⚠️ *Expert interpretation failed to parse. Showing baseline scan.*"
+        else:
+            report["summary"] += "\n\n⚠️ *Interpretation engine offline. Showing baseline scan.*"
 
     except Exception as e:
         print("AI palm reading failed (falling back to rules engine):", e)
