@@ -902,24 +902,31 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         from utils.ai_helper import get_ai_explanation
         import json
 
-        # Build a concise context string for faster processing
-        ctx = report["chat_context"][:1200]
+        # Build a robust, metric-heavy context for truly unique readings
+        import random
+        session_seed = random.randint(1000, 9999)
+        
+        # We EXCLUDE the pre-calculated summary to force the expert to be original
+        ctx = report["chat_context"].split("Palm summary:", 1)[-1] if "Palm summary:" in report["chat_context"] else report["chat_context"]
+        ctx = ctx[:1500]
+        
+        # Include raw numbers so the expert can be precise
         feat_str = str({
             k: (round(v, 3) if isinstance(v, float) else v)
             for k, v in features.items()
             if not isinstance(v, (list, dict))
-        })[:1200]
+        })[:1500]
 
         prompt_schema = (
             '{\n'
-            '  "summary": "Professional 3-4 sentence reading summary",\n'
+            '  "summary": "Deep, personalized 4-5 sentence reading. Reference specific biometric values found in the data (e.g. curvature, angles).",\n'
             '  "line_readings": [\n'
-            '    {"line": "Life", "detail": "Analysis based on curvature/depth", "governs": ["Vitality"], "depth": "Deep/Medium/Faint", "shape": "...", "prominence": "..."},\n'
-            '    {"line": "Head", "detail": "...", "governs": ["Logic"], "depth": "...", "shape": "...", "prominence": "..."},\n'
-            '    {"line": "Heart", "detail": "...", "governs": ["Emotion"], "depth": "...", "shape": "...", "prominence": "..."}\n'
+            '    {"line": "Life", "detail": "Detailed analysis grounded in the curvature and depth metrics.", "governs": ["Vitality"], "depth": "...", "shape": "...", "prominence": "..."},\n'
+            '    {"line": "Head", "detail": "Analysis of mindset and logic using the Head line metrics.", "governs": ["Logic"], "depth": "...", "shape": "...", "prominence": "..."},\n'
+            '    {"line": "Heart", "detail": "Emotional analysis using Heart line curvature and length.", "governs": ["Emotion"], "depth": "...", "shape": "...", "prominence": "..."}\n'
             '  ],\n'
             '  "themes": {"mindset": "..", "relationships": "..", "energy": "..", "career": "..", "visibility": "..", "stability": "..", "dominant_hand": "..", "line_depth": ".."},\n'
-            '  "shared_notes": ["note 1", "note 2"],\n'
+            '  "shared_notes": ["Unique observation 1", "Unique observation 2"],\n'
             '  "personality": {"archetype": "..", "description": "..", "core_traits": ["t1", "t2", "t3", "t4"], "dominant_mount": ".."},\n'
             '  "health": {"overall_vitality": "..", "indicators": [{"area": "Physical", "assessment": "..", "detail": ".."}], "disclaimer": ".."},\n'
             '  "timing": {"predictions": [{"period": "Age X-Y", "event": "..", "detail": "..", "category": ".."}], "note": ".."}\n'
@@ -927,19 +934,22 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         )
 
         ai_prompt = (
-            "You are a master palmist. Interpret these metrics and provide a JSON reading.\n\n"
-            "## METRICS\n" + ctx + "\n" + feat_str + "\n\n"
-            "## TASK\n"
-            "Return JSON matching this schema. Be insightful but concise.\n"
+            f"You are a master palmist (Session ID: {session_seed}). "
+            "A client has provided their palm data. Your task is to provide a UNIQUE, "
+            "deeply personalized reading based ONLY on the metrics provided. "
+            "DO NOT repeat generic templates. REFERENCE specific numbers from the data.\n\n"
+            "## BIOMETRIC DATA\n" + ctx + "\n" + feat_str + "\n\n"
+            "## YOUR TASK\n"
+            "Provide a comprehensive reading in JSON format. Be insightful and professional.\n"
             + prompt_schema + "\n"
-            "Output ONLY raw JSON. No markdown."
+            "Output ONLY raw JSON."
         )
 
         ai_response = get_ai_explanation(
             ai_prompt,
-            system_prompt="You are a professional palmist. Output ONLY raw JSON.",
-            max_tokens=1200,
-            timeout=20
+            system_prompt="You are a professional palmist. You always provide unique readings grounded in biometric data. Output ONLY raw JSON.",
+            max_tokens=1500,
+            timeout=25
         )
         if ai_response:
             ai_response = ai_response.strip().replace('```json', '').replace('```', '').strip()
