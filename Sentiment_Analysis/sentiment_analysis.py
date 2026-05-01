@@ -122,7 +122,7 @@ def sentiment_analysis_page():
             epochs = c2.slider("Epochs", 5, 20, 10)
             lr = c3.selectbox("Learning Rate", [0.01, 0.005, 0.001], index=0)
         
-        if st.button("🚀 Initialize & Train LSTM Sequence Model", type="primary", width="stretch"):
+        if st.button("🚀 Initialize & Train LSTM Sequence Model", type="primary", use_container_width=True):
             master_ph = st.empty()
             with master_ph.container():
                 st.info("Generating contextual dataset & tokenizing...")
@@ -164,7 +164,7 @@ def sentiment_analysis_page():
                     m3.metric("Accuracy", f"{acc*100:.1f}%")
                     m4.metric("Vocab Size", len(tokenizer.word_index))
                     
-                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), width="stretch", theme=None, key=f"ls_live_{ep}")
+                    st.plotly_chart(_live_lstm_fig(losses, accs, ep, epochs), use_container_width=True, theme=None, key=f"ls_live_{ep}")
                     
             # Save Model
             with master_ph.container():
@@ -179,7 +179,7 @@ def sentiment_analysis_page():
                 m1.metric("Final Epochs", epochs)
                 m2.metric("Final Loss", f"{err:.4f}")
                 m3.metric("Final Accuracy", f"{acc*100:.1f}%")
-                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), width="stretch", theme=None, key="ls_final_res")
+                st.plotly_chart(_live_lstm_fig(losses, accs, epochs, epochs), use_container_width=True, theme=None, key="ls_final_res")
 
 
     # ──────────────────────────────────────────────────────
@@ -316,7 +316,7 @@ def sentiment_analysis_page():
                         height=300, margin=dict(t=50, b=20, l=20, r=20)
                     )
                 )
-                st.plotly_chart(fig, width="stretch", theme=None)
+                st.plotly_chart(fig, use_container_width=True, theme=None)
 
                 # --- NVIDIA AI DEEP ANALYSIS ---
                 st.divider()

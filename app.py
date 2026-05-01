@@ -159,7 +159,7 @@ def home_page():
     for i, (ic, title, sub, desc, page, tags, clr, img) in enumerate(CARDS):
         with st.container():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
-            with e_col1: st.image(img, width="stretch")
+            with e_col1: st.image(img, use_container_width=True)
             with e_col2:
                 st.markdown(f"""
                 <div style="padding: 10px 0;">

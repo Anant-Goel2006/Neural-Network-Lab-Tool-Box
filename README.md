@@ -2,7 +2,7 @@
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?style=for-the-badge&logo=streamlit)](https://neurolab.streamlit.app/)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://neurolab.streamlit.app/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 ![NeuroLab Hero Banner](assets/banners/neurolab_netflix_style_hero_1774323980383.png)
@@ -64,6 +64,7 @@ NeuroLab features seven dedicated environments for mastering Artificial Intellig
 ![OpenCV Module](assets/banners/opencv_module_banner_1774322354099.png)
 - **YOLOv8 Intelligence**: Real-time vehicle counting and sign detection.
 - **Biometric Hub**: Face scanning and automated attendance logging.
+- **Palm Analyzer**: Real-time palm capture with fine-line enhancement, major-line tracing, and dynamic palmistry reports.
 - **Gesture Control**: Hand landmark tracking via MediaPipe.
 
 ### 💬 6. Sentiment Analysis
@@ -93,7 +94,7 @@ Get NeuroLab running on your machine:
    ```
 
 2. **Install Dependencies**:
-   *Recommended: Python 3.11+*
+   *Recommended: Python 3.10+*
    ```bash
    pip install -r requirements.txt
    ```

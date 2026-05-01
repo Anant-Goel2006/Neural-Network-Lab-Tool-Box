@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import os
 import tempfile
+import threading
 import time
 
 import cv2
@@ -45,7 +46,8 @@ else:
     RTC_CONFIG_LOCAL = None
     RTC_CONFIG_STUN = None
 
-LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "📹 Video File"]
+LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "🎥 Live Camera", "📹 Video File"]
+PALM_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
 LIVE_MEDIA_STREAM_CONSTRAINTS = {
     "video": {
         "width": {"ideal": 640},
@@ -110,7 +112,7 @@ CV_MODULES = [
         "page_title": "Professional Palm Analyzer",
         "page_subtitle": "Advanced computer vision palm analysis with CLAHE, Gabor filters, and 60+ unique feature extraction",
         "path": "OpenCV_Detection/page_palm.py",
-        "banner": os.path.join("assets", "banners", "palm_reading_banner_1774323346147.png"),
+        "banner": os.path.join("assets", "banners", "palm_reading_banner_1774323346127.png"),
         "features": ["CNN + Gabor Detection", "60+ Feature Extraction", "Fine Line Analysis"],
     },
 ]
@@ -137,7 +139,7 @@ def process_video_realtime(video_file, callback_fn):
         processed_frame = callback_fn(frame)
         
         # Display
-        st_frame.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), width="stretch")
+        st_frame.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), use_container_width=True)
         time.sleep(0.01) # Small delay for UI stability
         
     cap.release()
@@ -182,7 +184,7 @@ def _start_webrtc_stream(stream_key, callback, label, key_prefix, hint=None):
     if hint:
         st.caption(hint)
 
-    webrtc_streamer(
+    return webrtc_streamer(
         key=stream_key,
         video_frame_callback=callback,
         rtc_configuration=_rtc_configuration_selector(key_prefix),
@@ -225,9 +227,9 @@ def _attendance_module():
                 "Capture Target Photo",
                 "cv_att_camera",
             )
-            if img is not None and st.button("📸 Detect & Register", type="primary", width="stretch"):
+            if img is not None and st.button("📸 Detect & Register", type="primary", use_container_width=True):
                 processed = _att_cb(img.copy())
-                st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
+                st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
 
         elif src == "📹 Video File":
              v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="cv_att_video")
@@ -274,8 +276,8 @@ def _attendance_module():
 
         if st.session_state.cv_attendance:
             df = pd.DataFrame(st.session_state.cv_attendance)
-            st.dataframe(df, hide_index=True, width="stretch")
-            if st.button("🗑 Clear Log", width="stretch"):
+            st.dataframe(df, hide_index=True, use_container_width=True)
+            if st.button("🗑 Clear Log", use_container_width=True):
                 st.session_state.cv_attendance=[]; st.rerun()
 
 
@@ -314,7 +316,7 @@ def _face_scan_module():
         )
         if img is not None:
             processed = _fs_cb(img.copy())
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="fs_video")
         if v: process_video_realtime(v, _fs_cb)
@@ -393,7 +395,7 @@ def _vehicle_module():
         )
         if img is not None:
             processed = _vd_cb(img.copy())
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="vd_video")
         if v: process_video_realtime(v, _vd_cb)
@@ -464,7 +466,7 @@ def _sign_module():
         )
         if img is not None:
             processed = _sd_cb(img.copy())
-            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), width="stretch")
+            st.image(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB), use_container_width=True)
     elif src == "📹 Video File":
         v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="sd_video")
         if v: process_video_realtime(v, _sd_cb)
@@ -513,61 +515,300 @@ def _sign_module():
 
 def extract_skeleton(mask):
     mask_binary = (mask > 0).astype(np.uint8)
-    return cv2.ximgproc.thinning(mask_binary * 255) if hasattr(cv2, 'ximgproc') else mask_binary
+    mask_binary = mask_binary * 255
+    if mask_binary.max() == 0:
+        return mask_binary
+
+    if hasattr(cv2, 'ximgproc') and hasattr(cv2.ximgproc, 'thinning'):
+        return cv2.ximgproc.thinning(mask_binary)
+
+    # Fallback thinning when ximgproc.thinning is unavailable.
+    skel = np.zeros_like(mask_binary)
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    work = mask_binary.copy()
+    while True:
+        eroded = cv2.erode(work, element)
+        temp = cv2.dilate(eroded, element)
+        temp = cv2.subtract(work, temp)
+        skel = cv2.bitwise_or(skel, temp)
+        work = eroded
+        if cv2.countNonZero(work) == 0:
+            break
+    return skel
 
 
 # ── PHASE 1: ENHANCED IMAGE PREPROCESSING ─────────────────────────────────
 
 def enhance_palm_image(image):
-    """Multi-stage preprocessing to reveal even the finest palm lines.
-    Uses CLAHE → Gabor filter bank → adaptive threshold → morphological cleanup.
-    Returns the enhanced binary line map and the CLAHE-enhanced grayscale."""
+    """
+    Ultra-fast, high-fidelity palm line detector optimized for 'ink-stamp' extraction.
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # 1. CLAHE — reveal invisible fine lines with local contrast enhancement
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
+    # 1. Invert image (so dark creases become bright ridges)
+    inv = cv2.bitwise_not(gray)
 
-    # 2. Bilateral filter — reduce noise while preserving line edges
-    denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
+    # 2. CLAHE for robust contrast normalization across the whole palm
+    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+    clahe_img = clahe.apply(inv)
+    
+    # 3. Slight blur to prevent individual skin pores from becoming lines
+    blurred = cv2.GaussianBlur(clahe_img, (3, 3), 0)
 
-    # 3. Gabor filter bank — detect directional line structures at 8 orientations
-    gabor_responses = []
-    ksize = 21
-    sigma = 4.0
-    lambd = 10.0
-    gamma = 0.5
-    for theta_deg in range(0, 180, 22):  # 8 orientations
-        theta = np.deg2rad(theta_deg)
-        kernel = cv2.getGaborKernel(
-            (ksize, ksize), sigma, theta, lambd, gamma, psi=0, ktype=cv2.CV_32F,
-        )
-        filtered = cv2.filter2D(denoised, cv2.CV_32F, kernel)
-        gabor_responses.append(np.abs(filtered))
-
-    # Max response across all orientations — captures lines at any angle
-    gabor_max = np.max(np.stack(gabor_responses, axis=0), axis=0)
-    gabor_norm = cv2.normalize(gabor_max, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-    # 4. Adaptive threshold — handles uneven lighting across the palm
+    # 4. Fast Local Adaptive Thresholding
+    # This precisely isolates the creases as bright white lines on a black background
+    # It perfectly mimics the real-life ink print aesthetic without massive computations.
+    # Block size 35 covers enough area to capture both fine ridges and thick major lines.
     line_map = cv2.adaptiveThreshold(
-        gabor_norm, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, -3,
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 35, 2
     )
 
-    # 5. Morphological cleanup — remove noise dots, connect broken segments
-    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # 5. Morphological cleanup (ultra-fast)
+    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
     line_map = cv2.morphologyEx(line_map, cv2.MORPH_OPEN, kernel_open, iterations=1)
-    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
-    line_map = cv2.morphologyEx(line_map, cv2.MORPH_CLOSE, kernel_close, iterations=1)
-
-    # 6. Remove very small connected components (noise)
+    
+    # 6. Remove very small connected components
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(line_map, connectivity=8)
-    min_area = max(15, line_map.shape[0] * line_map.shape[1] * 0.0002)
+    min_area = max(10, int(line_map.shape[0] * line_map.shape[1] * 0.00010))
     for i in range(1, num_labels):
         if stats[i, cv2.CC_STAT_AREA] < min_area:
             line_map[labels == i] = 0
+            
+    return line_map, clahe_img
+def _flip_points_horizontally(points, width):
+    flipped = {}
+    for name, pt in points.items():
+        arr = np.asarray(pt, dtype=np.int32)
+        flipped[name] = np.array([width - 1 - int(arr[0]), int(arr[1])], dtype=np.int32)
+    return flipped
 
-    return line_map, enhanced
+
+def _normalize_palm_orientation(crop, anchor_points):
+    """Normalize to a thumb-left view so line extraction uses one geometry."""
+    points = {name: np.asarray(pt, dtype=np.int32) for name, pt in anchor_points.items()}
+    if int(points["thumb_base"][0]) <= int(points["pinky_side"][0]):
+        return crop, points, False
+    return cv2.flip(crop, 1), _flip_points_horizontally(points, crop.shape[1]), True
+
+
+def _cubic_bezier_points(p0, p1, p2, p3, samples=72):
+    t = np.linspace(0.0, 1.0, samples, dtype=np.float32)[:, None]
+    omt = 1.0 - t
+    curve = (
+        (omt ** 3) * np.asarray(p0, dtype=np.float32)
+        + 3.0 * (omt ** 2) * t * np.asarray(p1, dtype=np.float32)
+        + 3.0 * omt * (t ** 2) * np.asarray(p2, dtype=np.float32)
+        + (t ** 3) * np.asarray(p3, dtype=np.float32)
+    )
+    return curve.astype(np.int32)
+
+
+def _path_distance_map(shape, points, thickness=3):
+    seed = np.zeros(shape[:2], dtype=np.uint8)
+    pts = np.asarray(points, dtype=np.int32)
+    if len(pts) >= 2:
+        cv2.polylines(seed, [pts], False, 255, thickness=thickness)
+    elif len(pts) == 1:
+        cv2.circle(seed, tuple(pts[0]), thickness, 255, -1)
+    return cv2.distanceTransform(cv2.bitwise_not(seed), cv2.DIST_L2, 3)
+
+
+def _cleanup_binary_mask(binary_mask, min_area=16):
+    binary_mask = (binary_mask > 0).astype(np.uint8) * 255
+    if binary_mask.max() == 0:
+        return binary_mask
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary_mask, connectivity=8)
+    cleaned = np.zeros_like(binary_mask)
+    for idx in range(1, num_labels):
+        if stats[idx, cv2.CC_STAT_AREA] >= min_area:
+            cleaned[labels == idx] = 255
+    return cleaned
+
+
+def _score_line_component(component_mask, path_distance, start_pt=None, end_pt=None, prefer_horizontal=True):
+    ys, xs = np.where(component_mask > 0)
+    if len(xs) == 0:
+        return float("-inf")
+
+    xy = np.column_stack((xs, ys)).astype(np.float32)
+    area = float(len(xs))
+    arc_length = float(get_line_length(component_mask))
+    mean_path_distance = float(np.mean(path_distance[component_mask > 0]))
+    x, y, w, h = cv2.boundingRect(xy.astype(np.int32).reshape(-1, 1, 2))
+    aspect = (w / max(h, 1)) if prefer_horizontal else (h / max(w, 1))
+
+    start_bonus = 0.0
+    if start_pt is not None:
+        start_bonus = max(0.0, 40.0 - float(np.min(np.linalg.norm(xy - np.asarray(start_pt, dtype=np.float32), axis=1))))
+
+    end_bonus = 0.0
+    if end_pt is not None:
+        end_bonus = max(0.0, 34.0 - float(np.min(np.linalg.norm(xy - np.asarray(end_pt, dtype=np.float32), axis=1))))
+
+    return (
+        arc_length * 1.15
+        + area * 0.55
+        + min(24.0, aspect * 10.0)
+        + start_bonus * 1.2
+        + end_bonus
+        - mean_path_distance * 5.5
+    )
+
+
+def _select_line_mask(candidate_mask, path_distance, start_pt=None, end_pt=None, prefer_horizontal=True, keep_top=2, min_area=22):
+    candidate_mask = _cleanup_binary_mask(candidate_mask, min_area=min_area)
+    if candidate_mask.max() == 0:
+        return candidate_mask
+
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(candidate_mask, connectivity=8)
+    ranked = []
+    for idx in range(1, num_labels):
+        if stats[idx, cv2.CC_STAT_AREA] < min_area:
+            continue
+        component_mask = (labels == idx).astype(np.uint8) * 255
+        score = _score_line_component(
+            component_mask,
+            path_distance,
+            start_pt=start_pt,
+            end_pt=end_pt,
+            prefer_horizontal=prefer_horizontal,
+        )
+        ranked.append((score, idx))
+
+    if not ranked:
+        return np.zeros_like(candidate_mask)
+
+    ranked.sort(reverse=True)
+    best_score = ranked[0][0]
+    selected = np.zeros_like(candidate_mask)
+    kept = 0
+    for score, idx in ranked:
+        if kept >= keep_top:
+            break
+        if score < best_score - 45.0 and kept > 0:
+            continue
+        selected[labels == idx] = 255
+        kept += 1
+
+    selected = cv2.morphologyEx(selected, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=1)
+    return selected
+
+
+def extract_major_palm_lines(crop, anchor_points):
+    """Detect the three primary palm lines using anatomy-guided corridors."""
+    h, w = crop.shape[:2]
+    palm_poly = np.array(
+        [
+            anchor_points["wrist"],
+            anchor_points["thumb_base"],
+            anchor_points["index_base"],
+            anchor_points["middle_base"],
+            anchor_points["ring_base"],
+            anchor_points["pinky_base"],
+            anchor_points["pinky_side"],
+        ],
+        dtype=np.int32,
+    )
+
+    palm_mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.fillPoly(palm_mask, [palm_poly], 255)
+    palm_mask = cv2.erode(palm_mask, np.ones((5, 5), np.uint8), iterations=1)
+    palm_mask = cv2.morphologyEx(palm_mask, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8), iterations=1)
+
+    line_map_gabor, enhanced_gray = enhance_palm_image(crop)
+    line_map_gabor = cv2.bitwise_and(line_map_gabor, line_map_gabor, mask=palm_mask)
+    
+    # Use the highly accurate ink-stamp map directly, without ruining it with Otsu
+    combined_lines = line_map_gabor
+    combined_lines = _cleanup_binary_mask(combined_lines, min_area=max(12, int(h * w * 0.00012)))
+
+    ys, xs = np.where(palm_mask > 0)
+    if len(xs) == 0:
+        return np.zeros((h, w), dtype=np.uint8), combined_lines, enhanced_gray, palm_mask
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    palm_w = max(1, x1 - x0)
+    palm_h = max(1, y1 - y0)
+
+    def _pt_blend(a, b, weight_to_b):
+        pt = (np.asarray(a, dtype=np.float32) * (1.0 - weight_to_b)) + (np.asarray(b, dtype=np.float32) * weight_to_b)
+        return np.round(pt).astype(np.int32)
+
+    heart_start = _pt_blend(anchor_points["index_base"], anchor_points["middle_base"], 0.35)
+    heart_mid = _pt_blend(anchor_points["middle_base"], anchor_points["ring_base"], 0.55)
+    heart_end = np.array(
+        [
+            int(np.clip(anchor_points["pinky_base"][0], 0, w - 1)),
+            int(np.clip(anchor_points["pinky_base"][1] + palm_h * 0.16, 0, h - 1)),
+        ],
+        dtype=np.int32,
+    )
+    heart_path = np.vstack((heart_start, heart_mid, heart_end))
+
+    head_start = _pt_blend(anchor_points["thumb_base"], anchor_points["index_base"], 0.58)
+    head_mid = np.array(
+        [
+            int(np.clip(x0 + palm_w * 0.53, 0, w - 1)),
+            int(np.clip(y0 + palm_h * 0.53, 0, h - 1)),
+        ],
+        dtype=np.int32,
+    )
+    head_end = _pt_blend(anchor_points["pinky_side"], anchor_points["wrist"], 0.45)
+    head_path = np.vstack((head_start, head_mid, head_end))
+
+    life_start = _pt_blend(anchor_points["thumb_base"], anchor_points["index_base"], 0.44)
+    life_ctrl1 = np.array(
+        [
+            int(np.clip(anchor_points["thumb_base"][0] + palm_w * 0.04, 0, w - 1)),
+            int(np.clip(anchor_points["thumb_base"][1] + palm_h * 0.18, 0, h - 1)),
+        ],
+        dtype=np.int32,
+    )
+    life_ctrl2 = np.array(
+        [
+            int(np.clip(anchor_points["wrist"][0] + palm_w * 0.17, 0, w - 1)),
+            int(np.clip(anchor_points["wrist"][1] - palm_h * 0.08, 0, h - 1)),
+        ],
+        dtype=np.int32,
+    )
+    life_end = np.array(
+        [
+            int(np.clip(anchor_points["wrist"][0] + palm_w * 0.08, 0, w - 1)),
+            int(np.clip(anchor_points["wrist"][1] - palm_h * 0.02, 0, h - 1)),
+        ],
+        dtype=np.int32,
+    )
+    life_path = _cubic_bezier_points(life_start, life_ctrl1, life_ctrl2, life_end, samples=80)
+
+    heart_dist = _path_distance_map((h, w), heart_path, thickness=3)
+    head_dist = _path_distance_map((h, w), head_path, thickness=3)
+    life_dist = _path_distance_map((h, w), life_path, thickness=3)
+
+    upper_band = np.zeros((h, w), dtype=np.uint8)
+    upper_band[max(0, y0 + int(palm_h * 0.08)):min(h, y0 + int(palm_h * 0.48)), x0:x1 + 1] = 255
+    middle_band = np.zeros((h, w), dtype=np.uint8)
+    middle_band[max(0, y0 + int(palm_h * 0.20)):min(h, y0 + int(palm_h * 0.78)), x0:x1 + 1] = 255
+    life_band = np.zeros((h, w), dtype=np.uint8)
+    life_band[max(0, y0 + int(palm_h * 0.05)):min(h, y1 + 1), x0:min(w, x0 + int(palm_w * 0.68))] = 255
+
+    heart_mask = np.where((combined_lines > 0) & (heart_dist < max(18, palm_w * 0.10)) & (upper_band > 0), 255, 0).astype(np.uint8)
+    head_mask = np.where((combined_lines > 0) & (head_dist < max(18, palm_w * 0.10)) & (middle_band > 0), 255, 0).astype(np.uint8)
+    life_mask = np.where((combined_lines > 0) & (life_dist < max(20, palm_w * 0.13)) & (life_band > 0), 255, 0).astype(np.uint8)
+
+    heart_mask = _select_line_mask(heart_mask, heart_dist, start_pt=heart_start, end_pt=heart_end, prefer_horizontal=True, keep_top=2)
+    head_mask = _select_line_mask(head_mask, head_dist, start_pt=head_start, end_pt=head_end, prefer_horizontal=True, keep_top=2)
+    life_mask = _select_line_mask(life_mask, life_dist, start_pt=life_start, end_pt=life_end, prefer_horizontal=False, keep_top=2)
+
+    head_mask = cv2.subtract(head_mask, heart_mask)
+    life_mask = cv2.subtract(life_mask, cv2.bitwise_or(head_mask, heart_mask))
+
+    segmentation_mask = np.zeros((h, w), dtype=np.uint8)
+    segmentation_mask[life_mask > 0] = 1
+    segmentation_mask[head_mask > 0] = 2
+    segmentation_mask[heart_mask > 0] = 3
+
+    return segmentation_mask, combined_lines, enhanced_gray, palm_mask
 
 
 def _get_ordered_contour_points(mask):
@@ -582,85 +823,248 @@ def _get_ordered_contour_points(mask):
     return longest.reshape(-1, 2)
 
 
+def _farthest_pair(points, max_samples=220):
+    if points is None or len(points) < 2:
+        return None, None, 0.0
+
+    pts = np.asarray(points, dtype=np.float32)
+    if len(pts) > max_samples:
+        idx = np.linspace(0, len(pts) - 1, max_samples, dtype=int)
+        pts = pts[idx]
+
+    diff = pts[:, None, :] - pts[None, :, :]
+    dist_sq = np.sum(diff * diff, axis=2)
+    i, j = np.unravel_index(int(np.argmax(dist_sq)), dist_sq.shape)
+    return pts[i], pts[j], float(np.sqrt(dist_sq[i, j]))
+
+
+def _line_geometry(mask):
+    """Compute robust line geometry from a thinned centerline instead of contour edges."""
+    empty = {
+        "points": np.empty((0, 2), dtype=np.int32),
+        "ordered_points": np.empty((0, 2), dtype=np.int32),
+        "start": None,
+        "end": None,
+        "length": 0.0,
+        "straight": 0.0,
+        "curvature": 0.0,
+        "angle": 0.0,
+    }
+
+    if mask.max() == 0:
+        return empty
+
+    binary = (mask > 0).astype(np.uint8) * 255
+    skeleton = extract_skeleton(binary)
+    skeleton = (skeleton > 0).astype(np.uint8) * 255
+
+    use_skeleton = cv2.countNonZero(skeleton) >= 10
+    active = skeleton if use_skeleton else binary
+
+    ys, xs = np.where(active > 0)
+    if len(xs) < 2:
+        return empty
+
+    points = np.column_stack((xs, ys)).astype(np.int32)
+
+    endpoint_points = np.empty((0, 2), dtype=np.int32)
+    if use_skeleton:
+        skel_bin = (skeleton > 0).astype(np.uint8)
+        neighbors = cv2.filter2D(skel_bin, -1, np.ones((3, 3), np.uint8), borderType=cv2.BORDER_CONSTANT)
+        end_y, end_x = np.where((skel_bin > 0) & (neighbors <= 2))
+        endpoint_points = np.column_stack((end_x, end_y)).astype(np.int32)
+
+    if len(endpoint_points) >= 2:
+        p0, p1, straight = _farthest_pair(endpoint_points)
+    else:
+        p0, p1, straight = _farthest_pair(points)
+
+    if p0 is None or p1 is None:
+        return empty
+
+    start = np.asarray(p0, dtype=np.float32)
+    end = np.asarray(p1, dtype=np.float32)
+
+    # Stable direction: left-to-right, otherwise top-to-bottom.
+    if (start[0] > end[0]) or (abs(start[0] - end[0]) < 1e-3 and start[1] > end[1]):
+        start, end = end, start
+
+    direction = end - start
+    norm = float(np.linalg.norm(direction))
+    if norm < 1e-6:
+        order = np.argsort(points[:, 0])
+    else:
+        proj = (points.astype(np.float32) - start) @ direction / norm
+        order = np.argsort(proj)
+    ordered_points = points[order]
+
+    if use_skeleton:
+        # On a thinned centerline, non-zero pixel count is a stable length proxy.
+        length = float(cv2.countNonZero(skeleton))
+        if len(ordered_points) >= 2:
+            steps = np.linalg.norm(np.diff(ordered_points.astype(np.float32), axis=0), axis=1)
+            if len(steps) > 0:
+                length = float(np.sum(np.clip(steps, 0.0, 2.2)))
+    else:
+        contours, _ = cv2.findContours(active, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        if contours:
+            segment_lengths = sorted(
+                (cv2.arcLength(c, False) for c in contours if len(c) >= 2),
+                reverse=True,
+            )
+            length = float(segment_lengths[0]) if segment_lengths else float(len(points))
+        else:
+            length = float(len(points))
+
+    if length <= 0:
+        length = float(len(points))
+
+    straight = max(float(straight), 1.0)
+    raw_ratio = (length / straight) if length > 0 else 1.0
+    curvature = float(np.clip(1.0 + max(0.0, raw_ratio - 1.0) * 0.30, 1.0, 2.2))
+    length = float(max(straight * 0.90, straight * curvature))
+    angle = float(np.degrees(np.arctan2(end[1] - start[1], end[0] - start[0])))
+
+    return {
+        "points": points,
+        "ordered_points": ordered_points,
+        "start": np.round(start).astype(np.int32),
+        "end": np.round(end).astype(np.int32),
+        "length": length,
+        "straight": straight,
+        "curvature": curvature,
+        "angle": angle,
+    }
+
+
 # ── PHASE 2: FINE LINE DETECTION ──────────────────────────────────────────
 
 def detect_breaks(mask):
     """Detect breaks (gaps) in a line mask. Returns list of break positions (0-1 normalized)."""
     if mask.max() == 0:
         return []
-    binary = (mask > 0).astype(np.uint8) * 255
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if len(contours) <= 1:
+
+    skeleton = extract_skeleton(mask)
+    skeleton = (skeleton > 0).astype(np.uint8) * 255
+    if skeleton.max() == 0:
         return []
-    # Multiple contour fragments = breaks exist
-    # Sort by x-position to get ordered break locations
-    centroids = []
-    for c in contours:
-        M = cv2.moments(c)
-        if M["m00"] > 0:
-            centroids.append((M["m10"] / M["m00"], M["m01"] / M["m00"], cv2.arcLength(c, False)))
-    centroids.sort(key=lambda p: p[0])
-    if len(centroids) < 2:
+
+    num_labels, _, stats, centroids = cv2.connectedComponentsWithStats(skeleton, connectivity=8)
+    if num_labels <= 2:
         return []
+
+    min_component = max(8, int(cv2.countNonZero(skeleton) * 0.05))
+    components = []
+    for i in range(1, num_labels):
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        if area >= min_component:
+            components.append((float(centroids[i][0]), float(centroids[i][1]), area))
+
+    if len(components) < 2:
+        return []
+
+    # Keep only strongest fragments to avoid tiny-noise "breaks".
+    components = sorted(components, key=lambda c: c[2], reverse=True)[:4]
+    components.sort(key=lambda c: c[0])
+
     h, w = mask.shape[:2]
     breaks = []
-    for i in range(len(centroids) - 1):
-        gap_x = (centroids[i][0] + centroids[i + 1][0]) / 2
-        gap_y = (centroids[i][1] + centroids[i + 1][1]) / 2
+    for i in range(len(components) - 1):
+        gap_x = (components[i][0] + components[i + 1][0]) / 2
+        gap_y = (components[i][1] + components[i + 1][1]) / 2
         breaks.append({"position": round(gap_x / w, 3), "y_position": round(gap_y / h, 3)})
-    return breaks
+    return breaks[:3]
 
 
 def detect_branches(mask, enhanced_line_map):
     """Detect branches extending from a major line using skeleton junction analysis."""
-    if mask.max() == 0:
+    if mask.max() == 0 or enhanced_line_map is None or enhanced_line_map.max() == 0:
         return {"upward": 0, "downward": 0, "total": 0}
-    # Dilate the mask slightly to find connected fine lines
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    dilated = cv2.dilate(mask, kernel, iterations=1)
-    # Find fine lines that connect to this major line
-    connected_fines = cv2.bitwise_and(enhanced_line_map, dilated)
-    # Remove the original line itself
-    branch_only = cv2.subtract(connected_fines, mask)
-    if branch_only.max() == 0:
+
+    major_core = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=1)
+    fine_only = cv2.subtract(enhanced_line_map, major_core)
+    fine_only = cv2.morphologyEx(fine_only, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8), iterations=1)
+    fine_only = _cleanup_binary_mask(fine_only, min_area=10)
+    if fine_only.max() == 0:
         return {"upward": 0, "downward": 0, "total": 0}
-    # Count distinct branch segments
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(branch_only, connectivity=8)
-    min_branch_area = 8
-    # Classify branches as upward or downward relative to the main line centroid
-    main_pts = _get_ordered_contour_points(mask)
+
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(fine_only, connectivity=8)
+    geom = _line_geometry(mask)
+    main_pts = geom["ordered_points"]
     if len(main_pts) == 0:
         return {"upward": 0, "downward": 0, "total": 0}
-    main_center_y = np.mean(main_pts[:, 1])
+
+    main_center_y = float(np.mean(main_pts[:, 1]))
+    line_length = max(float(geom["length"]), 1.0)
+    min_area = max(18, int(line_length * 0.08))
+    min_arc = max(12.0, line_length * 0.12)
+    touch_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    major_touch = cv2.dilate(mask, touch_kernel, iterations=1)
+
     upward = 0
     downward = 0
     for i in range(1, num_labels):
-        if stats[i, cv2.CC_STAT_AREA] >= min_branch_area:
-            branch_cy = centroids[i][1]
-            if branch_cy < main_center_y:
-                upward += 1
-            else:
-                downward += 1
-    return {"upward": upward, "downward": downward, "total": upward + downward}
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        if area < min_area:
+            continue
+
+        comp_mask = (labels == i).astype(np.uint8) * 255
+        if cv2.countNonZero(cv2.bitwise_and(cv2.dilate(comp_mask, touch_kernel, iterations=1), major_touch)) == 0:
+            continue
+
+        contours, _ = cv2.findContours(comp_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        if not contours:
+            continue
+        arc = max(cv2.arcLength(c, False) for c in contours)
+        comp_height = int(stats[i, cv2.CC_STAT_HEIGHT])
+        if arc < min_arc and comp_height < 6:
+            continue
+
+        if float(centroids[i][1]) < main_center_y:
+            upward += 1
+        else:
+            downward += 1
+
+    upward = min(upward, 6)
+    downward = min(downward, 6)
+    total = min(upward + downward, 12)
+    return {"upward": upward, "downward": downward, "total": total}
 
 
 def detect_islands(mask):
-    """Detect island formations (enclosed oval shapes) on a line."""
+    """Detect enclosed loop structures while suppressing tiny hole noise."""
     if mask.max() == 0:
         return 0
+
     binary = (mask > 0).astype(np.uint8) * 255
-    # Islands appear as enclosed loops — look for inner contours
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=1)
     contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if hierarchy is None:
         return 0
+
+    line_length = max(get_line_length(mask), 1.0)
+    min_area = max(10.0, line_length * 0.02)
+    max_area = max(min_area * 6.0, line_length * 0.35)
+
     island_count = 0
     for i, h in enumerate(hierarchy[0]):
         # h = [next, prev, child, parent]
-        if h[3] != -1:  # has parent = inner contour = potential island
-            area = cv2.contourArea(contours[i])
-            if 5 < area < 500:
-                island_count += 1
-    return island_count
+        if h[3] == -1:
+            continue
+
+        area = float(cv2.contourArea(contours[i]))
+        if area < min_area or area > max_area:
+            continue
+
+        perimeter = cv2.arcLength(contours[i], True)
+        if perimeter <= 1.0:
+            continue
+
+        circularity = (4.0 * np.pi * area) / (perimeter * perimeter)
+        if 0.12 <= circularity <= 1.45:
+            island_count += 1
+
+    return int(min(island_count, 9))
 
 
 def detect_fork(mask):
@@ -798,9 +1202,10 @@ def analyze_line_depth_profile(mask, enhanced_gray, n_samples=10):
 def compute_spatial_features(mask, label):
     """Extract precise spatial start/end positions and multi-point curvature
     for a major line. These are unique fingerprints per palm."""
-    pts = _get_ordered_contour_points(mask)
+    geom = _line_geometry(mask)
+    pts = geom["ordered_points"]
     h, w = mask.shape[:2]
-    if len(pts) < 5:
+    if len(pts) < 5 or geom["start"] is None or geom["end"] is None:
         return {
             f"{label}_start_x": 0.5, f"{label}_start_y": 0.5,
             f"{label}_end_x": 0.5, f"{label}_end_y": 0.5,
@@ -808,29 +1213,29 @@ def compute_spatial_features(mask, label):
             f"{label}_curvature_samples": [1.0] * 5,
             f"{label}_bbox_area_ratio": 0.0,
         }
-    # Sort by x to get left-to-right ordering
-    sorted_pts = pts[pts[:, 0].argsort()]
-    start = sorted_pts[0]
-    end = sorted_pts[-1]
+
+    sorted_pts = pts
+    start = geom["start"]
+    end = geom["end"]
 
     # Multi-point curvature (sample at 5 segments)
     curvature_samples = []
     n_segments = 5
-    seg_size = max(len(sorted_pts) // n_segments, 3)
+    boundaries = np.linspace(0, len(sorted_pts), n_segments + 1, dtype=int)
     for i in range(n_segments):
-        seg = sorted_pts[i * seg_size : min((i + 1) * seg_size, len(sorted_pts))]
-        if len(seg) < 3:
+        seg = sorted_pts[boundaries[i] : max(boundaries[i + 1], boundaries[i] + 2)]
+        if len(seg) < 2:
             curvature_samples.append(1.0)
             continue
-        arc = cv2.arcLength(seg.reshape(-1, 1, 2), closed=False)
-        dist = np.linalg.norm(seg[0].astype(float) - seg[-1].astype(float))
-        curvature_samples.append(round(arc / max(dist, 1.0), 3))
+        arc = float(cv2.arcLength(seg.reshape(-1, 1, 2), closed=False))
+        dist = float(np.linalg.norm(seg[0].astype(float) - seg[-1].astype(float)))
+        curvature_samples.append(round(float(np.clip(arc / max(dist, 1.0), 1.0, 3.8)), 3))
 
     # Bounding box area ratio (how much of the bbox the line fills)
     x_min, y_min = sorted_pts.min(axis=0)
     x_max, y_max = sorted_pts.max(axis=0)
     bbox_area = max((x_max - x_min) * (y_max - y_min), 1)
-    line_pixel_count = cv2.countNonZero(mask)
+    line_pixel_count = len(sorted_pts)
 
     return {
         f"{label}_start_x": round(float(start[0]) / w, 3),
@@ -871,15 +1276,33 @@ def compute_line_gap(mask1, mask2):
     return round(min_dist / h, 4)
 
 
-def detect_minor_lines(enhanced_line_map, major_mask_combined, mask_shape):
+def detect_minor_lines(enhanced_line_map, major_mask_combined, mask_shape, region_mask=None):
     """Detect minor/fine lines that are NOT part of the 3 major lines.
     These include fate, sun, marriage, travel lines etc."""
     # Remove major lines from the enhanced map
     fine_only = cv2.subtract(enhanced_line_map, major_mask_combined)
+    if region_mask is not None and region_mask.max() > 0:
+        fine_only = cv2.bitwise_and(fine_only, fine_only, mask=region_mask)
+
+    fine_only = _cleanup_binary_mask(
+        fine_only,
+        min_area=max(10, int(fine_only.shape[0] * fine_only.shape[1] * 0.00005)),
+    )
+    fine_only = (extract_skeleton(fine_only) > 0).astype(np.uint8) * 255
+
     if fine_only.max() == 0:
         return {"total_fine_lines": 0, "fine_line_density": 0.0, "fine_line_total_length": 0.0}
+
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(fine_only, connectivity=8)
-    min_line_length = 10
+
+    if region_mask is not None and region_mask.max() > 0:
+        active_area = max(int(cv2.countNonZero(region_mask)), 1)
+    else:
+        h, w = mask_shape[:2]
+        active_area = max(h * w, 1)
+
+    min_line_length = max(10, int(np.sqrt(active_area) * 0.012))
+    min_arc = max(16.0, np.sqrt(active_area) * 0.030)
     valid_lines = 0
     total_fine_length = 0.0
     for i in range(1, num_labels):
@@ -890,50 +1313,87 @@ def detect_minor_lines(enhanced_line_map, major_mask_combined, mask_shape):
             contours, _ = cv2.findContours(comp_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
             if contours:
                 arc = cv2.arcLength(max(contours, key=cv2.contourArea), False)
-                if arc > 15:
+                if arc > min_arc:
                     valid_lines += 1
                     total_fine_length += arc
-    h, w = mask_shape[:2]
-    density = total_fine_length / (h * w) * 10000  # per 10k pixels
+
+    density = total_fine_length / active_area * 10000  # per 10k pixels
     return {
-        "total_fine_lines": valid_lines,
+        "total_fine_lines": int(min(valid_lines, 120)),
         "fine_line_density": round(density, 2),
         "fine_line_total_length": round(total_fine_length, 1),
+    }
+
+
+def summarize_minor_line_channels(enhanced_line_map, major_mask_combined, region_mask=None):
+    """Estimate vertical minor-line strength in classical Fate and Sun zones."""
+    fine_only = cv2.subtract(enhanced_line_map, major_mask_combined)
+    if region_mask is not None and region_mask.max() > 0:
+        fine_only = cv2.bitwise_and(fine_only, fine_only, mask=region_mask)
+        bbox_mask = region_mask
+    else:
+        bbox_mask = major_mask_combined
+
+    fine_only = _cleanup_binary_mask(
+        fine_only,
+        min_area=max(8, int(fine_only.shape[0] * fine_only.shape[1] * 0.00004)),
+    )
+    fine_only = (extract_skeleton(fine_only) > 0).astype(np.uint8) * 255
+
+    ys, xs = np.where(bbox_mask > 0)
+    if fine_only.max() == 0 or len(xs) == 0:
+        return {"fate_presence": 0.0, "sun_presence": 0.0}
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    width = max(1, x1 - x0)
+    height = max(1, y1 - y0)
+
+    def _zone_presence(x_start_ratio, x_end_ratio, y_start_ratio, y_end_ratio):
+        zx0 = int(np.clip(x0 + width * x_start_ratio, 0, fine_only.shape[1] - 1))
+        zx1 = int(np.clip(x0 + width * x_end_ratio, zx0 + 1, fine_only.shape[1]))
+        zy0 = int(np.clip(y0 + height * y_start_ratio, 0, fine_only.shape[0] - 1))
+        zy1 = int(np.clip(y0 + height * y_end_ratio, zy0 + 1, fine_only.shape[0]))
+
+        zone_mask = np.zeros_like(fine_only)
+        zone_mask[zy0:zy1, zx0:zx1] = 255
+        zone_lines = cv2.bitwise_and(fine_only, fine_only, mask=zone_mask)
+        if zone_lines.max() == 0:
+            return 0.0
+
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(zone_lines, connectivity=8)
+        zone_height = max(1, zy1 - zy0)
+        score = 0.0
+        for idx in range(1, num_labels):
+            area = stats[idx, cv2.CC_STAT_AREA]
+            comp_width = stats[idx, cv2.CC_STAT_WIDTH]
+            comp_height = stats[idx, cv2.CC_STAT_HEIGHT]
+            aspect = comp_height / max(comp_width, 1)
+            if area < 18 or comp_height < zone_height * 0.18 or aspect < 1.6:
+                continue
+            score += (
+                min(0.45, area / 320.0)
+                + min(0.35, (comp_height / zone_height) * 0.8)
+                + min(0.20, max(0.0, aspect - 1.6) / 2.4)
+            )
+        return round(min(score, 1.0), 3)
+
+    return {
+        "fate_presence": _zone_presence(0.36, 0.64, 0.20, 0.96),
+        "sun_presence": _zone_presence(0.56, 0.82, 0.12, 0.82),
     }
 
 
 # ── PHASE 5: MASTER FEATURE EXTRACTION (60+ features) ────────────────────
 
 def get_line_length(mask):
-    if mask.max() == 0: return 0
-    binary_mask = (mask > 0).astype(np.uint8) * 255
-    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if not contours: return 0
-    longest_contour = max(contours, key=cv2.contourArea)
-    return cv2.arcLength(longest_contour, closed=False)
+    return float(_line_geometry(mask)["length"])
 
 def get_curvature(mask):
-    if mask.max() == 0: return 0
-    binary_mask = (mask > 0).astype(np.uint8) * 255
-    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if not contours: return 0
-    longest_contour = max(contours, key=cv2.contourArea)
-    arc_length = cv2.arcLength(longest_contour, closed=False)
-    contour_points = longest_contour.reshape(-1, 2)
-    if len(contour_points) < 2: return 0
-    straight_distance = np.linalg.norm(contour_points[0] - contour_points[-1])
-    if straight_distance < 1: return 1.0
-    return arc_length / straight_distance
+    return float(_line_geometry(mask)["curvature"])
 
 def get_line_angle(mask):
-    if mask.max() == 0: return 0
-    binary_mask = (mask > 0).astype(np.uint8) * 255
-    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if not contours: return 0
-    longest_contour = max(contours, key=cv2.contourArea)
-    [vx, vy, x, y] = cv2.fitLine(longest_contour, cv2.DIST_L2, 0, 0.01, 0.01)
-    angle = np.arctan2(vy, vx) * 180 / np.pi
-    return float(angle[0]) if isinstance(angle, np.ndarray) else float(angle)
+    return float(_line_geometry(mask)["angle"])
 
 def count_intersections(mask1, mask2):
     intersection = cv2.bitwise_and(mask1, mask2)
@@ -942,7 +1402,7 @@ def count_intersections(mask1, mask2):
     return max(0, num_labels - 1)
 
 
-def extract_palm_features(segmentation_mask, raw_image=None):
+def extract_palm_features(segmentation_mask, raw_image=None, palm_region_mask=None, enhanced_line_map=None, enhanced_gray=None):
     """Extract 60+ unique features from the palm using both the CNN segmentation
     mask AND raw image analysis. When raw_image is None, falls back to basic mode."""
     life_mask = (segmentation_mask == 1).astype(np.uint8) * 255
@@ -971,7 +1431,12 @@ def extract_palm_features(segmentation_mask, raw_image=None):
     # ══════════════════════════════════════════════════════════════════════
     # ADVANCED FEATURES — derived from raw image analysis
     # ══════════════════════════════════════════════════════════════════════
-    enhanced_line_map, enhanced_gray = enhance_palm_image(raw_image)
+    if enhanced_line_map is None or enhanced_gray is None:
+        enhanced_line_map, enhanced_gray = enhance_palm_image(raw_image)
+
+    if palm_region_mask is not None and palm_region_mask.max() > 0:
+        enhanced_line_map = cv2.bitwise_and(enhanced_line_map, enhanced_line_map, mask=palm_region_mask)
+        enhanced_gray = cv2.bitwise_and(enhanced_gray, enhanced_gray, mask=palm_region_mask)
 
     masks = {"life": life_mask, "head": head_mask, "heart": heart_mask}
 
@@ -1019,8 +1484,9 @@ def extract_palm_features(segmentation_mask, raw_image=None):
 
     # ── Minor/fine line detection ──
     major_combined = cv2.bitwise_or(cv2.bitwise_or(life_mask, head_mask), heart_mask)
-    minor_lines = detect_minor_lines(enhanced_line_map, major_combined, segmentation_mask.shape)
+    minor_lines = detect_minor_lines(enhanced_line_map, major_combined, segmentation_mask.shape, region_mask=palm_region_mask)
     features.update(minor_lines)
+    features.update(summarize_minor_line_channels(enhanced_line_map, major_combined, region_mask=palm_region_mask))
 
     # ── Unique palm signature (hash of all continuous features for dedup) ──
     sig_vals = [
@@ -1031,6 +1497,7 @@ def extract_palm_features(segmentation_mask, raw_image=None):
         features.get('heart_avg_depth', 0),
         features.get('life_branch_total', 0), features.get('head_branch_total', 0),
         features.get('life_break_count', 0), features.get('total_fine_lines', 0),
+        features.get('fate_presence', 0), features.get('sun_presence', 0),
     ]
     import hashlib
     sig_str = "_".join([f"{v:.3f}" if isinstance(v, float) else str(v) for v in sig_vals])
@@ -1127,24 +1594,148 @@ def create_palm_overlay(image, mask, enhanced_line_map=None):
 # DEFAULT PALM OBSERVATIONS (replaces the removed expander form)
 # ─────────────────────────────────────────────────────────────────────────────
 DEFAULT_OBSERVATIONS = {
-    "dominant_hand": "Right",
+    "dominant_hand": "Both / unsure",
     "hand_shape": "Auto / unsure",
-    "line_depth": "Medium",
-    "major_breaks": "A few",
-    "fate_line": "Faint",
-    "sun_line": "Faint",
 }
+
+
+def build_dynamic_palm_observations(features):
+    """Convert scan metrics into the old observation labels used by the report engine."""
+    major_depths = [
+        float(features.get("life_avg_depth", 0.0)),
+        float(features.get("head_avg_depth", 0.0)),
+        float(features.get("heart_avg_depth", 0.0)),
+    ]
+    valid_depths = [depth for depth in major_depths if depth > 0]
+    avg_depth = float(np.mean(valid_depths)) if valid_depths else 0.5
+
+    total_breaks = sum(int(features.get(f"{name}_break_count", 0)) for name in ("life", "head", "heart"))
+
+    if avg_depth >= 0.62:
+        line_depth = "Deep"
+    elif avg_depth <= 0.36:
+        line_depth = "Faint"
+    else:
+        line_depth = "Medium"
+
+    if total_breaks >= 4:
+        major_breaks = "Many"
+    elif total_breaks >= 1:
+        major_breaks = "A few"
+    else:
+        major_breaks = "None"
+
+    detected_hand = str(features.get("detected_hand_label", "")).title()
+    detected_hand_conf = float(features.get("detected_hand_confidence", 0.0))
+    if detected_hand not in {"Left", "Right"} or detected_hand_conf < 0.5:
+        detected_hand = "Both / unsure"
+
+    return {
+        "dominant_hand": detected_hand,
+        "line_depth": line_depth,
+        "major_breaks": major_breaks,
+    }
+
+
+def _extract_handedness_label(result):
+    handedness = getattr(result, "handedness", None) or []
+    if not handedness or not handedness[0]:
+        return None, 0.0
+
+    try:
+        category = handedness[0][0]
+        label = getattr(category, "category_name", None) or getattr(category, "display_name", None)
+        score = float(getattr(category, "score", 0.0) or 0.0)
+    except Exception:
+        return None, 0.0
+
+    if label in {"Left", "Right"}:
+        return label, score
+    return None, score
+
+
+def _compute_palm_scan_quality(palm_roi, segmentation_mask, enhanced_gray, features, handedness_label=None, handedness_score=0.0):
+    image_area = max(int(segmentation_mask.shape[0] * segmentation_mask.shape[1]), 1)
+    palm_area = int(cv2.countNonZero(palm_roi)) if palm_roi is not None else 0
+    hand_fill_ratio = float(palm_area / image_area) if palm_area else 0.0
+
+    major_mask = (segmentation_mask > 0).astype(np.uint8) * 255
+    major_pixels = int(cv2.countNonZero(major_mask))
+    major_line_ratio = float(major_pixels / max(palm_area, 1)) if palm_area else 0.0
+
+    visible_major_lines = sum(
+        1 for key in ("life_length", "head_length", "heart_length") if float(features.get(key, 0.0)) >= 55.0
+    )
+    fine_density = float(features.get("fine_line_density", 0.0))
+
+    depth_values = [
+        float(features.get("life_avg_depth", 0.0)),
+        float(features.get("head_avg_depth", 0.0)),
+        float(features.get("heart_avg_depth", 0.0)),
+    ]
+    valid_depths = [value for value in depth_values if value > 0]
+    avg_depth = float(np.mean(valid_depths)) if valid_depths else 0.0
+
+    texture_score = 0.0
+    line_contrast_score = 0.0
+    if enhanced_gray is not None and palm_area > 0:
+        palm_values = enhanced_gray[palm_roi > 0]
+        if palm_values.size > 0:
+            texture_score = float(np.clip(np.std(palm_values) / 52.0, 0.0, 1.0))
+
+        line_values = enhanced_gray[major_mask > 0]
+        skin_values = enhanced_gray[(palm_roi > 0) & (major_mask == 0)]
+        if line_values.size > 0 and skin_values.size > 0:
+            line_contrast_score = float(
+                np.clip(abs(float(np.mean(skin_values)) - float(np.mean(line_values))) / 48.0, 0.0, 1.0)
+            )
+
+    quality_score = float(np.clip(
+        0.12
+        + min(hand_fill_ratio / 0.18, 1.0) * 0.18
+        + min(major_line_ratio / 0.075, 1.0) * 0.22
+        + (visible_major_lines / 3.0) * 0.16
+        + min(fine_density / 28.0, 1.0) * 0.10
+        + texture_score * 0.10
+        + line_contrast_score * 0.12
+        + min(avg_depth / 0.78, 1.0) * 0.10,
+        0.0,
+        0.98,
+    ))
+
+    detected_hand = handedness_label if handedness_label in {"Left", "Right"} else "Unclear"
+    return {
+        "quality_score": round(quality_score, 3),
+        "hand_fill_ratio": round(hand_fill_ratio, 3),
+        "major_line_ratio": round(major_line_ratio, 3),
+        "texture_score": round(texture_score, 3),
+        "line_contrast_score": round(line_contrast_score, 3),
+        "major_line_count": int(visible_major_lines),
+        "detected_hand": detected_hand,
+        "handedness_confidence": round(float(handedness_score), 3),
+    }
 
 
 def _draw_live_palm_summary(image, report):
     output = image.copy()
-    labels = [
-        f"Dominant: {report['dominant_line']}",
-        f"Quality: {report['detection_quality']:.2f}",
-        f"Career Shift: {report['career_shift_indicator']}",
-    ]
-    if report["detection_quality"] < 0.55:
-        labels.append("Tip: move closer, flatten palm, use brighter light")
+
+    if not report or not report.get("_hand_found", False):
+        labels = [
+            "Palm not locked yet",
+            "Show full palm and wrist to the camera",
+            "Use brighter light and keep the hand flatter",
+        ]
+    else:
+        scan_quality = report.get("scan_quality", {})
+        detected_hand = report.get("detected_hand", "Unclear")
+        labels = [
+            f"Dominant: {report.get('dominant_line', 'Unknown')}",
+            f"Quality: {report.get('detection_quality', 0.0):.2f}",
+            f"Hand: {detected_hand}",
+            f"Major Lines: {int(report.get('scan_quality', {}).get('major_line_count', 0))}/3 locked",
+        ]
+        if scan_quality.get("quality_score", 0.0) < 0.58:
+            labels.append("Tip: move closer, flatten palm, use brighter light")
 
     panel_height = 34 + len(labels) * 22
     cv2.rectangle(output, (10, 10), (470, panel_height), (5, 10, 24), thickness=-1)
@@ -1162,33 +1753,91 @@ def _draw_live_palm_summary(image, report):
     return output
 
 
+def _persist_palm_report(features, report, overlay=None):
+    new_signature = features.get("palm_signature")
+    if new_signature and st.session_state.get("palm_last_signature") != new_signature:
+        page_name = st.session_state.get("last_visited_page", "global")
+        st.session_state.pop(f"chat_history_{page_name}", None)
+        st.session_state["palm_last_signature"] = new_signature
+
+    st.session_state["palm_latest_report"] = report
+    st.session_state["palm_latest_features"] = features
+    st.session_state["palm_latest_summary"] = report.get("summary", "")
+    if overlay is not None:
+        st.session_state["palm_latest_overlay"] = overlay
+
+
+def _clear_palm_report_session():
+    for key in (
+        "palm_latest_report",
+        "palm_latest_features",
+        "palm_latest_summary",
+        "palm_latest_overlay",
+        "palm_last_signature",
+    ):
+        st.session_state.pop(key, None)
+
+
+def _render_live_palm_dashboard(report, features):
+    scan_quality = report.get("scan_quality", {})
+    timing_predictions = report.get("timing", {}).get("predictions", [])
+    top_prediction = timing_predictions[0] if timing_predictions else None
+
+    render_info_grid([
+        ("Detected Hand", report.get("detected_hand", "Unclear")),
+        ("Detection", f"{report.get('detection_quality', 0.0):.0%}"),
+        ("Major Lines", f"{scan_quality.get('major_line_count', 0)}/3"),
+        ("Fine Lines", str(int(features.get("total_fine_lines", 0)))),
+        ("Palm Fill", f"{scan_quality.get('hand_fill_ratio', 0.0):.0%}"),
+        ("Texture", f"{scan_quality.get('texture_score', 0.0):.0%}"),
+    ])
+
+    render_content_card(
+        "Live Reading Snapshot",
+        report.get("summary", "").replace("\n", "<br>"),
+        accent_color="#8B5CF6",
+        icon="🔮",
+    )
+
+    if top_prediction:
+        render_content_card(
+            f"{top_prediction.get('period', '')} — {top_prediction.get('event', '')}",
+            top_prediction.get("detail", ""),
+            accent_color="#F59E0B",
+            icon="⏳",
+        )
+
+    scan_tips = report.get("guidance", [])[:2]
+    if scan_tips:
+        tips_html = "".join([f"<div style='margin-bottom:6px;'>• {tip}</div>" for tip in scan_tips])
+        render_content_card("Live Guidance", tips_html, accent_color="#06B6D4", icon="🧭")
+
+
 def _render_palm_report(overlay, features, report):
-    from utils.voice import render_voice_button
     import uuid
 
     # ═══════════════════════════════════════════════════════════════════════
     # PHASE 1 — PALM SCAN (full-width image + key metrics)
     # ═══════════════════════════════════════════════════════════════════════
-    st.markdown("""
+    st.markdown('''
         <div style="display:flex;align-items:center;gap:14px;margin:10px 0 20px;">
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
             <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
-                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🖐️ Palm Scan Results</span>
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🖐️ AI Palm Scan</span>
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
     c1, c2 = st.columns([1.2, 0.8])
     with c1:
         st.image(
             cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB),
             use_container_width=True,
-            caption="Line overlay — Major: Life (red) · Head (green) · Heart (blue) | Fine lines: cyan",
+            caption="High-Fidelity AI Line Extraction Overlay",
         )
     with c2:
         dq = report.get("detection_quality", 1.0)
-        ht = report.get("hand_type", {})
-        personality = report.get("personality", {})
+        scan_quality = report.get("scan_quality", {})
         if dq < 0.55:
             render_content_card(
                 "⚠️ Scan Quality Low",
@@ -1197,273 +1846,34 @@ def _render_palm_report(overlay, features, report):
             )
         fine_detail = features.get('total_fine_lines', 0)
         render_info_grid([
-            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
-            ("Element", ht.get('element', 'Mixed')),
-            ("Dominant Line", report["dominant_line"]),
+            ("Hand Type", report.get("hand_type", {}).get("type", "Mixed")),
+            ("Detected Hand", report.get("detected_hand", "Unclear")),
+            ("Dominant Line", report.get("dominant_line", "Unknown")),
             ("Detection", f"{dq:.0%}"),
-            ("Dominant Mount", report.get('dominant_mount', 'Unknown').replace('_', ' ')),
+            ("Major Lines", f"{scan_quality.get('major_line_count', 0)}/3"),
             ("Fine Lines", str(fine_detail)),
-            ("Archetype", personality.get('archetype', 'Unknown')),
-            ("Palm ID", features.get('palm_signature', 'N/A')),
         ])
 
-    # Summary card — full width
-    render_content_card(
-        "🔮 Professional Reading Summary",
-        report["summary"].replace('\n', '<br>'),
-        accent_color="#8B5CF6", icon="🔮",
-    )
-    render_voice_button(report["summary"], key_suffix=f"palm_summary_{uuid.uuid4().hex[:8]}")
-
     # ═══════════════════════════════════════════════════════════════════════
-    # PHASE 2 & 3 — EXPLORATION + INTERPRETATION (tabs)
+    # PHASE 2 — FULL AI READING
     # ═══════════════════════════════════════════════════════════════════════
-    st.markdown("""
+    st.markdown('''
         <div style="display:flex;align-items:center;gap:14px;margin:30px 0 20px;">
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
             <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
-                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔍 Deep Analysis</span>
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🤖 Full AI Analysis</span>
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-    line_strength_df = pd.DataFrame(
-        {
-            "line": list(report["line_strengths"].keys()),
-            "strength": [round(v * 100, 1) for v in report["line_strengths"].values()],
-        }
-    ).set_index("line")
-
-    # Tabbed phases
-    tab_lines, tab_fine, tab_mounts, tab_timing, tab_personality, tab_health, tab_features, tab_raw = st.tabs([
-        "📜 Line Interpretation",
-        "🔬 Fine Line Detail",
-        "⛰️ Mount Analysis",
-        "⏳ Time Predictions",
-        "👤 Personality",
-        "💚 Health",
-        "📊 Feature Dashboard",
-        "🗂️ Raw Data",
-    ])
-
-    # ── TAB 1: LINE INTERPRETATION ──
-    with tab_lines:
-        line_icons = {"Life": "❤️", "Head": "🧠", "Heart": "💙"}
-        line_colors = {"Life": "#10B981", "Head": "#06B6D4", "Heart": "#EC4899"}
-        for item in report["line_readings"]:
-            governs_html = "".join([f"<span style='background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;font-size:11px;color:#94A3B8;margin:2px;display:inline-block;'>{g}</span>" for g in item.get('governs', [])[:4]])
-            render_content_card(
-                f"{item['line']} Line",
-                f"{item['detail']}<br><br>"
-                f"<div style='margin-top:8px;'>{governs_html}</div><br>"
-                f"<span style='color:#64748B;font-size:11px;'>Depth: {item.get('depth', 'Medium')} · Shape: {item.get('shape', '')} · Prominence: {item.get('prominence', '')}</span>",
-                accent_color=line_colors.get(item["line"], "#3B82F6"),
-                icon=line_icons.get(item["line"], "〰️"),
-            )
-
-        st.markdown("#### Interpretation Themes")
-        theme_cards = [
-            ("🧠", "Mindset", "mindset", "#06B6D4"),
-            ("❤️", "Relationships", "relationships", "#EC4899"),
-            ("⚡", "Energy & Vitality", "energy", "#F59E0B"),
-            ("💼", "Career & Fate", "career", "#10B981"),
-            ("✨", "Fame & Visibility", "visibility", "#8B5CF6"),
-            ("🔄", "Life Stability", "stability", "#3B82F6"),
-            ("✋", "Hand Dominance", "dominant_hand", "#F59E0B"),
-            ("📏", "Line Depth", "line_depth", "#06B6D4"),
-        ]
-        tc1, tc2 = st.columns(2)
-        for idx, (icon, title, key, color) in enumerate(theme_cards):
-            with tc1 if idx % 2 == 0 else tc2:
-                render_content_card(title, report["themes"].get(key, ""), accent_color=color, icon=icon)
-
-        notes_html = "".join([f"<div style='margin-bottom:6px;'>• {note}</div>" for note in report["shared_notes"]])
-        render_content_card("Pattern Notes", notes_html, accent_color="#8B5CF6", icon="📝")
-
-    # ── TAB 2: MOUNT ANALYSIS ──
-    with tab_mounts:
-        st.markdown("#### Mount Prominence Analysis")
-        st.caption("Mounts are the fleshy pads on the palm. Each is governed by a planet and reveals personality, career, and relationship tendencies.")
-        mounts = report.get("mounts", {})
-        mount_colors = {"Jupiter": "#F59E0B", "Saturn": "#6366F1", "Sun_Apollo": "#EAB308", "Mercury": "#06B6D4", "Venus": "#EC4899", "Moon": "#8B5CF6", "Mars": "#EF4444"}
-        mc1, mc2 = st.columns(2)
-        for idx, (name, data) in enumerate(mounts.items()):
-            strength = data.get('strength', 'Unknown')
-            score = data.get('score', 0)
-            strength_color = '#10B981' if 'Well' in strength else '#F59E0B' if 'Over' in strength else '#64748B'
-            reading = data.get('reading', {})
-            personality_text = ""
-            if isinstance(reading, dict):
-                p = reading.get('personality', '')
-                if isinstance(p, list):
-                    personality_text = '<br>'.join([f"• {t}" for t in p[:3]])
-                else:
-                    personality_text = str(p)
-            else:
-                personality_text = str(reading)
-            bar_width = int(score * 100)
-            mount_html = (
-                f"<div style='margin-bottom:4px;'>"
-                f"<span style='color:{strength_color};font-weight:700;'>{strength}</span> "
-                f"<span style='color:#64748B;'>(Score: {score})</span></div>"
-                f"<div style='background:rgba(255,255,255,0.05);border-radius:8px;height:8px;margin:8px 0;'>"
-                f"<div style='background:{mount_colors.get(name, '#3B82F6')};height:100%;border-radius:8px;width:{bar_width}%;'></div></div>"
-                f"<div style='font-size:12px;color:#CBD5E1;line-height:1.6;'>{personality_text[:300]}</div>"
-            )
-            with mc1 if idx % 2 == 0 else mc2:
-                render_content_card(f"{name.replace('_', ' ')} Mount", mount_html, accent_color=mount_colors.get(name, "#3B82F6"), icon="⛰️")
-
-    # ── TAB: FINE LINE DETAIL ──
-    with tab_fine:
-        st.markdown("#### Fine Line Analysis")
-        st.caption("Advanced computer vision detects branches, breaks, islands, chains, and depth variations unique to your palm.")
-        line_names = ["Life", "Head", "Heart"]
-        line_keys = ["life", "head", "heart"]
-        fine_colors = {"life": "#10B981", "head": "#06B6D4", "heart": "#EC4899"}
-        fine_icons = {"life": "❤️", "head": "🧠", "heart": "💙"}
-        for lname, lkey in zip(line_names, line_keys):
-            detail_parts = []
-            # Breaks
-            bc = features.get(f'{lkey}_break_count', 0)
-            if bc > 0:
-                detail_parts.append(f"<b>Breaks:</b> {bc} break(s) detected — indicates transition points or life changes")
-            else:
-                detail_parts.append("<b>Breaks:</b> None — continuous, steady flow")
-            # Branches
-            bu = features.get(f'{lkey}_branch_up', 0)
-            bd = features.get(f'{lkey}_branch_down', 0)
-            if bu + bd > 0:
-                detail_parts.append(f"<b>Branches:</b> {bu} upward (success/elevation) · {bd} downward (challenges/effort)")
-            else:
-                detail_parts.append("<b>Branches:</b> No visible branches")
-            # Islands
-            ic = features.get(f'{lkey}_island_count', 0)
-            if ic > 0:
-                detail_parts.append(f"<b>Islands:</b> {ic} — periods of uncertainty or health sensitivity")
-            # Fork
-            ft = features.get(f'{lkey}_fork_type', 'none')
-            if ft != 'none':
-                detail_parts.append(f"<b>Fork:</b> {ft.replace('_', ' ').title()} fork detected at line end")
-            # Chain regions
-            cr = features.get(f'{lkey}_chain_ratio', 0)
-            if cr > 0.05:
-                detail_parts.append(f"<b>Chains:</b> {cr:.0%} of line shows chain pattern — variable intensity periods")
-            # Sister line
-            if features.get(f'{lkey}_has_sister_line', False):
-                detail_parts.append("<b>Sister Line:</b> Parallel protection line detected — extra vitality/support")
-            # Depth profile
-            depth_samples = features.get(f'{lkey}_depth_samples', [])
-            if depth_samples:
-                avg_d = features.get(f'{lkey}_avg_depth', 0.5)
-                depth_label = 'Deep' if avg_d > 0.6 else 'Faint' if avg_d < 0.35 else 'Medium'
-                detail_parts.append(f"<b>Avg Depth:</b> {depth_label} ({avg_d:.2f}) · Variance: {features.get(f'{lkey}_depth_variance', 0):.4f}")
-            html = '<br>'.join(detail_parts)
-            render_content_card(
-                f"{lname} Line — Fine Detail",
-                html,
-                accent_color=fine_colors.get(lkey, "#3B82F6"),
-                icon=fine_icons.get(lkey, "〰️"),
-            )
-        # Minor lines summary
-        total_fine = features.get('total_fine_lines', 0)
-        fine_density = features.get('fine_line_density', 0)
-        gap_info = features.get('life_head_gap', 0)
-        minor_html = (
-            f"<b>Total minor/fine lines:</b> {total_fine}<br>"
-            f"<b>Fine line density:</b> {fine_density:.1f} per 10k px<br>"
-            f"<b>Life-Head origin gap:</b> {gap_info:.4f} (larger = earlier independence)<br>"
-            f"<b>Palm Signature:</b> <code>{features.get('palm_signature', 'N/A')}</code>"
-        )
-        render_content_card("Minor Lines & Palm Fingerprint", minor_html, accent_color="#F59E0B", icon="🔍")
-
-    # ── TAB 3: TIME PREDICTIONS ──
-    with tab_timing:
-        st.markdown("#### Time Predictions")
-        st.caption("Based on proportional timing analysis applied to your detected line positions.")
-        timing = report.get("timing", {})
-        cat_icons = {"life_transition": "🔄", "career": "💼", "health_energy": "⚡", "relationships": "💕", "spiritual": "🔮"}
-        cat_colors = {"life_transition": "#3B82F6", "career": "#10B981", "health_energy": "#F59E0B", "relationships": "#EC4899", "spiritual": "#8B5CF6"}
-        for pred in timing.get("predictions", []):
-            cat = pred.get("category", "life_transition")
-            render_content_card(
-                f"{pred.get('period', '')} — {pred.get('event', '')}",
-                pred.get('detail', ''),
-                accent_color=cat_colors.get(cat, "#3B82F6"),
-                icon=cat_icons.get(cat, "📅"),
-            )
-        render_content_card("⚠️ Note", timing.get("note", ""), accent_color="#64748B", icon="ℹ️")
-
-    # ── TAB 4: PERSONALITY ──
-    with tab_personality:
-        st.markdown("#### Personality Profile")
-        personality = report.get("personality", {})
-        ht = report.get("hand_type", {})
-        render_info_grid([
-            ("Archetype", personality.get('archetype', 'Unknown')),
-            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
-            ("Element", ht.get('element', 'Mixed')),
-            ("Dominant Mount", personality.get('dominant_mount', 'Unknown')),
-        ])
+    # Render the full AI-generated reading
+    if "full_ai_reading" in report:
+        st.markdown(report["full_ai_reading"], unsafe_allow_html=True)
+    else:
         render_content_card(
-            "Archetype Description",
-            personality.get('description', ''),
-            accent_color="#8B5CF6", icon="👤",
-        )
-        traits_html = "".join([f"<div style='margin-bottom:6px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border-left:3px solid #3B82F6;'>• {t}</div>" for t in personality.get('core_traits', [])[:8]])
-        render_content_card("Core Character Traits", traits_html, accent_color="#06B6D4", icon="✨")
-        render_content_card(
-            "Hand Type Profile",
-            ht.get('description', ''),
-            accent_color="#F59E0B", icon="✋",
-        )
-        career_html = ", ".join(ht.get('career', [])[:8])
-        render_content_card("Career Aptitude", career_html, accent_color="#10B981", icon="💼")
-        render_content_card("Relationship Style", ht.get('relationships', ''), accent_color="#EC4899", icon="💕")
-
-    # ── TAB 5: HEALTH ──
-    with tab_health:
-        st.markdown("#### Health & Vitality Assessment")
-        health = report.get("health", {})
-        vitality = health.get('overall_vitality', 'moderate').title()
-        vitality_color = '#10B981' if 'Strong' in vitality else '#F59E0B' if 'Sensitive' in vitality else '#3B82F6'
-        render_info_grid([("Overall Vitality", vitality)])
-        for ind in health.get("indicators", []):
-            assessment = ind.get('assessment', 'Unknown')
-            a_color = '#10B981' if assessment in ('Strong', 'Stable', 'Balanced') else '#F59E0B'
-            render_content_card(
-                f"{ind.get('area', '')} — {assessment}",
-                ind.get('detail', ''),
-                accent_color=a_color, icon="💚",
-            )
-        render_content_card("Medical Disclaimer", health.get('disclaimer', ''), accent_color="#EF4444", icon="⚕️")
-
-    # ── TAB 6: FEATURE DASHBOARD ──
-    with tab_features:
-        st.caption("Detected line balance")
-        st.bar_chart(line_strength_df, height=260)
-        st.caption("Palm-reading prompts — ask these in the chatbot below")
-        for question in report["questions"]:
-            st.markdown(f"- {question}")
-
-        guidance_html = "".join([f"<div style='margin-bottom:6px;'>🧭 {item}</div>" for item in report["guidance"]])
-        render_content_card("Guidance", guidance_html, accent_color="#06B6D4", icon="🧭")
-
-    # ── TAB 7: RAW DATA ──
-    with tab_raw:
-        st.json(
-            {
-                "report": {
-                    "dominant_line": report["dominant_line"],
-                    "dominant_strength_pct": report["dominant_strength_pct"],
-                    "detection_quality": report["detection_quality"],
-                    "hand_type": report.get("hand_type", {}).get("type", "Unknown"),
-                    "archetype": report.get("personality", {}).get("archetype", "Unknown"),
-                    "observations": report["observations"],
-                },
-                "features": {k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()},
-                "timing_predictions": [{"period": p["period"], "event": p["event"]} for p in report.get("timing", {}).get("predictions", [])],
-                "mount_scores": {k: v.get("score", 0) for k, v in report.get("mounts", {}).items()},
-            }
+            "🔮 AI Reading Summary",
+            report.get("summary", "Reading generated offline...").replace('\n', '<br>'),
+            accent_color="#8B5CF6", icon="🔮",
         )
 
 def generate_expert_inspection_crops(image, landmarks):
@@ -1563,26 +1973,25 @@ def _palm_module():
                     border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 16px 20px;
                     margin-bottom: 20px;">
             <span style="font-size: 16px;">🖐️</span>
-            <span style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 14px;">
+            <span style="color: #E2E8F0; font-family: 'Inter', sans-serif; font-size: 12px;">
                 Upload or capture your palm for a <strong>precision analysis</strong> covering
                 <strong>personality, career, love, health, timing</strong> — powered by
                 advanced computer vision that detects even the finest lines invisible to the eye.
             </span>
         </div>
     """, unsafe_allow_html=True)
-    src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
-    observations = DEFAULT_OBSERVATIONS
+    src = st.radio("Input Source", PALM_INPUT_SOURCES, horizontal=True, key="cv_palm_src")
 
     landmarker = load_palm_model()
     if landmarker is None:
         return
     import mediapipe as mp
 
-    def _palm_cb(img):
+    def _palm_cb(img, target_size=800, include_steps=True):
         """Step-by-step palm analysis like a human reader:
         Step 1: Detect palm → Step 2: Zoom & crop → Step 3: Trace lines → Step 4: Analyze"""
         h, w = img.shape[:2]
-        steps = {}  # Store step images for display
+        steps = {} if include_steps else None
 
         # ═══ STEP 1: DETECT PALM ═══
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -1590,29 +1999,44 @@ def _palm_module():
         result = landmarker.detect(mp_image)
 
         if not result.hand_landmarks:
-            segmentation_mask = np.zeros((h, w), dtype=np.uint8)
-            enhanced_line_map, _ = enhance_palm_image(img)
-            overlay_img = create_palm_overlay(img, segmentation_mask, enhanced_line_map)
-            features = extract_palm_features(segmentation_mask, raw_image=img)
-            report = build_palm_report(features, observations)
-            report["_steps"] = None  # No steps since no hand found
+            report = {
+                "summary": "No palm detected yet.",
+                "guidance": [
+                    "Show the full palm and wrist inside the frame.",
+                    "Use brighter, even lighting and keep the palm flatter.",
+                    "Move closer so the palm fills more of the image.",
+                ],
+                "scan_quality": {
+                    "quality_score": 0.0,
+                    "hand_fill_ratio": 0.0,
+                    "major_line_ratio": 0.0,
+                    "texture_score": 0.0,
+                    "line_contrast_score": 0.0,
+                    "major_line_count": 0,
+                    "detected_hand": "Unclear",
+                    "handedness_confidence": 0.0,
+                },
+                "_steps": steps,
+            }
             report["_hand_found"] = False
-            return overlay_img, segmentation_mask, features, report
+            return img.copy(), np.zeros((h, w), dtype=np.uint8), {}, report
 
         landmarks = result.hand_landmarks[0]
+        handedness_label, handedness_score = _extract_handedness_label(result)
+
         def get_pt(idx): return np.array([int(landmarks[idx].x * w), int(landmarks[idx].y * h)])
 
         # Draw detection on original image
-        step1_img = img.copy()
         all_pts = [get_pt(i) for i in range(21)]
-        # Draw skeleton connections
-        connections = [(0,1),(1,2),(2,3),(3,4),(0,5),(5,6),(6,7),(7,8),(5,9),(9,10),(10,11),(11,12),
-                       (9,13),(13,14),(14,15),(15,16),(13,17),(17,18),(18,19),(19,20),(0,17)]
-        for a, b in connections:
-            cv2.line(step1_img, tuple(all_pts[a]), tuple(all_pts[b]), (0, 255, 200), 2)
-        for pt in all_pts:
-            cv2.circle(step1_img, tuple(pt), 4, (0, 140, 255), -1)
-        steps["detect"] = step1_img
+        if include_steps:
+            step1_img = img.copy()
+            connections = [(0,1),(1,2),(2,3),(3,4),(0,5),(5,6),(6,7),(7,8),(5,9),(9,10),(10,11),(11,12),
+                           (9,13),(13,12),(12,15),(15,16),(13,17),(17,18),(18,19),(19,20),(0,17)]
+            for a, b in connections:
+                cv2.line(step1_img, tuple(all_pts[a]), tuple(all_pts[b]), (0, 255, 200), 2)
+            for pt in all_pts:
+                cv2.circle(step1_img, tuple(pt), 4, (0, 120, 255), -1)
+            steps["detect"] = step1_img
 
         xs = [p[0] for p in all_pts]
         ys = [p[1] for p in all_pts]
@@ -1624,14 +2048,22 @@ def _palm_module():
         y_min = max(0, min(ys) - pad)
         y_max = min(h, max(ys) + pad)
         crop = img[y_min:y_max, x_min:x_max]
+        if crop.size == 0:
+            report = {
+                "summary": "Palm crop failed.",
+                "guidance": ["Try again with the palm more centered and less tilted."],
+                "scan_quality": {"quality_score": 0.0, "major_line_count": 0, "detected_hand": "Unclear"},
+                "_steps": steps,
+                "_hand_found": False,
+            }
+            return img.copy(), np.zeros((h, w), dtype=np.uint8), {}, report
 
         ch, cw = crop.shape[:2]
-        target_size = 800
         scale = max(1.0, target_size / max(ch, cw))
         if scale > 1.0:
             crop = cv2.resize(crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_CUBIC)
-        uh, uw = crop.shape[:2]
-        steps["zoom"] = crop.copy()
+        if include_steps:
+            steps["zoom"] = crop.copy()
 
         def crop_pt(idx):
             return np.array([int((landmarks[idx].x * w - x_min) * scale),
@@ -1642,114 +2074,117 @@ def _palm_module():
         index_base = crop_pt(5)
         middle_base = crop_pt(9)
         ring_base = crop_pt(13)
+        pinky_base = crop_pt(17)
         pinky_side = crop_pt(18)
 
         # ═══ STEP 3: TRACE LINES ═══
-        palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_side], dtype=np.int32)
-        palm_mask = np.zeros((uh, uw), dtype=np.uint8)
-        cv2.fillPoly(palm_mask, [palm_poly], 255)
-        palm_mask = cv2.erode(palm_mask, np.ones((5, 5), np.uint8), iterations=1)
+        crop_anchor_points = {
+            "wrist": wrist,
+            "thumb_base": thumb_base,
+            "index_base": index_base,
+            "middle_base": middle_base,
+            "ring_base": ring_base,
+            "pinky_base": pinky_base,
+            "pinky_side": pinky_side,
+        }
+        crop_normalized, normalized_points, was_flipped = _normalize_palm_orientation(crop, crop_anchor_points)
+        segmentation_mask_norm, lines_mask_norm, enhanced_gray_norm, palm_mask_norm = extract_major_palm_lines(crop_normalized, normalized_points)
 
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        if was_flipped:
+            segmentation_mask = cv2.flip(segmentation_mask_norm, 1)
+            lines_mask = cv2.flip(lines_mask_norm, 1)
+            crop_enhanced_gray = cv2.flip(enhanced_gray_norm, 1)
+            palm_mask = cv2.flip(palm_mask_norm, 1)
+        else:
+            segmentation_mask = segmentation_mask_norm
+            lines_mask = lines_mask_norm
+            crop_enhanced_gray = enhanced_gray_norm
+            palm_mask = palm_mask_norm
 
-        # Multi-pass CLAHE
-        clahe_strong = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(6, 6))
-        enhanced_strong = clahe_strong.apply(gray)
-        clahe_mild = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(12, 12))
-        enhanced_mild = clahe_mild.apply(gray)
-        enhanced = np.maximum(enhanced_strong, enhanced_mild)
+        if include_steps:
+            enhanced_preview = cv2.applyColorMap(crop_enhanced_gray, cv2.COLORMAP_BONE)
+            enhanced_preview = cv2.addWeighted(crop, 0.42, enhanced_preview, 0.58, 0)
+            preview_mask = cv2.dilate(lines_mask, np.ones((2, 2), np.uint8), iterations=1)
+            enhanced_preview[preview_mask > 0] = (255, 255, 0)
+            steps["enhanced"] = enhanced_preview
 
-        # Blackhat for dark creases
-        blackhat_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-        blackhat = cv2.morphologyEx(enhanced, cv2.MORPH_BLACKHAT, blackhat_kernel)
-        blackhat = cv2.bitwise_and(blackhat, blackhat, mask=palm_mask)
-
-        # Adaptive threshold
-        inv = cv2.bitwise_not(enhanced)
-        blur = cv2.GaussianBlur(inv, (5, 5), 0)
-        edges_adapt = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 2)
-        edges_adapt = cv2.bitwise_and(edges_adapt, edges_adapt, mask=palm_mask)
-
-        # Blackhat threshold
-        _, bh_thresh = cv2.threshold(blackhat, 15, 255, cv2.THRESH_BINARY)
-        bh_thresh = cv2.bitwise_and(bh_thresh, bh_thresh, mask=palm_mask)
-
-        # Combine
-        lines_mask = cv2.bitwise_or(edges_adapt, bh_thresh)
-        lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-        lines_mask = cv2.morphologyEx(lines_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-
-        # Anatomical segmentation
-        segmentation_mask = np.zeros((uh, uw), dtype=np.uint8)
-        y_indices, x_indices = np.where(palm_mask > 0)
-        if len(y_indices) > 0:
-            pts = np.vstack((x_indices, y_indices)).T
-
-            def pt_to_segment_dist(p, a, b):
-                ab = (b - a).astype(float)
-                ap = (p - a).astype(float)
-                ab_norm = np.linalg.norm(ab)
-                if ab_norm == 0:
-                    return np.linalg.norm(ap, axis=1)
-                t = np.sum(ap * ab, axis=1) / (ab_norm ** 2)
-                t = np.clip(t, 0, 1)
-                proj = a.astype(float) + t[:, np.newaxis] * ab
-                return np.linalg.norm(p - proj, axis=1)
-
-            d_life = pt_to_segment_dist(pts, (index_base + wrist) // 2, wrist)
-            d_heart = pt_to_segment_dist(pts, (index_base + middle_base) // 2, pinky_side)
-            d_head = pt_to_segment_dist(pts, index_base, (pinky_side + wrist) // 2)
-
-            dists = np.vstack((d_life, d_head, d_heart)).T
-            labels = np.argmin(dists, axis=1) + 1
-
-            for i, (x, y) in enumerate(pts):
-                if lines_mask[y, x] > 0:
-                    segmentation_mask[y, x] = labels[i]
-
-        # Build color-coded line trace on zoomed crop
-        step3_img = crop.copy()
-        life_color, head_color, heart_color = (0, 0, 255), (0, 255, 0), (255, 100, 0)
-        # Dilate masks for visibility
-        for label_val, color, name in [(1, life_color, "Life"), (2, head_color, "Head"), (3, heart_color, "Heart")]:
-            lmask = (segmentation_mask == label_val).astype(np.uint8) * 255
-            if lmask.max() > 0:
-                lmask_thick = cv2.dilate(lmask, np.ones((3, 3), np.uint8), iterations=2)
-                step3_img[lmask_thick > 0] = color
-        # Draw ROI boundary
-        cv2.polylines(step3_img, [palm_poly], True, (255, 255, 0), 2)
-        steps["lines"] = step3_img
+            step3_img = crop.copy()
+            life_color, head_color, heart_color = (0, 0, 255), (0, 255, 0), (255, 100, 0)
+            for label_val, color in [(1, life_color), (2, head_color), (3, heart_color)]:
+                lmask = (segmentation_mask == label_val).astype(np.uint8) * 255
+                if lmask.max() > 0:
+                    lmask_thick = cv2.dilate(lmask, np.ones((3, 3), np.uint8), iterations=2)
+                    step3_img[lmask_thick > 0] = color
+            palm_poly = np.array([wrist, thumb_base, index_base, middle_base, ring_base, pinky_base, pinky_side], dtype=np.int32)
+            cv2.polylines(step3_img, [palm_poly], True, (255, 255, 0), 2)
+            steps["lines"] = step3_img
 
         # ═══ STEP 4: BUILD FULL ANALYSIS ═══
         mask_downscaled = cv2.resize(segmentation_mask, (cw, ch), interpolation=cv2.INTER_NEAREST)
         mask_full = np.zeros((h, w), dtype=np.uint8)
         mask_full[y_min:y_max, x_min:x_max] = mask_downscaled
         # Build a palm-only ROI mask on the original image so overlay shows lines ONLY on the palm
-        orig_pts = [get_pt(i) for i in [0, 2, 5, 9, 13, 17]]
+        orig_pts = [get_pt(i) for i in [0, 2, 5, 9, 13, 17, 18]]
         palm_roi = np.zeros((h, w), dtype=np.uint8)
         cv2.fillPoly(palm_roi, [np.array(orig_pts, dtype=np.int32)], 255)
         # Expand slightly to catch edges
         palm_roi = cv2.dilate(palm_roi, np.ones((15, 15), np.uint8), iterations=1)
 
-        # Run enhanced line detection but MASK to palm region only
-        enhanced_line_map, _ = enhance_palm_image(img)
-        enhanced_line_map = cv2.bitwise_and(enhanced_line_map, enhanced_line_map, mask=palm_roi)
+        # Run enhanced line detection on palm ROI crop only (much faster than full image)
+        roi_ys, roi_xs = np.where(palm_roi > 0)
+        if len(roi_ys) > 0 and len(roi_xs) > 0:
+            ry0, ry1 = int(roi_ys.min()), int(roi_ys.max()) + 1
+            rx0, rx1 = int(roi_xs.min()), int(roi_xs.max()) + 1
+            roi_crop = img[ry0:ry1, rx0:rx1]
+            roi_mask_crop = palm_roi[ry0:ry1, rx0:rx1]
+            crop_line_map, crop_enhanced = enhance_palm_image(roi_crop)
+            crop_line_map = cv2.bitwise_and(crop_line_map, crop_line_map, mask=roi_mask_crop)
+            crop_enhanced = cv2.bitwise_and(crop_enhanced, crop_enhanced, mask=roi_mask_crop)
+            enhanced_line_map = np.zeros((h, w), dtype=np.uint8)
+            enhanced_gray = np.zeros((h, w), dtype=np.uint8)
+            enhanced_line_map[ry0:ry1, rx0:rx1] = crop_line_map
+            enhanced_gray[ry0:ry1, rx0:rx1] = crop_enhanced
+        else:
+            enhanced_line_map, enhanced_gray = enhance_palm_image(img)
+            enhanced_line_map = cv2.bitwise_and(enhanced_line_map, enhanced_line_map, mask=palm_roi)
+            enhanced_gray = cv2.bitwise_and(enhanced_gray, enhanced_gray, mask=palm_roi)
 
         overlay_img = create_palm_overlay(img, mask_full, enhanced_line_map)
-        features = extract_palm_features(mask_full, raw_image=img)
+        features = extract_palm_features(
+            mask_full,
+            raw_image=img,
+            palm_region_mask=palm_roi,
+            enhanced_line_map=enhanced_line_map,
+            enhanced_gray=enhanced_gray,
+        )
+        features["detected_hand_label"] = handedness_label or "Unclear"
+        features["detected_hand_confidence"] = round(float(handedness_score), 3)
+        scan_quality = _compute_palm_scan_quality(
+            palm_roi,
+            mask_full,
+            enhanced_gray,
+            features,
+            handedness_label=handedness_label,
+            handedness_score=handedness_score,
+        )
+        features["scan_quality_score"] = scan_quality["quality_score"]
+        features["scan_hand_fill_ratio"] = scan_quality["hand_fill_ratio"]
+        features["scan_major_line_ratio"] = scan_quality["major_line_ratio"]
+        features["scan_texture_score"] = scan_quality["texture_score"]
+        features["scan_line_contrast_score"] = scan_quality["line_contrast_score"]
+        features["scan_major_line_count"] = scan_quality["major_line_count"]
+
+        observations = {**DEFAULT_OBSERVATIONS, **build_dynamic_palm_observations(features)}
         report = build_palm_report(features, observations)
+        report["scan_quality"] = scan_quality
+        report["detected_hand"] = scan_quality["detected_hand"]
         # ── Expert Inspection ──
         report["inspection_crops"] = generate_expert_inspection_crops(img, landmarks)
 
-        report["_steps"] = steps
+        report["_steps"] = steps if include_steps else None
         report["_hand_found"] = True
         return overlay_img, mask_full, features, report
 
-    def _live_frame_overlay(img):
-        small_img = cv2.resize(img, (384, 288))
-        overlay, _, _, report = _palm_cb(small_img)
-        overlay = _draw_live_palm_summary(overlay, report)
-        return cv2.resize(overlay, (img.shape[1], img.shape[0]))
 
     if src in ("📷 Photo", "📸 Camera Snapshot"):
         img = _load_image_from_source(
@@ -1767,11 +2202,12 @@ def _palm_module():
             hand_found = report.get("_hand_found", False)
 
             if not hand_found:
+                _clear_palm_report_session()
                 st.warning("⚠️ No hand detected. Please show your full palm clearly with good lighting.")
             else:
                 # ── Show step-by-step visual process ──
                 st.markdown("""
-                    <div style="display:flex;align-items:center;gap:14px;margin:10px 0 15px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin:10px 0 15px;">
                         <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
                         <span style="font-size:13px;color:#F59E0B;letter-spacing:3px;
                             font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔬 Detection Process</span>
@@ -1779,23 +2215,27 @@ def _palm_module():
                     </div>
                 """, unsafe_allow_html=True)
 
-                s1, s2, s3 = st.columns(3)
+                s1, s2, s3, s4 = st.columns(4)
                 with s1:
                     st.markdown("**Step 1: Palm Detected**")
                     st.image(cv2.cvtColor(steps["detect"], cv2.COLOR_BGR2RGB), use_container_width=True,
                              caption="21 landmarks identified")
                 with s2:
-                    st.markdown("**Step 2: Zoomed & Enhanced**")
+                    st.markdown("**Step 2: Palm Crop**")
                     st.image(cv2.cvtColor(steps["zoom"], cv2.COLOR_BGR2RGB), use_container_width=True,
                              caption=f"Auto-cropped & upscaled to {steps['zoom'].shape[1]}×{steps['zoom'].shape[0]}px")
                 with s3:
-                    st.markdown("**Step 3: Lines Traced**")
+                    st.markdown("**Step 3: Fine-Line Enhancement**")
+                    st.image(cv2.cvtColor(steps["enhanced"], cv2.COLOR_BGR2RGB), use_container_width=True,
+                             caption="Contrast-enhanced palm texture used for fine line capture")
+                with s4:
+                    st.markdown("**Step 4: Major Lines Traced**")
                     st.image(cv2.cvtColor(steps["lines"], cv2.COLOR_BGR2RGB), use_container_width=True,
                              caption="Life (red) · Head (green) · Heart (blue)")
 
                 # ── Expert Deep Dive Inspection ──
                 st.markdown("""
-                    <div style="display:flex;align-items:center;gap:14px;margin:30px 0 20px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin:30px 0 20px;">
                         <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
                         <span style="font-size:13px;color:#06B6D4;letter-spacing:3px;
                             font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔬 Expert Deep Dive</span>
@@ -1812,21 +2252,8 @@ def _palm_module():
                             st.markdown(f"<div style='font-size:11px; font-weight:700; color:#06B6D4; text-transform:uppercase; text-align:center;'>{crop_data['name']}</div>", unsafe_allow_html=True)
                             st.markdown(f"<div style='font-size:10px; color:#94A3B8; text-align:center; line-height:1.2;'>{crop_data['description']}</div>", unsafe_allow_html=True)
 
-            st.session_state["palm_latest_report"] = report
-            st.session_state["palm_latest_features"] = features
-            st.session_state["palm_latest_summary"] = report["summary"]
-            _render_palm_report(overlay, features, report)
-
-    elif src == "📹 Video File":
-        v = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"], key="palm_video")
-        if v:
-            st.caption("Video mode runs the palm overlay and live summary on downscaled frames for smoother playback.")
-            process_video_realtime(v, _live_frame_overlay)
-
-    latest_report = st.session_state.get("palm_latest_report")
-    if latest_report:
-        st.caption("Latest saved scan summary")
-        st.write(latest_report["summary"])
+                _persist_palm_report(features, report, overlay)
+                _render_palm_report(overlay, features, report)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1944,14 +2371,14 @@ def _render_cv_gallery():
             e_col1, e_col2, e_col3 = st.columns([1.2, 3, 1])
 
             with e_col1:
-                st.image(item["banner"], width="stretch")
+                st.image(item["banner"], use_container_width=True)
 
             with e_col2:
                 st.markdown(
                     f"""
                     <div style="padding: 5px 0;">
                         <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 20px; color: white; margin-bottom: 5px;">{item['title']} {item['icon']}</div>
-                        <p style="color: #F8FAFC; font-size: 14px; line-height: 1.5; margin-bottom: 12px; font-weight: 500;">{item['gallery_subtitle']}. Optimized for real-time vision processing.</p>
+                        <p style="color: #F8FAFC; font-size: 12px; line-height: 1.5; margin-bottom: 12px; font-weight: 500;">{item['gallery_subtitle']}. Optimized for real-time vision processing.</p>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             {"".join([f'<span style="background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 4px; color: {card_color}; font-size: 11px; font-weight: 600; border: 1px solid rgba(255,255,255,0.1);">{feature}</span>' for feature in item['features']])}
                         </div>

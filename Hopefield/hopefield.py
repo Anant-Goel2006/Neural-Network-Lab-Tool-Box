@@ -47,8 +47,8 @@ CLASSIFIER_FONTS = [
     cv2.FONT_HERSHEY_COMPLEX,
     cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
 ]
-CLASSIFIER_ANGLES = (-12, 0, 12)
-CLASSIFIER_SCALES = (0.94, 1.0, 1.08)
+CLASSIFIER_ANGLES = (-15, -6, 0, 6, 15)
+CLASSIFIER_SCALES = (0.88, 0.95, 1.0, 1.08, 1.16)
 CLASSIFIER_SHIFTS = [(-2, -2), (0, 0), (2, 2), (-2, 2), (2, -2)]
 TEXT_SHEARS = (-0.14, 0.14)
 PREFERRED_TTF_FONTS = [
@@ -478,6 +478,11 @@ def _augment_training_mask(base_mask, text_like=False):
         kernel = np.ones((2, 2), dtype=np.uint8)
         base_variants.append(cv2.dilate(base, kernel, iterations=1))
         base_variants.append(cv2.erode(base, kernel, iterations=1))
+        # Gaussian noise variant for robustness to imperfect strokes
+        noisy = base.astype(np.float32)
+        noisy += np.random.normal(0, 12, noisy.shape).astype(np.float32)
+        noisy = np.clip(noisy, 0, 255).astype(np.uint8)
+        base_variants.append(noisy)
 
     for variant in base_variants:
         for angle in CLASSIFIER_ANGLES:
@@ -1073,7 +1078,7 @@ def main():
         "Draw Anything And Get A Direct Output",
         "This lab reads the sketch on the canvas with a local text-and-shape detector, then builds the Hopfield-style matrix and energy views from that same drawing.",
         [
-            "The visible label comes from a local text-and-shape detector trained on letters, digits, and common symbols.",
+            "The label comes from a local text-and-shape recognition engine that covers letters, digits, and common symbols.",
             "Turn on Text Mode when you want the detector to favor letters and words over symbols and geometric shapes.",
             "Text Mode also switches the board into a paper-like writing surface with a thinner pen, which usually helps letter recognition.",
             "For the strongest text results, write one clear letter at a time or leave a small gap between letters.",
