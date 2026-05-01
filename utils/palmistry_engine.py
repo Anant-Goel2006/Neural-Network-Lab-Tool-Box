@@ -902,46 +902,44 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         from utils.ai_helper import get_ai_explanation
         import json
 
-        # Build a rich context string from the raw features
-        ctx = report["chat_context"]
+        # Build a concise context string for faster processing
+        ctx = report["chat_context"][:1200]
         feat_str = str({
-            k: (round(v, 4) if isinstance(v, float) else v)
+            k: (round(v, 3) if isinstance(v, float) else v)
             for k, v in features.items()
-            if not isinstance(v, (list, dict)) or len(str(v)) < 200
-        })[:1800]
+            if not isinstance(v, (list, dict))
+        })[:1200]
 
         prompt_schema = (
             '{\n'
-            '  "summary": "A compelling 4-5 sentence professional reading summary that references specific features found",\n'
+            '  "summary": "Professional 3-4 sentence reading summary",\n'
             '  "line_readings": [\n'
-            '    {"line": "Life", "detail": "3-4 sentences analyzing the Life line based on its curvature, depth, breaks, branches, islands. Be specific.", "governs": ["Vitality", "Longevity", "Life Energy", "Physical Health"], "depth": "Deep/Medium/Faint", "shape": "describe actual shape", "prominence": "Strong/Moderate/Weak"},\n'
-            '    {"line": "Head", "detail": "3-4 sentences analyzing the Head line.", "governs": ["Intellect", "Mental Clarity", "Decision Making", "Logic"], "depth": "...", "shape": "...", "prominence": "..."},\n'
-            '    {"line": "Heart", "detail": "3-4 sentences analyzing the Heart line.", "governs": ["Emotion", "Love", "Relationships", "Empathy"], "depth": "...", "shape": "...", "prominence": "..."}\n'
+            '    {"line": "Life", "detail": "Analysis based on curvature/depth", "governs": ["Vitality"], "depth": "Deep/Medium/Faint", "shape": "...", "prominence": "..."},\n'
+            '    {"line": "Head", "detail": "...", "governs": ["Logic"], "depth": "...", "shape": "...", "prominence": "..."},\n'
+            '    {"line": "Heart", "detail": "...", "governs": ["Emotion"], "depth": "...", "shape": "...", "prominence": "..."}\n'
             '  ],\n'
-            '  "themes": {"mindset": "2 sentences", "relationships": "2 sentences", "energy": "2 sentences", "career": "2 sentences", "visibility": "2 sentences", "stability": "2 sentences", "dominant_hand": "1-2 sentences", "line_depth": "1-2 sentences"},\n'
-            '  "shared_notes": ["observation 1 about unique patterns", "observation 2", "observation 3"],\n'
-            '  "personality": {"archetype": "e.g. The Visionary", "description": "3-4 sentences", "core_traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6"], "dominant_mount": "e.g. Jupiter"},\n'
-            '  "health": {"overall_vitality": "strong/moderate/sensitive", "indicators": [{"area": "Physical Energy", "assessment": "Strong/Stable/Sensitive", "detail": "1-2 sentences"}, {"area": "Mental Health", "assessment": "Balanced/Variable", "detail": "1-2 sentences"}, {"area": "Stress Resilience", "assessment": "High/Moderate/Low", "detail": "1-2 sentences"}], "disclaimer": "This is for entertainment only. Consult a medical professional for health concerns."},\n'
-            '  "timing": {"predictions": [{"period": "Age X-Y", "event": "title", "detail": "2-3 sentences with reasoning", "category": "career"}, {"period": "Age X-Y", "event": "title", "detail": "...", "category": "relationships"}, {"period": "Age X-Y", "event": "title", "detail": "...", "category": "life_transition"}], "note": "Timing is estimated using proportional line-position analysis."}\n'
+            '  "themes": {"mindset": "..", "relationships": "..", "energy": "..", "career": "..", "visibility": "..", "stability": "..", "dominant_hand": "..", "line_depth": ".."},\n'
+            '  "shared_notes": ["note 1", "note 2"],\n'
+            '  "personality": {"archetype": "..", "description": "..", "core_traits": ["t1", "t2", "t3", "t4"], "dominant_mount": ".."},\n'
+            '  "health": {"overall_vitality": "..", "indicators": [{"area": "Physical", "assessment": "..", "detail": ".."}], "disclaimer": ".."},\n'
+            '  "timing": {"predictions": [{"period": "Age X-Y", "event": "..", "detail": "..", "category": ".."}], "note": ".."}\n'
             '}\n'
         )
 
         ai_prompt = (
-            "You are a master palmist. Based on the extracted metrics, "
-            "provide a comprehensive reading formatted strictly as a JSON object.\n\n"
-            "## EXTRACTED DATA\n" + ctx[:1600] + "\n\n"
-            "## YOUR TASK\n"
-            "Produce a JSON object with these keys. Be insightful, specific, and professional.\n"
-            "DO NOT mention you are an AI. Speak as a human expert.\n\n"
+            "You are a master palmist. Interpret these metrics and provide a JSON reading.\n\n"
+            "## METRICS\n" + ctx + "\n" + feat_str + "\n\n"
+            "## TASK\n"
+            "Return JSON matching this schema. Be insightful but concise.\n"
             + prompt_schema + "\n"
-            "Output ONLY the raw JSON. No markdown code blocks."
+            "Output ONLY raw JSON. No markdown."
         )
 
         ai_response = get_ai_explanation(
             ai_prompt,
-            system_prompt="You are a professional palmist. Output ONLY raw JSON. No markdown.",
-            max_tokens=2000,
-            timeout=25
+            system_prompt="You are a professional palmist. Output ONLY raw JSON.",
+            max_tokens=1200,
+            timeout=20
         )
         if ai_response:
             ai_response = ai_response.strip().replace('```json', '').replace('```', '').strip()

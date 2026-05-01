@@ -2393,8 +2393,16 @@ def _palm_module():
             "palm_camera",
         )
         if img is not None:
-            with st.spinner("🖐️ Step 1: Detecting palm..."):
-                overlay, mask, features, report = _palm_cb(img.copy())
+            import hashlib
+            img_hash = hashlib.md5(img.tobytes()).hexdigest()
+            
+            if "last_palm_hash" not in st.session_state or st.session_state["last_palm_hash"] != img_hash:
+                with st.spinner("🖐️ Analyzing palm... this may take a moment"):
+                    overlay, mask, features, report = _palm_cb(img.copy())
+                    st.session_state["last_palm_hash"] = img_hash
+                    st.session_state["last_palm_results"] = (overlay, mask, features, report)
+            else:
+                overlay, mask, features, report = st.session_state["last_palm_results"]
 
             steps = report.get("_steps")
             hand_found = report.get("_hand_found", False)
