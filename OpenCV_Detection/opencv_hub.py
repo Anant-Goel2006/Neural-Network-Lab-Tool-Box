@@ -29,14 +29,7 @@ RTC_CONFIG_STUN = None
 
 LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
 PALM_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
-LIVE_MEDIA_STREAM_CONSTRAINTS = {
-    "video": {
-        "width": {"ideal": 640},
-        "height": {"ideal": 480},
-        "frameRate": {"ideal": 15, "max": 24},
-    },
-    "audio": False,
-}
+
 
 CV_GALLERY_PATH = "OpenCV_Detection/page_gallery.py"
 
@@ -145,33 +138,7 @@ def _load_image_from_source(src, upload_label, upload_key, camera_label, camera_
     return None
 
 
-def _rtc_configuration_selector(key_prefix):
-    if not WEBRTC_READY:
-        return None
 
-    st.caption(
-        "Low-latency local mode is the default and avoids STUN. Turn STUN on only when the app is running remotely and the live stream will not connect."
-    )
-    use_stun = st.toggle("Use STUN servers", value=False, key=f"{key_prefix}_use_stun")
-    return RTC_CONFIG_STUN if use_stun else RTC_CONFIG_LOCAL
-
-
-def _start_webrtc_stream(stream_key, callback, label, key_prefix, hint=None):
-    if not WEBRTC_READY:
-        st.error("`streamlit-webrtc` is missing. Install it to enable live camera streaming.")
-        return
-
-    st.markdown(f"**{label}**")
-    if hint:
-        st.caption(hint)
-
-    return webrtc_streamer(
-        key=stream_key,
-        video_frame_callback=callback,
-        rtc_configuration=_rtc_configuration_selector(key_prefix),
-        media_stream_constraints=LIVE_MEDIA_STREAM_CONSTRAINTS,
-        async_processing=True,
-    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 1 — ATTENDANCE SYSTEM
