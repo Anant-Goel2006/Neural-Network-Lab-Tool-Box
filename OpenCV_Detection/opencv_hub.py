@@ -1814,30 +1814,32 @@ def _render_live_palm_dashboard(report, features):
 
 
 def _render_palm_report(overlay, features, report):
+    from utils.voice import render_voice_button
     import uuid
 
     # ═══════════════════════════════════════════════════════════════════════
     # PHASE 1 — PALM SCAN (full-width image + key metrics)
     # ═══════════════════════════════════════════════════════════════════════
-    st.markdown('''
+    st.markdown("""
         <div style="display:flex;align-items:center;gap:14px;margin:10px 0 20px;">
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
             <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
-                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🖐️ AI Palm Scan</span>
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🖐️ Palm Scan Results</span>
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         </div>
-    ''', unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     c1, c2 = st.columns([1.2, 0.8])
     with c1:
         st.image(
             cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB),
             use_container_width=True,
-            caption="High-Fidelity AI Line Extraction Overlay",
+            caption="Line overlay — Major: Life (red) · Head (green) · Heart (blue) | Fine lines: cyan",
         )
     with c2:
         dq = report.get("detection_quality", 1.0)
-        scan_quality = report.get("scan_quality", {})
+        ht = report.get("hand_type", {})
+        personality = report.get("personality", {})
         if dq < 0.55:
             render_content_card(
                 "⚠️ Scan Quality Low",
@@ -1846,34 +1848,273 @@ def _render_palm_report(overlay, features, report):
             )
         fine_detail = features.get('total_fine_lines', 0)
         render_info_grid([
-            ("Hand Type", report.get("hand_type", {}).get("type", "Mixed")),
-            ("Detected Hand", report.get("detected_hand", "Unclear")),
-            ("Dominant Line", report.get("dominant_line", "Unknown")),
+            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
+            ("Element", ht.get('element', 'Mixed')),
+            ("Dominant Line", report["dominant_line"]),
             ("Detection", f"{dq:.0%}"),
-            ("Major Lines", f"{scan_quality.get('major_line_count', 0)}/3"),
+            ("Dominant Mount", report.get('dominant_mount', 'Unknown').replace('_', ' ')),
             ("Fine Lines", str(fine_detail)),
+            ("Archetype", personality.get('archetype', 'Unknown')),
+            ("Palm ID", features.get('palm_signature', 'N/A')),
         ])
 
+    # Summary card — full width
+    render_content_card(
+        "🔮 Professional Reading Summary",
+        report["summary"].replace('\n', '<br>'),
+        accent_color="#8B5CF6", icon="🔮",
+    )
+    render_voice_button(report["summary"], key_suffix=f"palm_summary_{uuid.uuid4().hex[:8]}")
+
     # ═══════════════════════════════════════════════════════════════════════
-    # PHASE 2 — FULL AI READING
+    # PHASE 2 & 3 — EXPLORATION + INTERPRETATION (tabs)
     # ═══════════════════════════════════════════════════════════════════════
-    st.markdown('''
+    st.markdown("""
         <div style="display:flex;align-items:center;gap:14px;margin:30px 0 20px;">
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
             <span style="font-size:14px;color:#F59E0B;letter-spacing:4px;
-                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🤖 Full AI Analysis</span>
+                font-weight:600;text-transform:uppercase;font-family:'Inter',sans-serif;">🔍 Deep Analysis</span>
             <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
         </div>
-    ''', unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-    # Render the full AI-generated reading
-    if "full_ai_reading" in report:
-        st.markdown(report["full_ai_reading"], unsafe_allow_html=True)
-    else:
+    line_strength_df = pd.DataFrame(
+        {
+            "line": list(report["line_strengths"].keys()),
+            "strength": [round(v * 100, 1) for v in report["line_strengths"].values()],
+        }
+    ).set_index("line")
+
+    # Tabbed phases
+    tab_lines, tab_fine, tab_mounts, tab_timing, tab_personality, tab_health, tab_features, tab_raw = st.tabs([
+        "📜 Line Interpretation",
+        "🔬 Fine Line Detail",
+        "⛰️ Mount Analysis",
+        "⏳ Time Predictions",
+        "👤 Personality",
+        "💚 Health",
+        "📊 Feature Dashboard",
+        "🗂️ Raw Data",
+    ])
+
+    # ── TAB 1: LINE INTERPRETATION ──
+    with tab_lines:
+        line_icons = {"Life": "❤️", "Head": "🧠", "Heart": "💙"}
+        line_colors = {"Life": "#10B981", "Head": "#06B6D4", "Heart": "#EC4899"}
+        for item in report["line_readings"]:
+            governs_html = "".join([f"<span style='background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:12px;font-size:11px;color:#94A3B8;margin:2px;display:inline-block;'>{g}</span>" for g in item.get('governs', [])[:4]])
+            render_content_card(
+                f"{item['line']} Line",
+                f"{item['detail']}<br><br>"
+                f"<div style='margin-top:8px;'>{governs_html}</div><br>"
+                f"<span style='color:#64748B;font-size:11px;'>Depth: {item.get('depth', 'Medium')} · Shape: {item.get('shape', '')} · Prominence: {item.get('prominence', '')}</span>",
+                accent_color=line_colors.get(item["line"], "#3B82F6"),
+                icon=line_icons.get(item["line"], "〰️"),
+            )
+
+        st.markdown("#### Interpretation Themes")
+        theme_cards = [
+            ("🧠", "Mindset", "mindset", "#06B6D4"),
+            ("❤️", "Relationships", "relationships", "#EC4899"),
+            ("⚡", "Energy & Vitality", "energy", "#F59E0B"),
+            ("💼", "Career & Fate", "career", "#10B981"),
+            ("✨", "Fame & Visibility", "visibility", "#8B5CF6"),
+            ("🔄", "Life Stability", "stability", "#3B82F6"),
+            ("✋", "Hand Dominance", "dominant_hand", "#F59E0B"),
+            ("📏", "Line Depth", "line_depth", "#06B6D4"),
+        ]
+        tc1, tc2 = st.columns(2)
+        for idx, (icon, title, key, color) in enumerate(theme_cards):
+            with tc1 if idx % 2 == 0 else tc2:
+                render_content_card(title, report["themes"].get(key, ""), accent_color=color, icon=icon)
+
+        notes_html = "".join([f"<div style='margin-bottom:6px;'>• {note}</div>" for note in report["shared_notes"]])
+        render_content_card("Pattern Notes", notes_html, accent_color="#8B5CF6", icon="📝")
+
+    # ── TAB 2: MOUNT ANALYSIS ──
+    with tab_mounts:
+        st.markdown("#### Mount Prominence Analysis")
+        st.caption("Mounts are the fleshy pads on the palm. Each is governed by a planet and reveals personality, career, and relationship tendencies.")
+        mounts = report.get("mounts", {})
+        mount_colors = {"Jupiter": "#F59E0B", "Saturn": "#6366F1", "Sun_Apollo": "#EAB308", "Mercury": "#06B6D4", "Venus": "#EC4899", "Moon": "#8B5CF6", "Mars": "#EF4444"}
+        mc1, mc2 = st.columns(2)
+        for idx, (name, data) in enumerate(mounts.items()):
+            strength = data.get('strength', 'Unknown')
+            score = data.get('score', 0)
+            strength_color = '#10B981' if 'Well' in strength else '#F59E0B' if 'Over' in strength else '#64748B'
+            reading = data.get('reading', {})
+            personality_text = ""
+            if isinstance(reading, dict):
+                p = reading.get('personality', '')
+                if isinstance(p, list):
+                    personality_text = '<br>'.join([f"• {t}" for t in p[:3]])
+                else:
+                    personality_text = str(p)
+            else:
+                personality_text = str(reading)
+            bar_width = int(score * 100)
+            mount_html = (
+                f"<div style='margin-bottom:4px;'>"
+                f"<span style='color:{strength_color};font-weight:700;'>{strength}</span> "
+                f"<span style='color:#64748B;'>(Score: {score})</span></div>"
+                f"<div style='background:rgba(255,255,255,0.05);border-radius:8px;height:8px;margin:8px 0;'>"
+                f"<div style='background:{mount_colors.get(name, '#3B82F6')};height:100%;border-radius:8px;width:{bar_width}%;'></div></div>"
+                f"<div style='font-size:12px;color:#CBD5E1;line-height:1.6;'>{personality_text[:300]}</div>"
+            )
+            with mc1 if idx % 2 == 0 else mc2:
+                render_content_card(f"{name.replace('_', ' ')} Mount", mount_html, accent_color=mount_colors.get(name, "#3B82F6"), icon="⛰️")
+
+    # ── TAB: FINE LINE DETAIL ──
+    with tab_fine:
+        st.markdown("#### Fine Line Analysis")
+        st.caption("Advanced computer vision detects branches, breaks, islands, chains, and depth variations unique to your palm.")
+        line_names = ["Life", "Head", "Heart"]
+        line_keys = ["life", "head", "heart"]
+        fine_colors = {"life": "#10B981", "head": "#06B6D4", "heart": "#EC4899"}
+        fine_icons = {"life": "❤️", "head": "🧠", "heart": "💙"}
+        for lname, lkey in zip(line_names, line_keys):
+            detail_parts = []
+            # Breaks
+            bc = features.get(f'{lkey}_break_count', 0)
+            if bc > 0:
+                detail_parts.append(f"<b>Breaks:</b> {bc} break(s) detected — indicates transition points or life changes")
+            else:
+                detail_parts.append("<b>Breaks:</b> None — continuous, steady flow")
+            # Branches
+            bu = features.get(f'{lkey}_branch_up', 0)
+            bd = features.get(f'{lkey}_branch_down', 0)
+            if bu + bd > 0:
+                detail_parts.append(f"<b>Branches:</b> {bu} upward (success/elevation) · {bd} downward (challenges/effort)")
+            else:
+                detail_parts.append("<b>Branches:</b> No visible branches")
+            # Islands
+            ic = features.get(f'{lkey}_island_count', 0)
+            if ic > 0:
+                detail_parts.append(f"<b>Islands:</b> {ic} — periods of uncertainty or health sensitivity")
+            # Fork
+            ft = features.get(f'{lkey}_fork_type', 'none')
+            if ft != 'none':
+                detail_parts.append(f"<b>Fork:</b> {ft.replace('_', ' ').title()} fork detected at line end")
+            # Chain regions
+            cr = features.get(f'{lkey}_chain_ratio', 0)
+            if cr > 0.05:
+                detail_parts.append(f"<b>Chains:</b> {cr:.0%} of line shows chain pattern — variable intensity periods")
+            # Sister line
+            if features.get(f'{lkey}_has_sister_line', False):
+                detail_parts.append("<b>Sister Line:</b> Parallel protection line detected — extra vitality/support")
+            # Depth profile
+            depth_samples = features.get(f'{lkey}_depth_samples', [])
+            if depth_samples:
+                avg_d = features.get(f'{lkey}_avg_depth', 0.5)
+                depth_label = 'Deep' if avg_d > 0.6 else 'Faint' if avg_d < 0.35 else 'Medium'
+                detail_parts.append(f"<b>Avg Depth:</b> {depth_label} ({avg_d:.2f}) · Variance: {features.get(f'{lkey}_depth_variance', 0):.4f}")
+            html = '<br>'.join(detail_parts)
+            render_content_card(
+                f"{lname} Line — Fine Detail",
+                html,
+                accent_color=fine_colors.get(lkey, "#3B82F6"),
+                icon=fine_icons.get(lkey, "〰️"),
+            )
+        # Minor lines summary
+        total_fine = features.get('total_fine_lines', 0)
+        fine_density = features.get('fine_line_density', 0)
+        gap_info = features.get('life_head_gap', 0)
+        minor_html = (
+            f"<b>Total minor/fine lines:</b> {total_fine}<br>"
+            f"<b>Fine line density:</b> {fine_density:.1f} per 10k px<br>"
+            f"<b>Life-Head origin gap:</b> {gap_info:.4f} (larger = earlier independence)<br>"
+            f"<b>Palm Signature:</b> <code>{features.get('palm_signature', 'N/A')}</code>"
+        )
+        render_content_card("Minor Lines & Palm Fingerprint", minor_html, accent_color="#F59E0B", icon="🔍")
+
+    # ── TAB 3: TIME PREDICTIONS ──
+    with tab_timing:
+        st.markdown("#### Time Predictions")
+        st.caption("Based on proportional timing analysis applied to your detected line positions.")
+        timing = report.get("timing", {})
+        cat_icons = {"life_transition": "🔄", "career": "💼", "health_energy": "⚡", "relationships": "💕", "spiritual": "🔮"}
+        cat_colors = {"life_transition": "#3B82F6", "career": "#10B981", "health_energy": "#F59E0B", "relationships": "#EC4899", "spiritual": "#8B5CF6"}
+        for pred in timing.get("predictions", []):
+            cat = pred.get("category", "life_transition")
+            render_content_card(
+                f"{pred.get('period', '')} — {pred.get('event', '')}",
+                pred.get('detail', ''),
+                accent_color=cat_colors.get(cat, "#3B82F6"),
+                icon=cat_icons.get(cat, "📅"),
+            )
+        render_content_card("⚠️ Note", timing.get("note", ""), accent_color="#64748B", icon="ℹ️")
+
+    # ── TAB 4: PERSONALITY ──
+    with tab_personality:
+        st.markdown("#### Personality Profile")
+        personality = report.get("personality", {})
+        ht = report.get("hand_type", {})
+        render_info_grid([
+            ("Archetype", personality.get('archetype', 'Unknown')),
+            ("Hand Type", f"{ht.get('type', 'Mixed')}"),
+            ("Element", ht.get('element', 'Mixed')),
+            ("Dominant Mount", personality.get('dominant_mount', 'Unknown')),
+        ])
         render_content_card(
-            "🔮 AI Reading Summary",
-            report.get("summary", "Reading generated offline...").replace('\n', '<br>'),
-            accent_color="#8B5CF6", icon="🔮",
+            "Archetype Description",
+            personality.get('description', ''),
+            accent_color="#8B5CF6", icon="👤",
+        )
+        traits_html = "".join([f"<div style='margin-bottom:6px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border-left:3px solid #3B82F6;'>• {t}</div>" for t in personality.get('core_traits', [])[:8]])
+        render_content_card("Core Character Traits", traits_html, accent_color="#06B6D4", icon="✨")
+        render_content_card(
+            "Hand Type Profile",
+            ht.get('description', ''),
+            accent_color="#F59E0B", icon="✋",
+        )
+        career_html = ", ".join(ht.get('career', [])[:8])
+        render_content_card("Career Aptitude", career_html, accent_color="#10B981", icon="💼")
+        render_content_card("Relationship Style", ht.get('relationships', ''), accent_color="#EC4899", icon="💕")
+
+    # ── TAB 5: HEALTH ──
+    with tab_health:
+        st.markdown("#### Health & Vitality Assessment")
+        health = report.get("health", {})
+        vitality = health.get('overall_vitality', 'moderate').title()
+        vitality_color = '#10B981' if 'Strong' in vitality else '#F59E0B' if 'Sensitive' in vitality else '#3B82F6'
+        render_info_grid([("Overall Vitality", vitality)])
+        for ind in health.get("indicators", []):
+            assessment = ind.get('assessment', 'Unknown')
+            a_color = '#10B981' if assessment in ('Strong', 'Stable', 'Balanced') else '#F59E0B'
+            render_content_card(
+                f"{ind.get('area', '')} — {assessment}",
+                ind.get('detail', ''),
+                accent_color=a_color, icon="💚",
+            )
+        render_content_card("Medical Disclaimer", health.get('disclaimer', ''), accent_color="#EF4444", icon="⚕️")
+
+    # ── TAB 6: FEATURE DASHBOARD ──
+    with tab_features:
+        st.caption("Detected line balance")
+        st.bar_chart(line_strength_df, height=260)
+        st.caption("Palm-reading prompts — ask these in the chatbot below")
+        for question in report["questions"]:
+            st.markdown(f"- {question}")
+
+        guidance_html = "".join([f"<div style='margin-bottom:6px;'>🧭 {item}</div>" for item in report["guidance"]])
+        render_content_card("Guidance", guidance_html, accent_color="#06B6D4", icon="🧭")
+
+    # ── TAB 7: RAW DATA ──
+    with tab_raw:
+        st.json(
+            {
+                "report": {
+                    "dominant_line": report["dominant_line"],
+                    "dominant_strength_pct": report["dominant_strength_pct"],
+                    "detection_quality": report["detection_quality"],
+                    "hand_type": report.get("hand_type", {}).get("type", "Unknown"),
+                    "archetype": report.get("personality", {}).get("archetype", "Unknown"),
+                    "observations": report["observations"],
+                },
+                "features": {k: round(v, 2) if isinstance(v, float) else v for k, v in features.items()},
+                "timing_predictions": [{"period": p["period"], "event": p["event"]} for p in report.get("timing", {}).get("predictions", [])],
+                "mount_scores": {k: v.get("score", 0) for k, v in report.get("mounts", {}).items()},
+            }
         )
 
 def generate_expert_inspection_crops(image, landmarks):

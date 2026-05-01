@@ -887,30 +887,90 @@ def build_palm_report(features: Dict[str, float], observations: Dict[str, str] |
         },
     }
     report["chat_context"] = palm_report_to_chat_context(report)
-    
-    # Generate Full AI Reading
+
+    # ── FULL AI PALM READING ENGINE ──
+    # The AI is the sole interpreter. It receives all 60+ extracted biometric
+    # metrics and produces the entire reading: lines, mounts, timelines,
+    # health, personality — everything.
     try:
         from utils.ai_helper import get_ai_explanation
-        ai_prompt = (
-            "You are an expert palm reader. Based on the following extracted palmistry metrics, "
-            "provide a comprehensive reading using beautiful Markdown formatting. Structure your response EXACTLY as follows:\n\n"
-            "## 🔮 Professional Reading Summary\n(Write a 3-4 sentence high-level summary of the person's character and life path based on the dominant mounts and line ratios.)\n\n"
-            "## 🔍 Deep Dive Analysis\n(Analyze the Life, Head, and Heart lines in detail. Highlight unique features like islands, branches, breaks, and depth.)\n\n"
-            "## ⛰️ Mount Analysis\n(Discuss their dominant mounts and what it means for their personality and career.)\n\n"
-            "## ⏳ Time Predictions\n(Give 2-3 specific life predictions, age ranges, or actionable advice based on the data.)\n\n"
-            "Data:\n" + str(report["chat_context"])[:2000]
+        import json
+
+        # Build a rich context string from the raw features
+        ctx = report["chat_context"]
+        feat_str = str({
+            k: (round(v, 4) if isinstance(v, float) else v)
+            for k, v in features.items()
+            if not isinstance(v, (list, dict)) or len(str(v)) < 200
+        })[:1800]
+
+        prompt_schema = (
+            '{\n'
+            '  "summary": "A compelling 4-5 sentence professional reading summary that references specific features found",\n'
+            '  "line_readings": [\n'
+            '    {"line": "Life", "detail": "3-4 sentences analyzing the Life line based on its curvature, depth, breaks, branches, islands. Be specific.", "governs": ["Vitality", "Longevity", "Life Energy", "Physical Health"], "depth": "Deep/Medium/Faint", "shape": "describe actual shape", "prominence": "Strong/Moderate/Weak"},\n'
+            '    {"line": "Head", "detail": "3-4 sentences analyzing the Head line.", "governs": ["Intellect", "Mental Clarity", "Decision Making", "Logic"], "depth": "...", "shape": "...", "prominence": "..."},\n'
+            '    {"line": "Heart", "detail": "3-4 sentences analyzing the Heart line.", "governs": ["Emotion", "Love", "Relationships", "Empathy"], "depth": "...", "shape": "...", "prominence": "..."}\n'
+            '  ],\n'
+            '  "themes": {"mindset": "2 sentences", "relationships": "2 sentences", "energy": "2 sentences", "career": "2 sentences", "visibility": "2 sentences", "stability": "2 sentences", "dominant_hand": "1-2 sentences", "line_depth": "1-2 sentences"},\n'
+            '  "shared_notes": ["observation 1 about unique patterns", "observation 2", "observation 3"],\n'
+            '  "personality": {"archetype": "e.g. The Visionary", "description": "3-4 sentences", "core_traits": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6"], "dominant_mount": "e.g. Jupiter"},\n'
+            '  "health": {"overall_vitality": "strong/moderate/sensitive", "indicators": [{"area": "Physical Energy", "assessment": "Strong/Stable/Sensitive", "detail": "1-2 sentences"}, {"area": "Mental Health", "assessment": "Balanced/Variable", "detail": "1-2 sentences"}, {"area": "Stress Resilience", "assessment": "High/Moderate/Low", "detail": "1-2 sentences"}], "disclaimer": "This is for entertainment only. Consult a medical professional for health concerns."},\n'
+            '  "timing": {"predictions": [{"period": "Age X-Y", "event": "title", "detail": "2-3 sentences with reasoning", "category": "career"}, {"period": "Age X-Y", "event": "title", "detail": "...", "category": "relationships"}, {"period": "Age X-Y", "event": "title", "detail": "...", "category": "life_transition"}], "note": "Timing is estimated using proportional line-position analysis."}\n'
+            '}\n'
         )
+
+        ai_prompt = (
+            "You are a world-class Cheiro-tradition palmist with decades of experience. "
+            "A client has scanned their palm. Computer-vision has extracted precise biometric data. "
+            "Your job is to DEEPLY ANALYZE every metric and produce a FULL, UNIQUE, PERSONALIZED reading.\n\n"
+            "## EXTRACTED PALM DATA\n" + ctx[:1600] + "\n\n"
+            "## RAW BIOMETRIC FEATURES\n" + feat_str + "\n\n"
+            "## YOUR TASK\n"
+            "Produce a JSON object with EXACTLY these keys. Every value must be rich, specific, and unique to THIS palm.\n"
+            "DO NOT use generic filler. Reference actual metrics (curvature, depth, break count, etc.).\n\n"
+            + prompt_schema + "\n"
+            "Output ONLY the raw JSON. No markdown fences. No explanation outside the JSON."
+        )
+
         ai_response = get_ai_explanation(
-            ai_prompt, 
-            system_prompt="You are an elite, highly insightful professional palm reader. Your readings are structured, profound, and visually engaging using Markdown emojis and bold text.", 
-            max_tokens=1500
+            ai_prompt,
+            system_prompt="You are an expert Cheiro-tradition palmist. Output ONLY valid raw JSON. No markdown.",
+            max_tokens=3200
         )
         if ai_response:
-            report["full_ai_reading"] = ai_response
+            # Strip any markdown wrapping
+            ai_response = ai_response.strip()
+            if ai_response.startswith("```"):
+                ai_response = ai_response.split("\n", 1)[-1]
+            if ai_response.endswith("```"):
+                ai_response = ai_response.rsplit("```", 1)[0]
+            ai_response = ai_response.strip()
+
+            ai_data = json.loads(ai_response)
+
+            # Overwrite all report sections with AI-generated content
+            if "summary" in ai_data:
+                report["summary"] = ai_data["summary"]
+            if "line_readings" in ai_data:
+                report["line_readings"] = ai_data["line_readings"]
+            if "themes" in ai_data:
+                report["themes"].update(ai_data["themes"])
+            if "shared_notes" in ai_data:
+                report["shared_notes"] = ai_data["shared_notes"]
+            if "personality" in ai_data:
+                report["personality"].update(ai_data["personality"])
+            if "health" in ai_data:
+                report["health"] = ai_data["health"]
+            if "timing" in ai_data:
+                report["timing"] = ai_data["timing"]
+
     except Exception as e:
-        print("AI generation failed:", e)
+        print("AI palm reading failed (falling back to rules engine):", e)
 
     return report
+
+
 
 
 # ─────────────────────────────────────────────────────────────────────────
