@@ -181,6 +181,7 @@ def _build_client(provider, api_key):
     return OpenAI(api_key=api_key)
 
 
+@st.cache_data(show_spinner=False, ttl=3600)
 def get_ai_explanation(
     prompt,
     system_prompt=(
@@ -210,9 +211,8 @@ def get_ai_explanation(
             max_tokens=max_tokens,
             timeout=timeout,
         )
-        st.session_state["last_ai_error"] = ""
         return resp.choices[0].message.content.strip()
     except Exception as exc:
-        st.session_state["last_ai_error"] = str(exc)
         print(f"AI Helper Error: {exc}")
         return None
+

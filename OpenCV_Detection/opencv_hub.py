@@ -170,6 +170,11 @@ def _load_image_from_source(src, upload_label, upload_key, camera_label, camera_
 
 
 
+@st.cache_resource(show_spinner=False)
+def load_cascade_classifier(cascade_name):
+    return cv2.CascadeClassifier(cv2.data.haarcascades + cascade_name)
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MODULE 1 — ATTENDANCE SYSTEM
 # ═════════════════════════════════════════════════════════════════════════════
@@ -186,7 +191,7 @@ def _attendance_module():
         st.divider()
         src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_att_src")
         
-        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        cascade = load_cascade_classifier("haarcascade_frontalface_default.xml")
         
         def _att_cb(img):
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -267,9 +272,9 @@ def _face_scan_module():
     
     src = st.radio("Input Source", LIVE_INPUT_SOURCES, horizontal=True, key="cv_fs_src")
     
-    face_cas = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
-    eye_cas = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_eye.xml")
-    smile_cas = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_smile.xml")
+    face_cas = load_cascade_classifier("haarcascade_frontalface_default.xml")
+    eye_cas = load_cascade_classifier("haarcascade_eye.xml")
+    smile_cas = load_cascade_classifier("haarcascade_smile.xml")
 
     def _fs_cb(img):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

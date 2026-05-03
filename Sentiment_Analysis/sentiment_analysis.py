@@ -207,9 +207,17 @@ def sentiment_analysis_page():
                 return
 
             try:
-                model = load_model(MODEL_PATH)
-                with open(TOKENIZER_PATH, "rb") as f:
-                    tokenizer = pickle.load(f)
+                @st.cache_resource(show_spinner=False)
+                def get_lstm_model():
+                    from tensorflow.keras.models import load_model
+                    return load_model(MODEL_PATH)
+                @st.cache_resource(show_spinner=False)
+                def get_tokenizer():
+                    with open(TOKENIZER_PATH, "rb") as f:
+                        return pickle.load(f)
+                
+                model = get_lstm_model()
+                tokenizer = get_tokenizer()
                     
                 seq = tokenizer.texts_to_sequences([text_input])
                 X_infer = pad_sequences(seq, maxlen=15, padding='post', truncating='post')
