@@ -164,10 +164,14 @@ def add_watermark():
 
 def inject_global_css():
     add_watermark()
+    # Non-blocking font loading — eliminates render stall
+    st.markdown("""
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    """, unsafe_allow_html=True)
     st.markdown("""
         <style>
-        /* ──── PREMIUM DEEP LEARNING THEME ──── */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono&display=swap');
 
         .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"], .main, [data-testid="stBlockContainer"], [data-testid="stVerticalBlock"], .block-container, section {
             background-color: transparent !important; 

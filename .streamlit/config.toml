@@ -5,3 +5,14 @@ backgroundColor="#0A0A0A"
 secondaryBackgroundColor="#1A1A1A"
 textColor="#E2E8F0"
 font="sans serif"
+
+[server]
+maxUploadSize=200
+enableStaticServing=true
+runOnSave=false
+
+[runner]
+fastReruns=true
+
+[browser]
+gatherUsageStats=false

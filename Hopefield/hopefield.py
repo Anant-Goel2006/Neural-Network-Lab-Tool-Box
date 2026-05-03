@@ -45,11 +45,10 @@ CLASSIFIER_FONTS = [
     cv2.FONT_HERSHEY_SIMPLEX,
     cv2.FONT_HERSHEY_DUPLEX,
     cv2.FONT_HERSHEY_COMPLEX,
-    cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
 ]
-CLASSIFIER_ANGLES = (-15, -6, 0, 6, 15)
-CLASSIFIER_SCALES = (0.88, 0.95, 1.0, 1.08, 1.16)
-CLASSIFIER_SHIFTS = [(-2, -2), (0, 0), (2, 2), (-2, 2), (2, -2)]
+CLASSIFIER_ANGLES = (-10, 0, 10)
+CLASSIFIER_SCALES = (0.9, 1.0, 1.1)
+CLASSIFIER_SHIFTS = [(0, 0), (-2, -2), (2, 2)]
 TEXT_SHEARS = (-0.14, 0.14)
 PREFERRED_TTF_FONTS = [
     "arial.ttf",
@@ -81,7 +80,7 @@ class HopfieldEngine:
     def energy(self, state):
         return -0.5 * float(state @ self.W @ state)
 
-    def recover(self, state, steps=120):
+    def recover(self, state, steps=40):
         curr = state.copy()
         energies = [self.energy(curr)]
         for _ in range(steps):
@@ -500,7 +499,7 @@ def _hog_descriptor():
     return cv2.HOGDescriptor((CLASSIFIER_SIDE, CLASSIFIER_SIDE), (16, 16), (8, 8), (8, 8), 9)
 
 
-@lru_cache(maxsize=1)
+@st.cache_resource(show_spinner="Building character classifier (one-time)...")
 def _character_classifier_bank():
     hog = _hog_descriptor()
     label_to_idx = {label: idx for idx, label in enumerate(CHARACTER_LABELS)}
@@ -509,12 +508,12 @@ def _character_classifier_bank():
 
     for label in CHARACTER_LABELS:
         for font in CLASSIFIER_FONTS:
-            for thickness in [2, 3, 5]:
+            for thickness in [2, 4]:
                 base_mask = _render_text_prototype(label, font, thickness)
                 for sample in _augment_training_mask(base_mask, text_like=True):
                     samples.append(hog.compute(sample).flatten())
                     targets.append(label_to_idx[label])
-        for font_path in _available_ttf_font_paths():
+        for font_path in _available_ttf_font_paths()[:3]:
             base_mask = _render_ttf_text_prototype(label, font_path)
             for sample in _augment_training_mask(base_mask, text_like=True):
                 samples.append(hog.compute(sample).flatten())
@@ -527,7 +526,7 @@ def _character_classifier_bank():
     return {"hog": hog, "knn": knn, "labels": CHARACTER_LABELS}
 
 
-@lru_cache(maxsize=1)
+@st.cache_resource(show_spinner="Building shape classifier (one-time)...")
 def _shape_classifier_bank():
     hog = _hog_descriptor()
     label_to_idx = {label: idx for idx, label in enumerate(SHAPE_LABELS)}
@@ -912,69 +911,36 @@ def _character_candidates(raw_mask, allow_connected=False):
 
 
 def _detect_locally(clean_img, prefer_text=False):
+    # --- Fast OCR attempt (pytesseract) — skip entirely if not installed ---
     try:
         import pytesseract
-        import cv2
-        import json
-        import numpy as np
-        
-        # Check against pure white or pure black
+        if not os.path.exists(getattr(pytesseract.pytesseract, 'tesseract_cmd', '')):
+            tesseract_path = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+            if os.path.exists(tesseract_path):
+                pytesseract.pytesseract.tesseract_cmd = tesseract_path
+            else:
+                raise FileNotFoundError("Tesseract not installed")
+
         t_img = np.array(clean_img)
         if len(t_img.shape) == 2:
             t_img_rgb = cv2.cvtColor(t_img, cv2.COLOR_GRAY2RGB)
         else:
             t_img_rgb = t_img
-            
-        # Try to use Tesseract for perfect letter/word parsing on Windows
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-        
-        # Add basic thresholding to make letters bolder for tesseract
         gray = cv2.cvtColor(t_img_rgb, cv2.COLOR_RGB2GRAY)
         _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
-        
-        # PSM 8 assumes a single word or character, PSM 7 assumes single text line
         psm_mode = '--psm 7' if prefer_text else '--psm 8'
-        text = pytesseract.image_to_string(thresh, config=f'{psm_mode} -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789').strip()
-        
-        if text and len(text) > 0 and len(text) < 20: 
+        text = pytesseract.image_to_string(thresh, config=f'{psm_mode} -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', timeout=1).strip()
+        if text and 0 < len(text) < 20:
             return {
-                "name": text,
-                "category": "OCR Recognition",
-                "confidence": 99,
+                "name": text, "category": "OCR Recognition", "confidence": 99,
                 "note": "Detected perfectly by OCR letter extraction.",
                 "raw": json.dumps({"detector": "pytesseract", "best_match": text}),
-                "top_matches": [
-                    {"label": text, "category": "OCR Recognition", "votes": 100, "score": 99.0}
-                ],
+                "top_matches": [{"label": text, "category": "OCR Recognition", "votes": 100, "score": 99.0}],
             }
-    except Exception as e:
-        pass # Silently fallback to our robust local classifier bank if Tesseract isn't installed
+    except Exception:
+        pass
 
-    try:
-        import pytesseract
-        from PIL import Image
-        import cv2
-        import json
-        t_img = clean_img
-        if len(t_img.shape) == 2:
-            t_img_rgb = cv2.cvtColor(t_img, cv2.COLOR_GRAY2RGB)
-        else:
-            t_img_rgb = cv2.cvtColor(t_img, cv2.COLOR_BGR2RGB)
-        
-        text = pytesseract.image_to_string(Image.fromarray(t_img_rgb)).strip()
-        if text:
-            return {
-                "name": text,
-                "category": "Tesseract OCR",
-                "confidence": 99,
-                "note": "Detected perfectly by Tesseract OCR.",
-                "raw": json.dumps({"detector": "pytesseract", "best_match": text}),
-                "top_matches": [
-                    {"label": text, "category": "Tesseract OCR", "votes": 100, "score": 99.0}
-                ],
-            }
-    except Exception as e:
-        print(f"Tesseract error: {e}")
+    # --- Second Tesseract attempt removed (duplicate, was slow) ---
 
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
@@ -984,10 +950,16 @@ def _detect_locally(clean_img, prefer_text=False):
             model = genai.GenerativeModel("gemini-1.5-flash")
             
             # Use PIL image for genai
-            if len(clean_img.shape) == 2:
-                rgb_img = cv2.cvtColor(clean_img, cv2.COLOR_GRAY2RGB)
+            img_arr = np.array(clean_img)
+            if len(img_arr.shape) == 2:
+                rgb_img = cv2.cvtColor(img_arr, cv2.COLOR_GRAY2RGB)
             else:
-                rgb_img = cv2.cvtColor(clean_img, cv2.COLOR_BGR2RGB)
+                rgb_img = cv2.cvtColor(img_arr, cv2.COLOR_BGR2RGB)
+                
+            h, w = rgb_img.shape[:2]
+            if max(h, w) > 256:
+                scale = 256 / max(h, w)
+                rgb_img = cv2.resize(rgb_img, (int(w * scale), int(h * scale)))
                 
             pil_img = Image.fromarray(rgb_img)
             
@@ -998,7 +970,7 @@ def _detect_locally(clean_img, prefer_text=False):
                 "If it contains letters/words, return ONLY the exact text. "
                 "If it is a clear drawing of a shape or object (like a star, house, animal), return ONLY its exact name."
             )
-            response = model.generate_content([prompt, pil_img])
+            response = model.generate_content([prompt, pil_img], request_options={"timeout": 3})
             output_text = response.text.strip().replace("\n", " ")
             
             if output_text:
@@ -1114,7 +1086,7 @@ def _analyze_drawing(clean_img, analysis_hash, prefer_text=False):
     input_vec = _image_to_bipolar(clean_img)
     engine = HopfieldEngine(N)
     engine.store(input_vec)
-    recovered, energies = engine.recover(input_vec, steps=90)
+    recovered, energies = engine.recover(input_vec, steps=40)
     changed = (recovered != input_vec).astype(float)
     detection = _detect_locally(clean_img, prefer_text=prefer_text)
     return {

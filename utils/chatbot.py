@@ -100,14 +100,57 @@ def render_chatbot(
         ]
 
     with st.container(border=True):
+        # Sci-Fi Jarvis style CSS injection
+        st.markdown("""
+            <style>
+                /* Avatar customizations */
+                .stChatMessage[data-testid="stChatMessage"] .st-emotion-cache-1c7y2kd { /* Default bot icon container usually */
+                    background-color: transparent !important;
+                }
+                .stChatMessage[data-testid="stChatMessage"] .st-emotion-cache-p4micv {
+                    background-color: transparent !important;
+                }
+                
+                /* Chat bubble styling */
+                .stChatMessage {
+                    padding: 1rem;
+                    border-radius: 10px;
+                    margin-bottom: 1rem;
+                    border: 1px solid rgba(0, 255, 255, 0.2);
+                    background-color: rgba(10, 20, 30, 0.6) !important;
+                    box-shadow: 0 0 10px rgba(0, 255, 255, 0.05), inset 0 0 15px rgba(0, 255, 255, 0.05);
+                    backdrop-filter: blur(5px);
+                    color: #E0FFFF;
+                    font-family: 'Consolas', 'Courier New', monospace;
+                }
+                
+                /* Assistant message specific */
+                .stChatMessage:has([data-testid="stIconMaterial"][title="assistant"]),
+                .stChatMessage:nth-child(odd) {
+                    border-left: 3px solid #00FFFF;
+                    border-right: 1px solid rgba(0, 255, 255, 0.1);
+                    background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, rgba(10, 20, 30, 0.8) 20%);
+                }
+                
+                /* User message specific */
+                .stChatMessage:has([data-testid="stIconMaterial"][title="user"]),
+                .stChatMessage:nth-child(even) {
+                    border-right: 3px solid #8B5CF6;
+                    border-left: 1px solid rgba(139, 92, 246, 0.1);
+                    background: linear-gradient(270deg, rgba(139, 92, 246, 0.1) 0%, rgba(10, 20, 30, 0.8) 20%);
+                    color: #F3E8FF;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+
         st.markdown(f"""
             <div style="background: {header_gradient}; border-radius: 8px 8px 0 0;
                         padding: 12px 18px; margin: -1px -1px 12px -1px;
                         border-left: 4px solid {border_color};">
                 <div style="font-family:'Montserrat',sans-serif; font-weight:800;
                             font-size:15px; color:#FFFFFF; letter-spacing:2px;
-                            text-transform:uppercase;">
-                    🤖 {tutor_label}
+                            text-transform:uppercase; text-shadow: 0 0 8px rgba(255,255,255,0.6);">
+                    🤖 {tutor_label} [SYSTEM ONLINE]
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -115,12 +158,21 @@ def render_chatbot(
 
         chat_container = st.container(height=400)
         with chat_container:
-            for message in st.session_state[state_key]:
+            history = st.session_state[state_key]
+            
+            # Find the index of the last assistant message
+            last_assistant_idx = -1
+            for i in range(len(history) - 1, -1, -1):
+                if history[i]["role"] == "assistant":
+                    last_assistant_idx = i
+                    break
+                    
+            for i, message in enumerate(history):
                 with st.chat_message(message["role"]):
                     if "label" in message:
                         st.markdown(f"**{message['label']}**")
                     st.markdown(message["content"])
-                    if message["role"] == "assistant":
+                    if message["role"] == "assistant" and i == last_assistant_idx:
                         render_voice_button(
                             message["content"],
                             key_suffix=f"chat_{message.get('id', 'default')}",
