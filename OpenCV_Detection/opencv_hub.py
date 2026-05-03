@@ -93,7 +93,7 @@ CV_MODULES = [
         "page_title": "Professional Palm Analyzer",
         "page_subtitle": "Advanced computer vision palm analysis with CLAHE, Gabor filters, and 60+ unique feature extraction",
         "path": "OpenCV_Detection/page_palm.py",
-        "banner": os.path.join("assets", "banners", "palm_reading_banner_1774323346127.png"),
+        "banner": os.path.join("assets", "banners", "palm_reading_banner_1774323346147.png"),
         "features": ["CNN + Gabor Detection", "60+ Feature Extraction", "Fine Line Analysis"],
     },
 ]
