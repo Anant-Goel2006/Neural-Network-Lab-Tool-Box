@@ -23,11 +23,18 @@ from utils.styles import section_header, gradient_header, render_content_card, r
 
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 
-WEBRTC_READY = False
-RTC_CONFIG_LOCAL = None
-RTC_CONFIG_STUN = None
+try:
+    from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+    import av
+    WEBRTC_READY = True
+    RTC_CONFIG_LOCAL = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+    RTC_CONFIG_STUN = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+except ImportError:
+    WEBRTC_READY = False
+    RTC_CONFIG_LOCAL = None
+    RTC_CONFIG_STUN = None
 
-LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
+LIVE_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot", "📹 Video File", "🎥 Live Camera"]
 PALM_INPUT_SOURCES = ["📷 Photo", "📸 Camera Snapshot"]
 
 
@@ -92,6 +99,29 @@ CV_MODULES = [
 ]
 
 CV_MODULE_MAP = {item["key"]: item for item in CV_MODULES}
+
+
+def _start_webrtc_stream(key, callback_fn, title, session_key, hint=None):
+    if not WEBRTC_READY:
+        st.error("streamlit-webrtc is not installed or properly configured.")
+        return
+
+    st.markdown(f"**{title}**")
+    if hint:
+        st.caption(hint)
+
+    class VideoProcessor:
+        def recv(self, frame):
+            return callback_fn(frame)
+
+    webrtc_streamer(
+        key=key,
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIG_STUN,
+        video_processor_factory=VideoProcessor,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True
+    )
 
 
 def process_video_realtime(video_file, callback_fn):
@@ -321,17 +351,88 @@ def _vehicle_module():
     model = load_yolo_model()
     if model is None: return
 
+    def get_color_name(r, g, b):
+        if max(r,g,b) < 45: return "Black"
+        if min(r,g,b) > 210: return "White"
+        if abs(r-g) < 25 and abs(g-b) < 25: return "Gray"
+        if r > g * 1.2 and r > b * 1.2: return "Red"
+        if g > r * 1.2 and g > b * 1.2: return "Green"
+        if b > r * 1.2 and b > g * 1.2: return "Blue"
+        if r > b * 1.5 and g > b * 1.5 and abs(r-g) < 40: return "Yellow"
+        return "Unknown"
+
+    def process_analytics(img, results, box_color):
+        boxes = []
+        persons = []
+
+        for box in results.boxes:
+            cls_id = int(box.cls[0])
+            name = results.names[cls_id]
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            conf = float(box.conf[0])
+            w, h = x2 - x1, y2 - y1
+            
+            if name == 'person':
+                persons.append((x1, y1, x2, y2))
+            elif name in ['car', 'truck', 'bus', 'motorcycle']:
+                if name == 'truck':
+                    if conf < 0.45 or (h > 0 and w/h < 0.8):
+                        continue
+                if name == 'car' and conf < 0.40:
+                    continue
+                    
+                color = "N/A"
+                if name in ['car', 'truck', 'bus']:
+                    cx1, cy1 = x1 + int(w*0.3), y1 + int(h*0.3)
+                    cx2, cy2 = x1 + int(w*0.7), y1 + int(h*0.7)
+                    roi = img[cy1:cy2, cx1:cx2]
+                    if roi.size > 0:
+                        avg_bgr = cv2.mean(roi)[:3]
+                        color = get_color_name(avg_bgr[2], avg_bgr[1], avg_bgr[0])
+
+                boxes.append({
+                    'name': name,
+                    'rect': (x1, y1, x2, y2),
+                    'conf': conf,
+                    'color': color,
+                    'passengers': 0
+                })
+
+        for p in persons:
+            px1, py1, px2, py2 = p
+            pcx, pcy = (px1 + px2) // 2, (py1 + py2) // 2
+            
+            for b in boxes:
+                bx1, by1, bx2, by2 = b['rect']
+                if bx1 <= pcx <= bx2 and by1 <= pcy <= by2:
+                    b['passengers'] += 1
+                    break
+
+        for b in boxes:
+            x1, y1, x2, y2 = b['rect']
+            name = b['name']
+            conf = b['conf']
+            color_str = b['color']
+            passengers = b['passengers']
+            
+            cv2.rectangle(img, (x1, y1), (x2, y2), box_color, 3)
+            
+            text_lines = [f"{name.upper()} {conf:.1f}"]
+            if color_str != "N/A":
+                text_lines.append(f"Color: {color_str}")
+            if passengers > 0:
+                text_lines.append(f"Passengers: {passengers}")
+                
+            y_offset = y1 - 10
+            for line in reversed(text_lines):
+                cv2.putText(img, line, (x1, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.6, box_color, 2)
+                y_offset -= 20
+                
+        return img
+
     def _vd_cb(img):
         results = model(img, verbose=False, imgsz=640)[0]
-        for box in results.boxes:
-            cls = int(box.cls[0])
-            name = results.names[cls]
-            if name in ['car', 'truck', 'bus', 'motorcycle', 'person']:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = float(box.conf[0])
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 177, 64), 3)
-                cv2.putText(img, f"{name.upper()} {conf:.1f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 177, 64), 2)
-        return img
+        return process_analytics(img, results, (0, 177, 64))
 
     if src in ("📷 Photo", "📸 Camera Snapshot"):
         img = _load_image_from_source(
@@ -354,21 +455,13 @@ def _vehicle_module():
 
         def vehicle_callback(frame: av.VideoFrame) -> av.VideoFrame:
             try:
-                # Frame skipping (YOLO is heavy)
                 if 'vd_frame_count' not in st.session_state: st.session_state.vd_frame_count = 0
                 st.session_state.vd_frame_count += 1
                 if st.session_state.vd_frame_count % 3 != 0: return frame
 
                 img = frame.to_ndarray(format="bgr24")
                 results = model(img, verbose=False, imgsz=416)[0]
-                for box in results.boxes:
-                    cls = int(box.cls[0])
-                    name = results.names[cls]
-                    if name in ['car', 'truck', 'bus', 'motorcycle', 'person']:
-                        x1, y1, x2, y2 = map(int, box.xyxy[0])
-                        conf = float(box.conf[0])
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (239, 68, 68), 3) # Red
-                        cv2.putText(img, f"{name.upper()} {conf:.1f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (239, 68, 68), 2)
+                img = process_analytics(img, results, (239, 68, 68))
                 return av.VideoFrame.from_ndarray(img, format="bgr24")
             except Exception:
                 return frame

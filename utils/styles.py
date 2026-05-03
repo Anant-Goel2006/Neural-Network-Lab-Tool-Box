@@ -140,7 +140,30 @@ def render_info_grid(items: list) -> None:
     """, unsafe_allow_html=True)
 
 
+def add_watermark():
+    st.markdown("""
+        <style>
+        .watermark-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 25px;
+            font-size: 16px;
+            font-family: 'Montserrat', sans-serif;
+            color: rgba(255, 255, 255, 0.4);
+            z-index: 9999;
+            user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            pointer-events: none;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        </style>
+        <div class="watermark-overlay">Anant Goel</div>
+    """, unsafe_allow_html=True)
+
 def inject_global_css():
+    add_watermark()
     st.markdown("""
         <style>
         /* ──── PREMIUM DEEP LEARNING THEME ──── */

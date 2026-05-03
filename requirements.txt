@@ -19,3 +19,5 @@ streamlit-drawable-canvas
 openai
 python-dotenv
 Pillow
+streamlit-webrtc
+av
