@@ -173,11 +173,23 @@ def inject_global_css():
     st.markdown("""
         <style>
 
+        /* ──── BASE LAYOUT ──── */
+        .block-container {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 1200px !important;
+        }
+
         .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"], .main, [data-testid="stBlockContainer"], [data-testid="stVerticalBlock"], .block-container, section {
             background-color: transparent !important; 
             color: #E2E8F0;
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
+        }
+
+        /* Prevent Streamlit's default top padding from pushing everything down */
+        [data-testid="stAppViewContainer"] > section > div.block-container {
+            padding-top: 1.5rem !important;
         }
 
         /* ──── ULTRA-PREMIUM GLASS CARDS ──── */
@@ -222,11 +234,11 @@ def inject_global_css():
         [data-testid="stVerticalBlockBorderWrapper"] {
             background: rgba(15, 23, 42, 0.55) !important;
             backdrop-filter: blur(12px) saturate(160%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            border-radius: 16px !important;
-            padding: 24px !important;
-            margin-bottom: 24px !important;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 14px !important;
+            padding: 18px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 12px rgba(59, 130, 246, 0.04) !important;
             position: relative;
         }
 
@@ -550,7 +562,37 @@ def inject_global_css():
 
         /* ──── COLUMN MIN-HEIGHT (prevent collapsed empty columns) ──── */
         [data-testid="column"] {
-            min-height: 60px;
+            min-height: 40px;
+        }
+
+        /* ──── TIGHTEN DEFAULT SPACING ──── */
+        [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
+            margin-top: 4px;
+        }
+
+        /* Reduce excessive heading gap inside Streamlit native markdown */
+        [data-testid="stMarkdownContainer"] h1,
+        [data-testid="stMarkdownContainer"] h2,
+        [data-testid="stMarkdownContainer"] h3 {
+            margin-top: 0.5em !important;
+            margin-bottom: 0.4em !important;
+        }
+
+        /* Expander styling – less boxy */
+        [data-testid="stExpander"] {
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 12px !important;
+            background: rgba(15,23,42,0.4) !important;
+        }
+
+        /* Tab content area – reduce inner gap */
+        [data-testid="stTabs"] [data-baseweb="tab-panel"] {
+            padding-top: 12px !important;
+        }
+
+        /* Metric cards – slightly less padding for compact look */
+        [data-testid="stMetric"] label {
+            font-size: 12px !important;
         }
 
         </style>
@@ -727,26 +769,26 @@ def inject_global_css():
 
 def section_header(title, subtitle):
     st.markdown(f"""
-        <div style="margin-bottom:24px; position: relative; z-index: 10;">
-            <div style="display:inline-block; border-bottom: 2px solid #3B82F6; padding-bottom: 8px; max-width: 100%;">
-                <h2 style="margin:0; font-size:28px; line-height: 1.2; color: #F8FAFC; word-wrap: break-word; font-weight: 700;">{title}</h2>
+        <div style="margin-bottom:20px; margin-top:8px; position: relative; z-index: 10;">
+            <div style="display:inline-block; border-bottom: 2px solid #3B82F6; padding-bottom: 6px; max-width: 100%;">
+                <h2 style="margin:0; font-size:26px; line-height: 1.2; color: #F8FAFC; word-wrap: break-word; font-weight: 700; font-family: 'Montserrat', sans-serif;">{title}</h2>
             </div>
-            <p style="color:#94a3b8; font-size:14px; font-weight:500; margin-top:10px; font-family:'Inter', sans-serif; letter-spacing: 0.5px; word-wrap: break-word;">{subtitle}</p>
+            <p style="color:#94a3b8; font-size:13px; font-weight:500; margin-top:8px; margin-bottom:0; font-family:'Inter', sans-serif; letter-spacing: 0.3px; word-wrap: break-word;">{subtitle}</p>
         </div>
     """, unsafe_allow_html=True)
 
 def gradient_header(title, sub, icon=""):
     st.markdown(f"""
-        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid #3B82F6; padding:32px; 
-            margin-bottom: 35px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; overflow: hidden; border-radius: 12px;">
-            <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.05; font-size: 120px; color: #3B82F6;">
+        <div style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); border-left: 4px solid #3B82F6; padding: 28px 32px; 
+            margin-bottom: 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position:relative; overflow: hidden; border-radius: 12px;">
+            <div style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.05; font-size: 100px; color: #3B82F6;">
                 {icon}
             </div>
-            <div style="display: flex; align-items: center; gap: 24px; position: relative; z-index: 2; flex-wrap: wrap;">
-                <div style="font-size: 48px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">{icon}</div>
+            <div style="display: flex; align-items: center; gap: 20px; position: relative; z-index: 2; flex-wrap: wrap;">
+                <div style="font-size: 42px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">{icon}</div>
                 <div style="flex:1; min-width: 200px;">
-                    <h1 style="font-size: 34px; margin: 0; line-height:1.2; color: #FFFFFF; font-weight: 700; word-wrap: break-word;">{title}</h1>
-                    <p style="color:#DBEAFE; font-size:15px; font-family:'Inter', sans-serif; font-weight: 500; margin-top:8px; display: inline-block; background: rgba(59, 130, 246, 0.15); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.25); word-wrap: break-word;">
+                    <h1 style="font-size: 30px; margin: 0; line-height:1.2; color: #FFFFFF; font-weight: 800; word-wrap: break-word; font-family: 'Montserrat', sans-serif;">{title}</h1>
+                    <p style="color:#DBEAFE; font-size:13px; font-family:'Inter', sans-serif; font-weight: 500; margin-top:8px; margin-bottom:0; display: inline-block; background: rgba(59, 130, 246, 0.15); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.25); word-wrap: break-word;">
                         {sub}
                     </p>
                 </div>
